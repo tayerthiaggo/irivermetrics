@@ -18,9 +18,9 @@ Here's an example of how to use Module Two to calculate river metrics:
 
     Note:
 
-        Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
-        
-        All images in the directory must have the same coordinate reference system and spatial resolution.
+    Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
+    
+    All images in the directory must have the same coordinate reference system and spatial resolution.
 
 - rcor_extent : str
 

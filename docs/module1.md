@@ -22,11 +22,11 @@ Here's an example of how to use wd_batch module to perform batch water detection
 
     Note:
 
-        Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
+    Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
 
-        All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
+    All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
 
-        The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
+    The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
 
 - rcor_extent : str
 
@@ -44,9 +44,9 @@ Here's an example of how to use wd_batch module to perform batch water detection
 
     Set the file extension of the input images. This parameter helps the module recognize the image files.
 
-- reg : float, optional
+- reg : float, optional, default = 0.07 for four bands or 0.08 for six bands
 
-    Define the regularization parameter (default = 0.07 for four bands or 0.08 for six bands). For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676)
+    Define the regularization parameter. For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676).
 
 - max_cluster : int, optional, default = 6 for four bands or 3 for six bands
     
