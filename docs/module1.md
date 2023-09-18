@@ -17,34 +17,43 @@ Here's an example of how to use wd_batch module to perform batch water detection
 2. **Parameters:**
 
 - input_img : str or xarray.DataArray
+
     Provide a directory containing multispectral images (e.g., TIFF files) or a DataArray (xarray.DataArray) as input. These images (or DataArray) should contain at least 4 spectral bands (RGB+Near-infrared) for water detection.
 
     Note:
-        - Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
 
-        - All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
+        Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
 
-        - The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
+        All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
+
+        The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
 
 - rcor_extent : str
+
     Specify the river lines that define the rivers to be considered for water detection. These river lines help determine the area of interest (AOI) for the analysis.
 
 - ini_file : str
+
     The path to the WaterDetect default Initialization File (.ini) file. This file contains key-value pairs for configuration settings, including spectral water indices combination, maximum clustering, and regularization.
 
 - buffer : int or float, optional, default= 1000 metres
+
     Specify a buffer distance (in metres) around the river lines. This buffer distance will be used to create polygons around the river lines, defining the extended AOI for water detection.
 
 - img_ext : str, optional, default = .tif
+
     Set the file extension of the input images. This parameter helps the module recognize the image files.
 
 - reg : float, optional
+
     Define the regularization parameter (default = 0.07 for four bands or 0.08 for six bands). For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676)
 
 - max_cluster : int, optional, default = 6 for four bands or 3 for six bands
+    
     Specify the maximum clustering parameter. 
 
 - export_tif : bool, optional, default = True
+    
     Choose whether to export results as raster files.
 
     If the "Export Results as Raster" parameter is set to True, the module creates a folder to store raster files for each time step (e.g., .tif files).

@@ -13,26 +13,33 @@ Here's an example of how to use Module Two to calculate river metrics:
 1. **Parameters:**
 
 - da_wmask : str or xarray.DataArray
+
     Directory path or xarray.DataArray containing binary water masks.
 
     Note:
-        - Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
 
-        - All images in the directory must have the same coordinate reference system and spatial resolution.
+        Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
+        
+        All images in the directory must have the same coordinate reference system and spatial resolution.
 
 - rcor_extent : str
+
     Path to the river corridor extent (river sections) shapefile (.shp) defining the Area of Interest (AOI).
 
 - section_length : float
+
     Length of river sections for metrics calculation (in km).
 
 - outdir : str, optional, default = None
+
     Output directory for results. If None, it will be generated based on the shapefile location.
 
 - img_ext : str, optional, default = '.tif'
+
     The water masks file extension.
 
 - export_shp : bool, optional, default = False
+
     Flag to export shapefiles of river sections (Pool length and endpoints).
 
 2. **How it works:**
