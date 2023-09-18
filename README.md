@@ -8,7 +8,7 @@
 
 - **Modular Design:** iRiverMetrics is divided into modules, each serving a specific purpose, from generating water masks to calculating river metrics. This modular approach allows you to use only the components relevant to your project.
 
-- **Remote Sensing Integration:** The toolkit leverages multispectral and multitemporal satellite imagery, enabling you to analyze surface water features and assess river characteristics. It supports common satellite sensors and data formats.
+- **Remote Sensing Integration:** The toolkit leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
 
 - **Efficient Processing:** iRiverMetrics is designed for efficiency. It employs Dask for parallel processing, making it suitable for analysing large datasets quickly.
 
@@ -18,9 +18,9 @@
 
 iRiverMetrics consists of two main modules:
 
-1. [Water Detection (`wd_batch`)](docs/module1.md): Generate water masks from multispectral imagery using the Water Detect package. This module identifies open water features, combines spectral water indices, and clusters them to map water bodies.
+1. Water Detection [(`wd_batch`)](docs/module1.md): Generate water masks from multispectral imagery using the Water Detect package. This module identifies open water features, combines spectral water indices, and clusters them to map water bodies.
 
-2. [Calculate Metrics (`calc_metrics`)](docs/module2.md): Calculate a variety of river metrics based on the generated water masks. These metrics provide insights into surface water characteristics, such as morphology, persistence and fragmentation.
+2. Calculate Metrics [(`calc_metrics`)](docs/module2.md): Calculate a variety of river metrics based on water masks. These metrics provide insights into surface water characteristics, such as morphology, persistence and fragmentation.
 
 ## Getting Started
 
@@ -36,7 +36,7 @@ git clone https://github.com/tayerthiaggo/iRiverMetrics.git
 
 ```bash
 pip install -r requirements.txt
-```-;;
+```
 
 3. **Explore the Modules:** Dive into the documentation for each module to understand its functionality and usage. Start with Module One (`wd_batch`) and progress to the subsequent modules.
 

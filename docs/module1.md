@@ -1,6 +1,6 @@
 # wd_batch
 
-wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True)
+wd_batch (input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True)
 
 ## Overview
 
@@ -12,31 +12,42 @@ wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, img_ex
 
 Here's an example of how to use wd_batch module to perform batch water detection:
 
-1. **Download .ini file:** If you need to adjust any parameters of the WaterDetect configuring file, download the default .ini file [here](docs/WaterDetect.ini). Note, if a .ini file path is provided, a folder will be created to export the results at the same location of the .ini file. If not the results will be exported to the same path as rcor_extent shapefile. 
+1. **Download .ini file:** If you need to adjust any parameters of the WaterDetect configuring file, download the default .ini file [here](WaterDetect.ini). Note, if a .ini file path is provided, a folder will be created to export the results at the same location of the .ini file. If not the results will be exported to the same path as rcor_extent shapefile. 
 
-2. **Input Data:**
+2. **Parameters:**
 
-- input_img (str or xarray.DataArray): Provide a directory containing multispectral images (e.g., TIFF files) or a DataArray (xarray.DataArray) as input. These images (or DataArray) should contain at least 4 spectral bands (RGB+Near-infrared) for water detection.
+- input_img : str or xarray.DataArray
+    Provide a directory containing multispectral images (e.g., TIFF files) or a DataArray (xarray.DataArray) as input. These images (or DataArray) should contain at least 4 spectral bands (RGB+Near-infrared) for water detection.
 
-- rcor_extent (str): Specify the river lines that define the rivers to be considered for water detection. These river lines help determine the area of interest (AOI) for the analysis.
+    Note:
+        - Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
 
-Note:
-    - Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
-    - All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
-    - The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
+        - All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
 
-- ini_file (str): The path to the WaterDetect default Initialization File (.ini) file. This file contains key-value pairs for configuration settings, including spectral water indices combination, maximum clustering, and regularization.
+        - The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
 
-- buffer (int or float, optional, default= 1000 metres): Specify a buffer distance (in metres) around the river lines. This buffer distance will be used to create polygons around the river lines, defining the extended AOI for water detection.
+- rcor_extent : str
+    Specify the river lines that define the rivers to be considered for water detection. These river lines help determine the area of interest (AOI) for the analysis.
 
-- img_ext (str, optional, default = .tif): Set the file extension of the input images. This parameter helps the module recognize the image files.
+- ini_file : str
+    The path to the WaterDetect default Initialization File (.ini) file. This file contains key-value pairs for configuration settings, including spectral water indices combination, maximum clustering, and regularization.
 
-- reg (float, optional): Define the regularization parameter (default = 0.07 for four bands or 0.08 for six bands). For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676)
+- buffer : int or float, optional, default= 1000 metres
+    Specify a buffer distance (in metres) around the river lines. This buffer distance will be used to create polygons around the river lines, defining the extended AOI for water detection.
 
-- max_cluster (int, optional, default = 6 for four bands or 3 for six bands): Specify the maximum clustering parameter. 
+- img_ext : str, optional, default = .tif
+    Set the file extension of the input images. This parameter helps the module recognize the image files.
 
-- export_tif (bool, optional, default = True): Choose whether to export results as raster files.
-If the "Export Results as Raster" parameter is set to True, the module creates a folder to store raster files for each time step (e.g., .tif files).
+- reg : float, optional
+    Define the regularization parameter (default = 0.07 for four bands or 0.08 for six bands). For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676)
+
+- max_cluster : int, optional, default = 6 for four bands or 3 for six bands
+    Specify the maximum clustering parameter. 
+
+- export_tif : bool, optional, default = True
+    Choose whether to export results as raster files.
+
+    If the "Export Results as Raster" parameter is set to True, the module creates a folder to store raster files for each time step (e.g., .tif files).
 
 3. **How it works:**
 
@@ -76,7 +87,7 @@ max_cluster = None #Adjust as needed
 export_tif = True
 
 # Generate a DataArray containing water masks based on the specified parameters
-da_wmask = wd_batch(input_img, ini_file, rcor_extent, buffer, img_ext, reg, max_cluster, export_tif)
+da_wmask = wd_batch(input_img, ini_file, rcor_extent, buffer, img_ext, reg, max_cluster, export_tif )
 ```
 
-[Back to Main README](README.md)
+[Back to Main README](../README.md)
