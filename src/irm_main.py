@@ -78,8 +78,7 @@ def calc_metrics(da_wmask, rcor_extent, section_length=None, outdir=None, img_ex
         None
     """
     # Validate and preprocess input data
-    da_wmask, rcor_extent = validate(da_wmask, rcor_extent, section_length, img_ext)
-
+    da_wmask, rcor_extent = validate(da_wmask, rcor_extent, section_length, img_ext, expected_geometry_type='Polygon')
     # Determine the output directory
     if outdir == None:
         outdir = os.path.join(os.path.dirname(os.path.abspath(rcor_extent)), 'results_iRiverMetrics')
@@ -128,5 +127,3 @@ def calc_metrics(da_wmask, rcor_extent, section_length=None, outdir=None, img_ex
     print('Calculating metrics...All done!')
 
     return da_wmask, rcor_extent
-
-    

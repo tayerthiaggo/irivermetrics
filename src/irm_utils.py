@@ -527,7 +527,7 @@ def create_dataarray(layer, layer_metric, date_list, crs):
     da.attrs['crs'] = str(crs)
     return da
 ## Validation
-def validate(da_wmask, rcor_extent, section_length, img_ext):
+def validate(da_wmask, rcor_extent, section_length, img_ext, expected_geometry_type):
     """
     Validates input data for processing.
 
@@ -545,7 +545,7 @@ def validate(da_wmask, rcor_extent, section_length, img_ext):
     assert (isinstance(da_wmask, xr.core.dataarray.DataArray) or 
            (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), 'Invalid input. da_wmask must be a valid DataArray or a directory path'
     # Check the extension and type of the rcor_extent file
-    rcor_extent = process_shp_input(rcor_extent)
+    rcor_extent = process_shp_input(rcor_extent, expected_geometry_type)
     # Check if section length is present
     assert section_length != None, 'Invalid input. Section length not found.'  
     # If input is a directory - process input
@@ -563,7 +563,7 @@ def validate(da_wmask, rcor_extent, section_length, img_ext):
     assert not missing_dimensions, f"Invalid input. The following dimensions are missing: {', '.join(missing_dimensions)}"
     print('Checking input data...Data validated')
     return da_wmask, rcor_extent
-def process_shp_input(rcor_extent):
+def process_shp_input(rcor_extent, expected_geometry_type):
     """
     Validates and loads a shapefile with specific requirements.
 
@@ -580,9 +580,17 @@ def process_shp_input(rcor_extent):
     assert rcor_extent.endswith('.shp'), 'Invalid input. rcor_extent must be a valid shapefile(.shp)'
     # Load the shapefile using geopandas
     rcor_extent = gpd.read_file(rcor_extent) 
-    # Check if there is at least one feature and if any geometry is a Polygon or MultiPolygon
-    assert not rcor_extent.empty and any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry), \
-        'Invalid input. Shapefile does not contain valid polygon or multi-polygon geometries'    
+    # Check if there is at least one feature and if any geometry matches the expected type
+    valid_geometry = False
+    if expected_geometry_type == 'Polygon':
+        valid_geometry = any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry)
+    elif expected_geometry_type == 'LineString':
+        valid_geometry = any(isinstance(geom, LineString) for geom in rcor_extent.geometry)
+    else:
+        raise ValueError("Invalid expected_geometry_type. Use 'Polygon' or 'LineString'.")
+    
+    assert not rcor_extent.empty and valid_geometry, f'Invalid input. Shapefile does not contain valid {expected_geometry_type} geometries'  
+       
     return rcor_extent
 def process_folder_input(input_dir, img_ext):
     """
@@ -661,7 +669,7 @@ def validate_input_projection(da_wmask, gdf_shp):
         gdf_shp = gdf_shp.to_crs(da_wmask.rio.crs)
     return gdf_shp
 ## Preprocessing
-def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length):
+def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, skip_prepare_args=False):
     """
     Perform preprocessing steps on input data and extent shapefile.
 
@@ -680,8 +688,12 @@ def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length):
     da_wmask = fill_nodata(da_wmask)
     # Step 3: Reproject DataArray and extent to UTM CRS
     da_wmask, rcor_extent = reproject_to_utm(da_wmask, rcor_extent)
-    # Step 4: Prepare args for processing
-    args_list = prepare_args(da_wmask, rcor_extent, outdir, export_shp, section_length)
+    if not skip_prepare_args:
+        # Step 4: Prepare args for processing
+        args_list = prepare_args(da_wmask, rcor_extent, outdir, export_shp, section_length)
+    else:
+        args_list = None
+        
     print('Preprocessing...Done!')
     return args_list, da_wmask, rcor_extent
 def clip_inputs (da_wmask, rcor_extent):
