@@ -536,6 +536,7 @@ def validate(da_wmask, rcor_extent, section_length, img_ext, expected_geometry_t
     rcor_extent (str): Path to a file containing rcor extent (river sections) shapefile.
     section_length (int or float): Section length value.
     img_ext (str): Image extension (e.g., '.tif') for processing folder input.
+    expected_geometry_type
 
     Returns:
     tuple: A tuple containing the validated DataArray and rcor extent information.
@@ -546,21 +547,26 @@ def validate(da_wmask, rcor_extent, section_length, img_ext, expected_geometry_t
            (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), 'Invalid input. da_wmask must be a valid DataArray or a directory path'
     # Check the extension and type of the rcor_extent file
     rcor_extent = process_shp_input(rcor_extent, expected_geometry_type)
-    # Check if section length is present
-    assert section_length != None, 'Invalid input. Section length not found.'  
+    if expected_geometry_type == 'Polygon':
+        # Check if section length is present
+        assert section_length != None, 'Invalid input. Section length not found.'  
     # If input is a directory - process input
     if isinstance(da_wmask, str) and os.path.isdir(da_wmask):
         da_wmask = process_folder_input(da_wmask, img_ext)
     # Check if CRS information is present
     assert da_wmask.rio.crs != None, 'Invalid input. da_wmask CRS not found.'  
     # validate projection
-    rcor_extent = validate_input_projection (da_wmask, rcor_extent)
+    rcor_extent = validate_input_projection(da_wmask, rcor_extent)
     # List of dimensions that are required in the DataArray
     required_dimensions = ['x', 'y', 'time']
     # Check for missing dimensions by comparing required dimensions with DataArray dimensions
     missing_dimensions = [dim for dim in required_dimensions if dim not in da_wmask.dims]
     # Assert that there are no missing dimensions
     assert not missing_dimensions, f"Invalid input. The following dimensions are missing: {', '.join(missing_dimensions)}"
+    # Get dimensions to squeeze (drop unnecessary dimensions)
+    dims_to_squeeze = [dim for dim in da_wmask.dims if dim not in required_dimensions]
+    # Squeeze and drop unnecessary dimensions
+    da_wmask = da_wmask.squeeze(drop=True, dim=dims_to_squeeze)
     print('Checking input data...Data validated')
     return da_wmask, rcor_extent
 def process_shp_input(rcor_extent, expected_geometry_type):
@@ -588,9 +594,8 @@ def process_shp_input(rcor_extent, expected_geometry_type):
         valid_geometry = any(isinstance(geom, LineString) for geom in rcor_extent.geometry)
     else:
         raise ValueError("Invalid expected_geometry_type. Use 'Polygon' or 'LineString'.")
-    
     assert not rcor_extent.empty and valid_geometry, f'Invalid input. Shapefile does not contain valid {expected_geometry_type} geometries'  
-       
+
     return rcor_extent
 def process_folder_input(input_dir, img_ext):
     """
@@ -669,7 +674,7 @@ def validate_input_projection(da_wmask, gdf_shp):
         gdf_shp = gdf_shp.to_crs(da_wmask.rio.crs)
     return gdf_shp
 ## Preprocessing
-def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, skip_prepare_args=False):
+def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, expected_geometry_type):
     """
     Perform preprocessing steps on input data and extent shapefile.
 
@@ -683,20 +688,19 @@ def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, skip_p
     """
     print('Preprocessing...')
     # Step 1: Clip input data and extent to match dimensions
-    da_wmask, rcor_extent = clip_inputs(da_wmask, rcor_extent)
+    da_wmask, rcor_extent = match_input_extent(da_wmask, rcor_extent, expected_geometry_type)
     # Step 2: Fill nodata values in the DataArray
     da_wmask = fill_nodata(da_wmask)
     # Step 3: Reproject DataArray and extent to UTM CRS
     da_wmask, rcor_extent = reproject_to_utm(da_wmask, rcor_extent)
-    if not skip_prepare_args:
-        # Step 4: Prepare args for processing
-        args_list = prepare_args(da_wmask, rcor_extent, outdir, export_shp, section_length)
-    else:
-        args_list = None
-        
+
+    return da_wmask, rcor_extent
+
+    # Step 4: Prepare args for processing
+    args_list = prepare_args(da_wmask, rcor_extent, outdir, export_shp, section_length)
     print('Preprocessing...Done!')
     return args_list, da_wmask, rcor_extent
-def clip_inputs (da_wmask, rcor_extent):
+def match_input_extent(da_wmask, rcor_extent, expected_geometry_type):
     """
     Clip input DataArray and extent shapefile to the overlapping region.
 
@@ -710,10 +714,20 @@ def clip_inputs (da_wmask, rcor_extent):
     """
     # Get bounding box of DataArray
     minx, miny, maxx, maxy = da_wmask.rio.bounds()
-    # Filter extent polygons that are completely within the DataArray bounding box
-    rcor_extent = rcor_extent[rcor_extent.geometry.intersects(box(minx, miny, maxx, maxy))]
-    # Clip the DataArray using the filtered extent
-    da_wmask = da_wmask.rio.clip(rcor_extent.geometry)
+
+    if expected_geometry_type == 'Polygon':
+        # Filter extent polygons that are completely within the DataArray bounding box
+        rcor_extent = rcor_extent[rcor_extent.geometry.intersects(box(minx, miny, maxx, maxy))]
+        # Clip the DataArray using the filtered extent
+        da_wmask = da_wmask.rio.clip(rcor_extent.geometry)
+
+    elif expected_geometry_type == 'LineString':
+        # Clip the geometries in the GeoDataFrame by the bounding box
+        rcor_extent['geometry'] = rcor_extent.geometry.clip(box(minx, miny, maxx, maxy))
+        # Filter out rows with empty geometries and reset the index to have coherent indices from 0 to x
+        rcor_extent = rcor_extent[rcor_extent.geometry.notnull()].reset_index(drop=True)
+        # Clip the DataArray using the filtered extent
+        da_wmask = da_wmask.rio.clip([box(*rcor_extent.total_bounds)])
     return da_wmask, rcor_extent
 def fill_nodata(da_wmask):
     """
@@ -787,7 +801,7 @@ def reproject_to_utm (da_wmask, rcor_extent):
     if rcor_extent.crs != da_wmask.rio.crs:
         rcor_extent = rcor_extent.to_crs(da_wmask.rio.crs)
     return da_wmask, rcor_extent
-def prepare_args(da_wmask, rcor_extent, section_outdir_folder, export_shp, section_length):
+def prepare_args(da_wmask, rcor_extent, section_outdir_folder, export_shp, section_length, expected_geometry_type):
     """
     Prepare a list of arguments for parallel processing.
     
@@ -802,25 +816,36 @@ def prepare_args(da_wmask, rcor_extent, section_outdir_folder, export_shp, secti
         list: List of arguments for parallel processing.
     """
     args_list = []
+    
     crs = rcor_extent.crs
     # Process each polygon
-    for polygon in rcor_extent.iloc:
-        # Get the bounding box of the polygon
-        xmin, ymin, xmax, ymax = polygon.geometry.bounds
-        # Convert spatial bounds to pixel coordinates
-        x_coords = da_wmask.x.values
-        y_coords = da_wmask.y.values
-        col_mask = (x_coords >= xmin) & (x_coords <= xmax)
-        row_mask = (y_coords >= ymin) & (y_coords <= ymax)
-        # Apply filtering to both x and y dimensions
-        col_indices = np.where(col_mask)[0]
-        row_indices = np.where(row_mask)[0]
-        # Clip the raster using numpy indexing
-        cliped_da_wmask = da_wmask[:, row_indices, col_indices]
-        # Create a directory to save output metrics for the section
-        outdir_section = os.path.join(section_outdir_folder, str(polygon.name))
-        # Append arguments to the list
-        args_list.append([polygon, cliped_da_wmask, crs, outdir_section, export_shp, section_length]) 
+    for feature in rcor_extent.iloc:
+        if expected_geometry_type == 'Polygon':
+            # Get the bounding box of the polygon
+            xmin, ymin, xmax, ymax = feature.geometry.bounds
+            # Convert spatial bounds to pixel coordinates
+            x_coords = da_wmask.x.values
+            y_coords = da_wmask.y.values
+            col_mask = (x_coords >= xmin) & (x_coords <= xmax)
+            row_mask = (y_coords >= ymin) & (y_coords <= ymax)
+            # Apply filtering to both x and y dimensions
+            col_indices = np.where(col_mask)[0]
+            row_indices = np.where(row_mask)[0]
+            # Clip the raster using numpy indexing
+            cliped_da_wmask = da_wmask[:, row_indices, col_indices]
+            # Create a directory to save output metrics for the section
+            outdir_section = os.path.join(section_outdir_folder, str(feature.name))
+            # Append arguments to the list
+            args_list.append([feature, cliped_da_wmask, crs, outdir_section, export_shp, section_length]) 
+        
+        elif expected_geometry_type == 'LineString':
+            
+
+            
+            pass
+
+
+    
     return args_list
 ## Calculate metrics functions
 def process_polygon(polygon, da_wmask, crs, outdir_section, export_shp):
