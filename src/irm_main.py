@@ -6,16 +6,20 @@ from dask import delayed
 import dask.distributed
 from dask.distributed import Client
 
-from src.irm_utils import *
+# from src.irm_utils import *
+from src.utils_wd_batch import *
+from src.utils_calc_metrics import *
+from src.utils_gen_sections import *
+
 
 ## Module 1
-def wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True):
+def wd_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True):
     """
     Process a batch of input images to detect water using WaterDetect.
 
     Args:
         input_img (str or xarray.DataArray): Directory path containing image files or xarray.DataArray.
-        rcor_extent (str): River lines or polygon shapefile that define the rivers to be considered for water detection.
+        r_lines (str): River lines that define the rivers to be considered for water detection.
         ini_file (str): Path to the WaterDetect Initialization (.ini) file (default is None).
         buffer (int, optional): Buffer size for processing (default is 1000).
         img_ext (str, optional): Image file extension (default is '.tif').
@@ -28,8 +32,8 @@ def wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, im
     """
     # Check if outdir is not specified
     if outdir == None:
-        # If not, set the outdir to a default directory named 'results_iRiverMetrics' within the directory of rcor_extent
-        outdir = os.path.join(os.path.dirname(os.path.abspath(rcor_extent)), 'results_iRiverMetrics')
+        # If not, set the outdir to a default directory named 'results_iRiverMetrics' within the directory of r_lines
+        outdir = os.path.join(os.path.dirname(os.path.abspath(r_lines)), 'results_iRiverMetrics')
     # Check if ini_file is not specified
     if ini_file == None:
         # If not, set the ini_file to a default WaterDetect.ini file located in the 'docs' directory of the current working directory
@@ -42,7 +46,7 @@ def wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, im
         tif_out_dir = os.path.join(outdir, 'wmask_tif')
         create_new_dir(tif_out_dir)
     # Validate input images
-    input_img, n_bands, time_lst, rcor_extent = validate_inputs(input_img, img_ext, rcor_extent, ini_file, buffer)
+    input_img, n_bands, time_lst = validate_inputs(input_img, img_ext, r_lines, ini_file, buffer)
     # Edit the WaterDetect configuration (.ini) file based on the number of bands
     ini_file, bands = change_ini(ini_file, n_bands, reg, max_cluster)
     # Configure WaterDetect using the edited .ini file
@@ -61,7 +65,42 @@ def wd_batch(input_img, rcor_extent, ini_file=None, outdir=None, buffer=1000, im
     # Concatenate the water mask results to create a water mask time series
     da_wmask = xr.concat(wd_lst, dim=time_layers).chunk(chunks='auto')
     return da_wmask
-## Module 2
+
+## Module 2 
+def estimate_section_size_for_cachtment(da_wmask, r_lines, str_order_col):
+    """
+    Estimates the size of sections for a given catchment area based on water mask data and river lines.
+
+    This function orchestrates the process of validating and preprocessing the input data, 
+    processing the line features, and then postprocessing the results to estimate the section size.
+
+    Parameters:
+    da_wmask (xarray.core.dataarray.DataArray or str): Input data, either as a DataArray or a directory path.
+    r_lines (str): Path to a file containing river lines or similar linear features shapefile.
+    str_order_col (str): The name of the column in `r_lines` representing stream order.
+
+    Returns:
+    GeoDataFrame: A GeoDataFrame containing the estimated section sizes along with additional
+                  processed geospatial data.
+    """
+    # Preprocess the input datasets and obtain necessary parameters for further processing
+    initial_buffer, filtered_PP, crs, r_lines_dissolved, str_order_list = validate_and_preprocess(da_wmask, r_lines, str_order_col)
+    # Process the line features based on the preprocessed data and obtain buffer list,
+    # section lengths, widths, and original indices
+    buff_list, section_lengths, section_widths, original_indices = process_lines (initial_buffer, filtered_PP, crs, r_lines_dissolved, str_order_list)
+    # Postprocess the results from line processing to generate a final GeoDataFrame
+    # containing the estimated section sizes and other relevant data
+    result_gdf = postprocess_results(r_lines_dissolved, buff_list, section_lengths, section_widths, original_indices, str_order_col, crs)
+    # Return the final GeoDataFrame with the processed results
+    return result_gdf
+
+## Module 3
+
+## delimitate sections -- pool level
+
+##return rcor_extent
+
+## Module 4
 def calc_metrics(da_wmask, rcor_extent, section_length=None, outdir=None, img_ext='.tif', export_shp=False):
     """
     Calculate intermittent river metrics based on water mask data and river corridor extent.
