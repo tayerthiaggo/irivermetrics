@@ -34,7 +34,14 @@ git clone https://github.com/tayerthiaggo/iRiverMetrics.git
 
 2. **Requirements:** Make sure you have Python 3.x installed on your system. Install the required dependencies by running the following command:
 
+(install GDAL with conda for less headache)
+
+
+
 ```bash
+conda install -c conda-forge --file requirements.txt
+
+conda install conda-forge::gdal
 pip install -r requirements.txt
 ```
 

@@ -6,10 +6,12 @@ import pandas as pd
 import geopandas as gpd
 import xarray as xr
 import rioxarray as rxr
+import dask.array as da
 import rasterio
+from rasterio import features
 import waterdetect as wd
 import shapely.geometry
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon, box
+from shapely.geometry import Point, LineString, Polygon, MultiPolygon, MultiLineString, box
 from skimage.measure import label, regionprops
 from skimage.morphology import skeletonize
 from skimage.graph import MCP_Geometric
@@ -17,10 +19,153 @@ from itertools import combinations
 from scipy import ndimage
 from scipy.spatial.distance import cdist
 from collections import defaultdict
+from odc.geo.xr import xr_reproject
+from pyproj import CRS
 
+from src import utils_wd_batch as utils_wdb
 
+def validate(da_wmask, rcor_extent, section_length, img_ext, module):
+    """
+    Validates input data for processing in a GIS context, especially for water mask and river corridor data.
 
-## shared functions
+    Parameters:
+    da_wmask (xarray.core.dataarray.DataArray or str): Input data, either as a DataArray representing a water mask or a directory path containing water mask images.
+    rcor_extent (str): Path to a file containing river corridor extent (rcor) shapefile.
+    section_length (int or float): Length of the river section for metric calculations.
+    img_ext (str): Image file extension (e.g., '.tif') used to process images in the input folder.
+    module (str): Name of the processing module to be used (e.g., 'calc_metrics').
+
+    Returns:
+    tuple: A tuple containing the validated DataArray for the water mask and the processed river corridor extent data.
+    
+    Notes:
+    - This function performs a series of checks and transformations on the input data to ensure they are in the correct format and structure for further processing.
+    - It also handles the replacement of NaN values in the DataArray and verifies the file type and CRS compatibility of the shapefile.
+    """
+    print('Checking input data...')
+    
+    # Validate if da_wmask is either a DataArray or a valid directory path
+    assert (isinstance(da_wmask, xr.core.dataarray.DataArray) or 
+           (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), 'Invalid input. da_wmask must be a valid DataArray or a directory path'
+
+    # Process the input if it is a directory path
+    if isinstance(da_wmask, str) and os.path.isdir(da_wmask):
+        # Create DataArray and validade rasters within the provided folder
+        da_wmask, n_bands, crs = utils_wdb.validate_input_folder(da_wmask, img_ext)
+    
+    if isinstance(da_wmask, xr.core.dataarray.DataArray):
+        crs = da_wmask.rio.crs
+
+    # Replace NaN values in the DataArray with -1 and set the '_FillValue' attribute accordingly
+    da_wmask = utils_wdb.replace_nodata(da_wmask, -1)
+    da_wmask.attrs['_FillValue'] = -1
+    # Validate and potentially transform the CRS of the DataArray
+    da_wmask, crs = validate_data_array_cm(da_wmask, crs)
+    # Validate the rcor_extent shapefile input, ensuring correct file extension and CRS compatibility
+    rcor_extent = validate_shp_input(rcor_extent, crs, module)
+    # If the module is 'calc_metrics', ensure that the section length is provided
+    if module == 'calc_metrics':
+        # Check if section length is present
+        assert section_length != None, 'Invalid input. Section length not found.' 
+
+    print('Checking input data...Data validated')
+    return da_wmask, rcor_extent, crs
+
+def validate_data_array_cm(da_wmask, crs):
+    """
+    Validates and adjusts a given DataArray containing a water mask to ensure it has the required dimensions
+    and a proper Coordinate Reference System (CRS).
+
+    Parameters:
+    da_wmask (xarray.DataArray): The DataArray containing the water mask data.
+    crs (str or dict): The coordinate reference system of the DataArray. It can be a string or a dictionary.
+
+    Returns:
+    tuple: A tuple containing the processed DataArray and its corresponding CRS.
+    
+    Raises:
+    AssertionError: If the required dimensions are missing or if the CRS information is not provided.
+
+    Note:
+    - The function ensures that the DataArray has the dimensions 'x', 'y', and 'time'.
+    - If the CRS is geographic (lat/lon), the function reprojects the DataArray to an estimated UTM CRS.
+    """
+    # List of dimensions that are required in the DataArray
+    required_dimensions = ['x', 'y', 'time']
+    # Check for missing dimensions by comparing required dimensions with DataArray dimensions
+    missing_dimensions = [dim for dim in required_dimensions if dim not in da_wmask.dims]
+    # Assert that there are no missing dimensions
+    assert not missing_dimensions, f"Invalid input. The following dimensions are missing: {', '.join(missing_dimensions)}"
+    
+    # Get dimensions to squeeze (drop unnecessary dimensions)
+    dims_to_squeeze = [dim for dim in da_wmask.dims if dim not in required_dimensions]
+    # Squeeze and drop unnecessary dimensions
+    da_wmask = da_wmask.squeeze(drop=True, dim=dims_to_squeeze)
+    
+    # Check if CRS information is present
+    assert crs != None, 'Invalid input. da_wmask CRS not found.'
+    # Create CRS object from input
+    crs_obj = CRS(crs)
+    # Reproject DataArray to UTM CRS if original CRS is geographic (lat/lon)
+    if crs_obj.is_geographic:
+        # Estimate UTM CRS based on geographic coordinates
+        crs = da_wmask.rio.estimate_utm_crs()
+        # Reproject DataArray to the estimated UTM CRS
+        da_wmask = xr_reproject(da_wmask, crs)
+    return da_wmask, crs
+
+def validate_shp_input(rcor_extent, img_crs, module):
+    """
+    Validates and loads a shapefile with specific requirements.
+
+    Parameters:
+    rcor_extent (str): Path to a shapefile (.shp) to be processed.
+
+    Returns:
+    geopandas.geodataframe.GeoDataFrame: A GeoDataFrame containing the loaded shapefile data.
+    
+    Raises:
+    AssertionError: If the input does not meet the validation criteria.
+    """
+    # Check if r_lines is a string with .shp extension or a GeoDataFrame
+    assert isinstance(rcor_extent, gpd.GeoDataFrame) or (isinstance(rcor_extent, str) and rcor_extent.endswith('.shp')), \
+        'Pass river corridor extent (r_lines) as a .shp file path or a geopandas.GeoDataFrame'
+
+    # validate projection
+    rcor_extent = utils_wdb.validate_input_projection(rcor_extent, img_crs)
+
+    if module == 'generate_sections':
+        # Check if there is at least one feature and if any geometry matches the expected type
+        valid_geometry = any(isinstance(geom, (LineString, MultiLineString)) for geom in rcor_extent.geometry)
+        assert not rcor_extent.empty and valid_geometry, f'Invalid input. Shapefile does not contain valid LineString geometries'  
+
+    elif module == 'calc_metrics':
+        # Check if there is at least one feature and if any geometry matches the expected type
+        valid_geometry = any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry)
+        assert not rcor_extent.empty and valid_geometry, f'Invalid input. Shapefile does not contain valid Polygon geometries' 
+
+    return rcor_extent
+
+def setup_directories_cm(rcor_extent, outdir):
+    """
+    Set up and return the output and initialization file directories.
+    """
+    # Determine the output directory
+    if outdir == None:
+        outdir = os.path.join(os.path.dirname(os.path.abspath(rcor_extent)), 'results_iRiverMetrics')
+    # Create the main output directory  
+    create_new_dir(outdir, verbose=False)
+    # Create output directories for metrics and section results
+    outdir = os.path.join(outdir, 'metrics')
+    create_new_dir(outdir, verbose=False)
+    print('Results from Calculate Metrics module will be exported to ', outdir)
+
+    section_outdir_folder = os.path.join(outdir, '01.Section_results')
+    create_new_dir(section_outdir_folder, verbose=False)
+    print('Section results will be exported to ', section_outdir_folder)
+
+    return outdir, section_outdir_folder
+
 def create_new_dir(outdir, verbose=True):
     """
     Creates a new directory at the specified location.
@@ -34,221 +179,8 @@ def create_new_dir(outdir, verbose=True):
     os.makedirs(outdir, exist_ok=True)
     if verbose:
         print(f'{outdir} created to export results')
-def get_total_memory():
-    """
-    Get the total available system memory (RAM) and return 95% of that value in gigabytes.
 
-    Returns:
-        float: 95% of the total available system memory in gigabytes.
-    """
-    total_memory_bytes = psutil.virtual_memory().total
-    total_memory_gb = total_memory_bytes // (1024 ** 3)  # Convert bytes to gigabytes
-    return total_memory_gb*0.95
-
-## calc_metrics utils
-
-def process_polygon_parallel(args_list):
-    """
-    Process river sections in parallel.
-
-    Args:
-        args_list (tuple): A tuple containing polygon and other parameters.
-        
-    Returns:
-        None
-    """
-    print()
-    try:
-        # Unpack the argument list containing polygon and other parameters
-        polygon, da_wmask, crs, outdir_section, export_shp, section_length = args_list
-        # Call the process_polygon function to process the current polygon
-        date_list, section_area, total_wet_area_list, total_wet_perimeter_list, \
-        length_list, n_pools_list, AWMSI_list, AWRe_list, AWMPA_list, AWMPL_list, \
-        AWMPW_list, da_area, da_npools, da_rlines, layer, outdir_section = process_polygon(polygon, da_wmask, crs, outdir_section, export_shp)
-        # Create a dictionary containing various metrics for the processed polygon
-        pand_dict = {'date': date_list, 'section_area': section_area, 'wet_area_km2': [d/10**6 for d in total_wet_area_list],
-                    'wet_perimeter_km2': [d/10**6 for d in total_wet_perimeter_list], 'wet_length_km': [d/1000 for d in length_list],
-                    'npools': n_pools_list, 'AWMSI': AWMSI_list, 'AWRe': AWRe_list,
-                    'AWMPA': [d/10**6 for d in AWMPA_list], 'AWMPL': [d/1000 for d in AWMPL_list],
-                    'AWMPW': [d/1000 for d in AWMPW_list]}
-        # Convert the dictionary to a pandas DataFrame
-        pd_metrics = pd.DataFrame(data=pand_dict)
-        # Calculate metrics using the DataFrame and section length
-        pdm = calculate_metrics_df(pd_metrics, section_length)
-        # Create a data array with processed data
-        da_area = create_dataarray(layer, da_area, date_list, crs)
-        # Calculate pixel persistence for the section
-        pdm = pixel_persistence_section(da_area, pdm, interval_ranges=None)
-        # Save the calculated metrics to a CSV file
-        pdm.to_csv(os.path.join(outdir_section, 'pd_metrics.csv'))
-    except Exception as e:
-        # If an error occurs during processing, print an error message
-        print(f"Error processing polygon {args_list[0]}: {e}")
-def create_dataarray(layer, layer_metric, date_list, crs):
-    """
-    Create a DataArray with provided layer metrics and coordinates.
-
-    Parameters:
-    - layer (xarray.DataArray): Original layer data.
-    - layer_metric (numpy.ndarray): Array containing layer metrics.
-    - date_list (list): List of dates corresponding to the metrics.
-    - crs (CRS): Coordinate Reference System.
-
-    Returns:
-    - da (xarray.DataArray): Created DataArray with metrics.
-    """
-    da = xr.DataArray(
-        data=layer_metric,
-        dims=['time', 'y', 'x'],
-        coords=dict(time=date_list, y= layer.coords['y'], x= layer.coords['x']),
-        attrs={'_FillValue': -1},
-    )
-    da.rio.write_crs(crs, inplace=True)
-    da.attrs['crs'] = str(crs)
-    return da
-## Validation
-def validate(da_wmask, rcor_extent, section_length, img_ext):
-    """
-    Validates input data for processing.
-
-    Parameters:
-    da_wmask (xarray.core.dataarray.DataArray or str): Input data, either as a DataArray or a directory path.
-    rcor_extent (str): Path to a file containing rcor extent (river sections) shapefile.
-    section_length (int or float): Section length value.
-    img_ext (str): Image extension (e.g., '.tif') for processing folder input.
-    
-
-    Returns:
-    tuple: A tuple containing the validated DataArray and rcor extent information.
-    """
-    print('Checking input data...')
-    # Check if da_wmask is a valid DataArray or a directory path
-    assert (isinstance(da_wmask, xr.core.dataarray.DataArray) or 
-           (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), 'Invalid input. da_wmask must be a valid DataArray or a directory path'
-    # Check the extension and type of the rcor_extent file
-    rcor_extent = process_shp_input(rcor_extent)
-    # Check if section length is present
-    assert section_length != None, 'Invalid input. Section length not found.'  
-    # If input is a directory - process input
-    if isinstance(da_wmask, str) and os.path.isdir(da_wmask):
-        da_wmask = process_folder_input(da_wmask, img_ext)
-    # Check if CRS information is present
-    assert da_wmask.rio.crs != None, 'Invalid input. da_wmask CRS not found.'  
-    # validate projection
-    rcor_extent = validate_input_projection(da_wmask, rcor_extent)
-    # List of dimensions that are required in the DataArray
-    required_dimensions = ['x', 'y', 'time']
-    # Check for missing dimensions by comparing required dimensions with DataArray dimensions
-    missing_dimensions = [dim for dim in required_dimensions if dim not in da_wmask.dims]
-    # Assert that there are no missing dimensions
-    assert not missing_dimensions, f"Invalid input. The following dimensions are missing: {', '.join(missing_dimensions)}"
-    # Get dimensions to squeeze (drop unnecessary dimensions)
-    dims_to_squeeze = [dim for dim in da_wmask.dims if dim not in required_dimensions]
-    # Squeeze and drop unnecessary dimensions
-    da_wmask = da_wmask.squeeze(drop=True, dim=dims_to_squeeze)
-    print('Checking input data...Data validated')
-    return da_wmask, rcor_extent
-def process_shp_input(rcor_extent):
-    """
-    Validates and loads a shapefile with specific requirements.
-
-    Parameters:
-    rcor_extent (str): Path to a shapefile (.shp) to be processed.
-
-    Returns:
-    geopandas.geodataframe.GeoDataFrame: A GeoDataFrame containing the loaded shapefile data.
-    
-    Raises:
-    AssertionError: If the input does not meet the validation criteria.
-    """
-    # Check the extension of the rcor_extent file
-    assert rcor_extent.endswith('.shp'), 'Invalid input. rcor_extent must be a valid shapefile(.shp)'
-    # Load the shapefile using geopandas
-    rcor_extent = gpd.read_file(rcor_extent) 
-    # Check if there is at least one feature and if any geometry matches the expected type
-    valid_geometry = any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry)
-
-    assert not rcor_extent.empty and valid_geometry, f'Invalid input. Shapefile does not contain valid Polygon geometries'  
-
-    return rcor_extent
-def process_folder_input(input_dir, img_ext):
-    """
-    Convert a directory of raster images into an xarray DataArray with time dimension.
-
-    Parameters:
-        input_path (str): The path to the directory containing raster images.
-        img_ext (str): The image file extension to filter files in the directory.
-
-    Returns:
-        xr.DataArray: An xarray DataArray containing the concatenated raster images
-                      with a 'time' dimension, sorted by time.
-    """
-    # Create a list of image paths within the directory with the specified image extension (img_ext)
-    img_files = [
-        os.path.join(input_dir, f)
-        for f in os.listdir(input_dir) 
-        if f.endswith(img_ext)
-    ]
-    # Compile a regular expression patterns for matching "yyyy-mm-dd" or "yyyy_mm_dd"
-    date_pattern = re.compile(r'\d{4}[-_]\d{2}[-_]\d{2}')
-    # Initialize lists to store metadata and image data
-    crs_lst, res_lst, band_lst, time_values, da_images = [], [], [], [], []
-    # Iterate through each image file in the directory
-    for img in img_files:
-        img_filename = os.path.basename(img)
-        # Check if the filename contains valid date patterns
-        date_match = date_pattern.search(img_filename)
-        if date_match is None:
-            raise AssertionError(f'Invalid Date info in {img_filename}. File name should contain valid dates, such as yyyy-mm-dd or yyyy_mm_dd')
-        # Extract the date string from the matched pattern and convert it to a pandas Timestamp
-        date_str = date_match.group(0).replace('_', '-')
-        time_values.append(pd.Timestamp(date_str))
-        # Open the raster image using rioxarray
-        pimg = rxr.open_rasterio(img)
-        # Append the image data to the list for concatenation
-        da_images.append(pimg)
-        # Gather metadata information for each image
-        crs_lst.append(pimg.rio.crs)
-        res_lst.append(pimg.rio.resolution()[0])
-        band_lst.append(pimg.shape[0])  
-    # Check consistency of CRS, resolution, and band count across images
-    assert len(set(crs_lst)) == 1, f'Check projection. Images must have same EPSG'
-    assert len(set(res_lst)) == 1, f'Check spatial resolution. Images must have same pixel size'
-    assert len(set(band_lst)) == 1, f'Check spatial resolution. Images must have same number of bands'
-    # Create an xarray DataArray with a 'time' dimension
-    time = xr.Variable('time', time_values)
-    # Concatenate image data along the 'time' dimension and sort by time
-    da_wmask = xr.concat(da_images, dim=time).sortby('time')
-
-    # # Apply chunking if chunk_size is specified
-    # if chunk_size:
-    #     da_wmask = da_wmask.chunk(chunks='auto')
-    
-    # Fill NaN values with -1 and set '_FillValue' attribute to -1
-    da_wmask = da_wmask.fillna(-1)             
-    da_wmask.attrs['_FillValue'] = -1
-    return da_wmask
-def validate_input_projection(da_wmask, gdf_shp):
-    """
-    Validates and potentially reprojects a shapefile to match the projection of a raster with a water mask.
-
-    Parameters:
-    da_wmask (xarray.core.dataarray.DataArray): A DataArray representing a raster with water mask.
-    gdf_shp (geopandas.geodataframe.GeoDataFrame): A GeoDataFrame representing a shapefile.
-
-    Returns:
-    geopandas.geodataframe.GeoDataFrame: A GeoDataFrame, potentially reprojected to match the projection of da_wmask.
-
-    Note:
-    If the projections of da_wmask and gdf_shp are different, gdf_shp will be reprojected to match da_wmask's projection.
-    """
-    # Check if the projection of the shapefile is different from the raster with water mask
-    if gdf_shp.crs != da_wmask.rio.crs:
-        print('rcor_extent and da_wmask projections are different! rcor_extent will be reprojected to match da_wmask')
-        gdf_shp = gdf_shp.to_crs(da_wmask.rio.crs)
-    return gdf_shp
-## Preprocessing
-def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, expected_geometry_type):
+def preprocess(da_wmask, rcor_extent, crs, outdir, export_shp, section_length):
     """
     Perform preprocessing steps on input data and extent shapefile.
 
@@ -263,14 +195,14 @@ def preprocess(da_wmask, rcor_extent, outdir, export_shp, section_length, expect
     print('Preprocessing...')
     # Step 1: Clip input data and extent to match dimensions
     da_wmask, rcor_extent = match_input_extent(da_wmask, rcor_extent)
+    print('filling no data')
     # Step 2: Fill nodata values in the DataArray
-    da_wmask = fill_nodata(da_wmask)   
-    # Step 3: Reproject DataArray and extent to UTM CRS
-    da_wmask, rcor_extent = reproject_to_utm(da_wmask, rcor_extent)
-    # Step 4: Prepare args for processing
-    args_list = prepare_args(da_wmask, rcor_extent, outdir, export_shp, section_length)
+    da_wmask = fill_nodata(da_wmask, rcor_extent)    
+    # Step 3: Prepare args for processing
+    args_list = prepare_args(da_wmask, rcor_extent, crs, outdir, export_shp, section_length)
     print('Preprocessing...Done!')
     return args_list, da_wmask, rcor_extent
+
 def match_input_extent(da_wmask, rcor_extent):
     """
     Clip input DataArray and extent shapefile to the overlapping region.
@@ -291,117 +223,197 @@ def match_input_extent(da_wmask, rcor_extent):
     da_wmask = da_wmask.rio.clip(rcor_extent.geometry)
         
     return da_wmask, rcor_extent
-def fill_nodata(da_wmask):
+
+def fill_nodata(da_wmask, rcor_extent):
     """
-    Fill NoData values in a DataArray using adjacent valid values (backward or forward fill).
+    Apply the fill_nodata_layer function to an entire DataArray using Dask for parallel processing.
+
+    This function uses Dask's map_overlap to apply the filling logic to each chunk
+    of the DataArray. It handles NoData values (marked as 2) by attempting to fill them
+    with values from adjacent time layers.
 
     Parameters:
-        da_wmask (xarray.DataArray): Input DataArray with NoData values.
+        da_wmask (xarray.DataArray): The DataArray to process.
 
     Returns:
-        xarray.DataArray: DataArray with NoData values filled using adjacent valid values.
+        xarray.DataArray: The DataArray with NoData values filled.
     """
-    # Convert xarray DataArray to NumPy array for efficient manipulation
-    bbox_array = da_wmask.values
-    bbox_array = np.where((bbox_array != 0) & (bbox_array != 1), -1, bbox_array)
-    # Get the number of layers in the data array.
-    num_layers = bbox_array.shape[0]
-    # Loop through each layer and fill NoData values using adjacent valid values
-    for num in range(num_layers):
-        # Check if the current layer contains any NoData values (-1).
-        if np.any(bbox_array[num] == -1):
-            # Find the next valid layer with data
-            next_layer = num + 1
-            while next_layer < num_layers and np.all(bbox_array[next_layer] == -1):
-                next_layer += 1
-            # If a valid next layer is found, 
-            # replace NoData values in the current layer with values from the next layer.
-            if next_layer < num_layers:
-                # Replace NoData values with values from the next valid layer
-                bbox_array[num][bbox_array[num] == -1] = bbox_array[next_layer][bbox_array[num] == -1]
-            else:
-                # If no valid next layer, use the previous valid layer
-                prev_layer = num - 1
-                while prev_layer >= 0 and np.all(bbox_array[prev_layer] == -1):
-                    prev_layer -= 1
-                # If a valid previous layer is found, 
-                # replace NoData values in the current layer with values from the previous layer.
-                if prev_layer >= 0:
-                    # Replace NoData values with values from the previous valid layer
-                    bbox_array[num][bbox_array[num] == -1] = bbox_array[prev_layer][bbox_array[num] == -1]
-    # Create a new xarray DataArray with filled NoData values and the same coordinates and dimensions as the input.
-    da_wmask = xr.DataArray(bbox_array.astype('int8'), coords=da_wmask.coords, dims=da_wmask.dims)
+    # Update 'no data' values within a specified river corridor extent
+    da_wmask = update_nodata_in_rcor_extent(da_wmask, rcor_extent)
+    crs = da_wmask.rio.crs
+    
+    # Apply the fill_nodata_layer function with Dask's map_overlap
+    filled_data = da.map_overlap(
+        fill_nodata_layer,
+        da_wmask.data,
+        depth={'time': 2},  # Buffer size for two layers ahead/behind
+        boundary={'time': 'reflect'}, # Reflect boundary for edge chunks
+        dtype=da_wmask.dtype
+    )
+       
+    # Convert the filled Dask array back to an xarray DataArray
+    da_wmask = xr.DataArray(filled_data, coords=da_wmask.coords, dims=da_wmask.dims)
     da_wmask.attrs['_FillValue'] = -1
+    
+    # Convert any remaining NoData values (2) back to -1   
+    da_wmask = xr.where(da_wmask != 2, da_wmask, -1)
+    # Update CRS information
+    da_wmask.rio.write_crs(crs, inplace=True)
+    
     return da_wmask
-def reproject_to_utm (da_wmask, rcor_extent):
+
+def update_nodata_in_rcor_extent(da_wmask, rcor_extent):
     """
-    Validate the CRS, reproject DataArray to UTM, ensure matching CRS with extent shapefile,
-    and filter extent polygons that are completely within the DataArray bounding box.
+    Update 'no data' values within a specified river corridor extent in an xarray DataArray. 
+    The river corridor extent is defined by a shapefile, which is dissolved to a single geometry,
+    rasterized, and then used to identify and update 'no data' areas within the xarray DataArray.
 
     Parameters:
-        da_wmask (xarray.DataArray): Input DataArray with a mask.
-        rcor_extent (geopandas.GeoDataFrame): Extent shapefile for reprojection and filtering.
+    da_wmask (xarray.DataArray): The xarray DataArray to be updated.
+    rcor_extent (geopandas.GeoDataFrame): The GeoDataFrame representing the river corridor extent.
 
     Returns:
-        xarray.DataArray: Reprojected DataArray with nodata fixed.
-        geopandas.GeoDataFrame: Reprojected and filtered extent shapefile.
+    xarray.DataArray: The updated xarray DataArray where 'no data' areas within the river 
+                      corridor extent are updated.
     """
-    # Check if the current CRS is not UTM and needs reprojection
-    if da_wmask.rio.crs != da_wmask.rio.estimate_utm_crs():
-        # List of dimensions that are required in the DataArray
-        required_dimensions = ['x', 'y', 'time']
-        # Get the dimensions to squeeze
-        dims_to_squeeze = [dim for dim in da_wmask.dims if dim not in required_dimensions]
-        # Squeeze and drop unnecessary dimensions
-        da_wmask = da_wmask.squeeze(drop=True, dim=dims_to_squeeze)
-        # Reproject DataArray to UTM CRS
-        da_wmask = da_wmask.rio.reproject(da_wmask.rio.estimate_utm_crs())
-        # Fix nodata values
-        da_wmask = da_wmask.where(da_wmask == 1, other = 0)
-        da_wmask.attrs['_FillValue'] = 0
+    # Dissolve the shapefile to create a single geometry
+    gdf = rcor_extent.dissolve() 
+    # Ensure the polygon is in the same CRS as the xarray
+    gdf = gdf.to_crs(da_wmask.rio.crs.to_string())
+    # Create a transformation and raster shape from xarray
+    transform = rasterio.transform.from_bounds(*da_wmask.rio.bounds(), len(da_wmask.coords['x']), len(da_wmask.coords['y']))
+    raster_shape = (len(da_wmask.coords['y']), len(da_wmask.coords['x']))
+    # Rasterize the dissolved shapefile
+    rasterized_polygon = features.rasterize(shapes=gdf.geometry, out_shape=raster_shape, transform=transform, fill=0, default_value=1) #, dtype='int8')
+    # Convert the rasterized polygon to a Dask array for efficient computation
+    rasterized_polygon_dask = da.from_array(rasterized_polygon, chunks='auto')
+    # Create a copy of the first timestep of the xarray DataArray and apply the rasterized polygon as a mask
+    river_corridor_raster = da_wmask.isel(time=0).copy()
+    river_corridor_raster = river_corridor_raster.copy(data=rasterized_polygon_dask)
+    # Identify areas with -1 in the water mask within the river corridor
+    no_data_areas = (da_wmask == -1) & (river_corridor_raster == 1)
+    # Update these areas to 2 and retain the original CRS
+    da_wmask = xr.where(no_data_areas, 2, da_wmask).rio.write_crs(da_wmask.rio.crs, inplace=True)
     
-    # Check if the projection of the shapefile is different from the DataArray
-    if rcor_extent.crs != da_wmask.rio.crs:
-        rcor_extent = rcor_extent.to_crs(da_wmask.rio.crs)
-    return da_wmask, rcor_extent
-def prepare_args(da_wmask, rcor_extent, section_outdir_folder, export_shp, section_length):
+    return da_wmask
+
+def fill_nodata_layer(chunk):
     """
-    Prepare a list of arguments for parallel processing.
-    
+    Fill NoData values in a chunk of a DataArray.
+
+    For each layer in the chunk, NoData values (marked as 2) are filled by checking
+    values from adjacent layers. The function first attempts to fill from the
+    immediate next and previous layers, and if unsuccessful, checks two layers ahead and behind.
+
+    Parameters:
+        chunk (numpy.ndarray): A chunk of the DataArray being processed.
+
+    Returns:
+        numpy.ndarray: The chunk with NoData values filled.
+    """
+    # Total number of layers in the chunk
+    num_layers = chunk.shape[0] 
+
+    # Iterate through each layer, except the first and last
+    for num in range(1, num_layers - 2):
+        # Process only layers that contain NoData values (marked as 2)
+        if np.any(chunk[num] == 2):
+            # Check and fill NoData values from adjacent layers
+            for offset in [1, 2, -1, -2]:
+                adj_layer = num + offset # Index of the adjacent layer
+                # Ensure the adjacent layer index is within the chunk's range
+                if 0 <= adj_layer < num_layers:
+                    # Create a mask for valid filling positions
+                    valid_mask = (chunk[num] == 2) & (chunk[adj_layer] != 2)
+                    # Fill NoData values from the adjacent layer where valid
+                    chunk[num][valid_mask] = chunk[adj_layer][valid_mask]
+
+    # Special handling for the first and last layers in the chunk
+    for num in [0, num_layers - 1]:
+        if np.any(chunk[num] == 2):
+            # Determine the offset range based on whether it's the first or last layer
+            for offset in [1, 2] if num == 0 else [-1, -2]:  # Check +1, +2 for first and -1, -2 for last layer
+                adj_layer = num + offset
+                # Check if the adjacent layer is within the valid range
+                if 0 <= adj_layer < num_layers:
+                    valid_mask = (chunk[num] == 2) & (chunk[adj_layer] != 2)
+                    chunk[num][valid_mask] = chunk[adj_layer][valid_mask]
+    return chunk
+
+def prepare_args(da_wmask, rcor_extent, crs, section_outdir_folder, export_shp, section_length):
+    """
+    Prepares a list of arguments for parallel processing of geospatial data.
+
     Args:
-        da_wmask (xarray.DataArray): The input raster data array.
-        rcor_extent (geopandas.GeoDataFrame): The GeoDataFrame containing polygons.
-        outdir (str): Output directory path.
-        export_shp (bool): Flag indicating whether to export shapefiles.
-        section_length (float): Length of each section.
+        da_wmask (xarray.DataArray): The input raster data array representing a water mask.
+        rcor_extent (geopandas.GeoDataFrame): The GeoDataFrame containing river corridor extent polygons.
+        crs (str or dict): Coordinate reference system of the input data.
+        section_outdir_folder (str): Base output directory path for sectioned outputs.
+        export_shp (bool): Flag indicating whether to export the results as shapefiles.
+        section_length (float): Length of each section for processing.
 
     Returns:
-        list: List of arguments for parallel processing.
+        list: A list of arguments, where each entry is a list containing parameters for processing a specific section.
     """
     args_list = []
-    
-    crs = rcor_extent.crs
-    # Process each polygon
-    for feature in rcor_extent.iloc:
-        # Get the bounding box of the polygon
+
+    # Iterate over each feature (polygon) in the river corridor extent GeoDataFrame
+    for feature in rcor_extent.iterrows():
+        # Extract the GeoDataFrame row representing the feature
+        feature = feature[1]
+        # Calculate the bounding box coordinates of the current polygon
         xmin, ymin, xmax, ymax = feature.geometry.bounds
-        # Convert spatial bounds to pixel coordinates
-        x_coords = da_wmask.x.values
-        y_coords = da_wmask.y.values
-        col_mask = (x_coords >= xmin) & (x_coords <= xmax)
-        row_mask = (y_coords >= ymin) & (y_coords <= ymax)
-        # Apply filtering to both x and y dimensions
-        col_indices = np.where(col_mask)[0]
-        row_indices = np.where(row_mask)[0]
-        # Clip the raster using numpy indexing
-        cliped_da_wmask = da_wmask[:, row_indices, col_indices]
+        # Define masks for selecting data within the bounding box
+        col_mask = (da_wmask.x >= xmin) & (da_wmask.x <= xmax)
+        row_mask = (da_wmask.y >= ymin) & (da_wmask.y <= ymax)
+        # Use Dask's lazy indexing to select the portion of da_wmask within the polygon's bounding box
+        cliped_da_wmask = da_wmask.sel(x=col_mask, y=row_mask, method='nearest')
         # Create a directory to save output metrics for the section
         outdir_section = os.path.join(section_outdir_folder, str(feature.name))
-        # Append arguments to the list
-        args_list.append([feature, cliped_da_wmask, crs, outdir_section, export_shp, section_length]) 
+        # Add the set of parameters as a list to the args_list for parallel processing
+        args_list.append([feature, cliped_da_wmask, crs, outdir_section, export_shp, section_length])
     return args_list
 
-## Calculate metrics functions
+def process_polygon_parallel(args_list):
+    """
+    Process river sections in parallel.
+
+    Args:
+        args_list (tuple): A tuple containing polygon and other parameters.
+        
+    Returns:
+        None
+    """
+    try:
+        # Unpack the argument list containing polygon and other parameters
+        polygon, da_wmask, crs, outdir_section, export_shp, section_length = args_list
+        # Call the process_polygon function to process the current polygon
+        date_list, section_area, total_wet_area_list, total_wet_perimeter_list, \
+        length_list, n_pools_list, AWMSI_list, AWRe_list, AWMPA_list, AWMPL_list, \
+        AWMPW_list, da_area, da_npools, da_rlines, layer, outdir_section, points_data, lines_data = process_polygon(polygon, da_wmask, crs, outdir_section, export_shp)
+        # Create a dictionary containing various metrics for the processed polygon
+        pand_dict = {'date': date_list, 'section_area': section_area, 'wet_area_km2': [d/10**6 for d in total_wet_area_list],
+                    'wet_perimeter_km2': [d/10**6 for d in total_wet_perimeter_list], 'wet_length_km': [d/1000 for d in length_list],
+                    'npools': n_pools_list, 'AWMSI': AWMSI_list, 'AWRe': AWRe_list,
+                    'AWMPA': [d/10**6 for d in AWMPA_list], 'AWMPL': [d/1000 for d in AWMPL_list],
+                    'AWMPW': [d/1000 for d in AWMPW_list]}
+        # Convert the dictionary to a pandas DataFrame
+        pd_metrics = pd.DataFrame(data=pand_dict)
+        # Calculate metrics using the DataFrame and section length
+        pdm = calculate_metrics_df(pd_metrics, section_length)
+        # Create a data array with processed data
+        da_area = create_dataarray(layer, da_area, date_list, crs)
+        # Calculate pixel persistence for the section
+        pdm = pixel_persistence_section(da_area, pdm, interval_ranges=None)
+        # Save the calculated metrics to a CSV file
+        pdm.to_csv(os.path.join(outdir_section, 'pd_metrics.csv')) 
+        
+        return points_data, lines_data
+      
+    except Exception as e:
+        # If an error occurs during processing, print an error message
+        print(f"Error processing polygon {args_list[0]}: {e}")
+
 def process_polygon(polygon, da_wmask, crs, outdir_section, export_shp):
     """
     Process a polygon region to calculate various metrics from raster data through time.
@@ -437,6 +449,9 @@ def process_polygon(polygon, da_wmask, crs, outdir_section, export_shp):
     # Create a directory to save output metrics for the section
     create_new_dir(outdir_section, verbose=False)
 
+
+    points_data = []
+    lines_data = []
     # Loop through each time layer in the water mask
     for num, layer in enumerate(da_wmask):
         # Convert time value to date format
@@ -461,16 +476,28 @@ def process_polygon(polygon, da_wmask, crs, outdir_section, export_shp):
         da_area.append(layer.values)
         da_npools.append(list_index(layer, n_pools_index_lst))
         da_rlines.append(list_index(layer, lines_index_lst))
+        
+        for region_label, props in _dict_wet_prop.items():
+            # Add point data
+            points_data.append({'Date': date, 'Polygon_id': polygon.name, 'Region_label': region_label, 'Type': 'Coord_start', 'geometry': props['coord_start']})
+            points_data.append({'Date': date, 'Polygon_id': polygon.name, 'Region_label': region_label, 'Type': 'Coord_end', 'geometry': props['coord_end']})
+            points_data.append({'Date': date, 'Polygon_id': polygon.name, 'Region_label': region_label, 'Type': 'Centroid', 'geometry': props['centroid']})
+            
+            # Add line data
+            lines_data.append({'Date': date, 'Polygon_id': polygon.name, 'Region_label': region_label, 'Length': props['length'], 'geometry': props['linestring']})
 
-        # Export shapefiles if export_shp is True
-        if export_shp:
-            try:
-                save_shp (_dict_wet_prop, outdir_section, date, crs)
-            except:
-                pass
+
+        # # Export shapefiles if export_shp is True
+        # if export_shp:
+        #     try:
+        #         save_shp (_dict_wet_prop, outdir_section, date, crs)
+        #     except:
+        #         pass
+        
     return date_list, section_area, total_wet_area_list, total_wet_perimeter_list,\
            length_list, n_pools_list, AWMSI_list, AWRe_list, AWMPA_list, AWMPL_list,\
-           AWMPW_list, da_area, da_npools, da_rlines, da_wmask.isel(time=0), outdir_section
+           AWMPW_list, da_area, da_npools, da_rlines, da_wmask.isel(time=0), outdir_section, points_data, lines_data
+
 def calculate_pool_area_and_perimeter(layer):
     """
     Calculate the perimeter and area of connected regions in a given water mask layer.
@@ -486,6 +513,7 @@ def calculate_pool_area_and_perimeter(layer):
     """
     # Initialize a dictionary to store calculated perimeter and area for each label
     dict_area_2p = defaultdict(lambda: [0.0, 0.0])
+
     # Group connected pixels into distinct regions
     pre_label = label(layer, connectivity=2)
     # Obtain geometric shapes for each connected region
@@ -508,6 +536,7 @@ def calculate_pool_area_and_perimeter(layer):
     area_array = areas[inv].reshape(pre_label.shape)
 
     return dict_area_2p, area_array
+
 def calculate_connectivity_properties(layer, area_array):
     """
     Calculate connectivity properties of a layer based on provided data.
@@ -568,16 +597,23 @@ def calculate_connectivity_properties(layer, area_array):
             lines_index_lst.extend(longest_path)
             coord_list = np_positions_to_coord_point_list(longest_path, layer, coord_list)
             line_path = LineString(coord_list)
+            # Extract the centroid of the region
+            centroid = [tuple(int(x) for x in region.centroid)] # Returns (row, col) format
+            centroid = np_positions_to_coord_point_list(centroid, layer, [])    
+            
             _dict_wet_prop[region.label] = {
+                # 'date': layer['time'].values[0].strftime('%Y-%m-%d'),
                 'coord_start': Point(line_path.coords[0]),
                 'coord_end': Point(line_path.coords[-1]),
                 'length': line_path.length, 
-                'linestring': line_path
+                'linestring': line_path,
+                'centroid': centroid[0]
             }
             area_length_index_lst.append(((area_array[path[0]]), line_path.length))
             lines_index_lst_width.append((longest_path, line_path.length))
     
     return _dict_wet_prop, endpoints_index_lst, lines_index_lst, area_length_index_lst, lines_index_lst_width
+
 def find_closest_farthest_points(reference_point, region):
     """
     Finds the closest and farthest points within a given region to a reference point.
@@ -598,6 +634,7 @@ def find_closest_farthest_points(reference_point, region):
     farthest_idx = np.argmax(distances)
     # Return the coordinates of the closest and farthest points
     return coords[closest_idx], coords[farthest_idx]
+
 def combine_points(points):
     """
     Combines a list of points into unique pairs of combinations.
@@ -615,6 +652,7 @@ def combine_points(points):
         unique_combinations.add(tuple(sorted(unique_combination)))
     # Convert the set of unique combinations back to a list of lists
     return [list(combination) for combination in unique_combinations]
+
 def find_most_cost_path(m, start, end):
     """
     Find the most cost-efficient path using a cost matrix.
@@ -630,6 +668,7 @@ def find_most_cost_path(m, start, end):
     """
     costs, traceback_array = m.find_costs([start], [end])
     return m.traceback(end), costs[end]
+
 def np_positions_to_coord_point_list(np_positions, layer, coord_list):
     """
     Convert positions in a NumPy array to a list of coordinate points.
@@ -647,6 +686,7 @@ def np_positions_to_coord_point_list(np_positions, layer, coord_list):
         y = float(layer['y'][np_position[0]])
         coord_list.append(Point(x, y))
     return coord_list
+
 def calculate_metrics_AW(dict_area_2p, length_area_index_lst, layer, lines_index_lst_width):
     """
     Calculate Area-weighted metrics based on provided data and indices.
@@ -685,6 +725,7 @@ def calculate_metrics_AW(dict_area_2p, length_area_index_lst, layer, lines_index
         AWMPA = 0       
 
     return total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL
+
 def calculate_AWRe(area_length_index_lst):
     """
     Calculate the Area-weighted Elongation Ratio (AWRe) based on area-length information.
@@ -717,6 +758,7 @@ def calculate_AWRe(area_length_index_lst):
         AWRe = np.nan
 
     return AWRe
+
 def calculate_AWMPW_AWMPL(layer, lines_index_lst_width):
     """
     Calculate the Area-weighted Mean Pool Width (AWMPW) and Area-weighted Mean Pool Length (AWMPL)
@@ -751,6 +793,7 @@ def calculate_AWMPW_AWMPL(layer, lines_index_lst_width):
         # Calculate AWMPL by averaging lengths with weights
         AWMPL = np.average(lengths, weights=weights)   
     return AWMPW, AWMPL
+
 def list_index(layer, index_lst):
     """
     Create a binary layer where specified indexes are set to 1.
@@ -770,37 +813,36 @@ def list_index(layer, index_lst):
         layer[ind_x, ind_y] = 1
 
     return layer
-def save_shp(_dict_wet_prop, outdir, date, crs):
-    """
-    Save shapefiles for Pool length and endpoints based on the provided dictionary.
 
-    Parameters:
-    - _dict_wet_prop (dict): Dictionary containing pool properties information.
-    - outdir (str): Directory to save shapefiles.
-    - date (str): Date associated with the pool properties.
-    - crs (CRS): Coordinate Reference System for the shapefiles.
-    """
+def save_shp(results, outdir, crs):
+    
     # Create a directory to save shapefiles
-    out_shp_dir = os.path.join(outdir, 'shp')
+    out_shp_dir = os.path.join(outdir, '03.shp')
     create_new_dir (out_shp_dir, verbose=False)
-    # Initialize lists to store data
-    n_pools_data = []
-    d_line_data = []
-    # Loop through each property in the dictionary
-    for d in _dict_wet_prop:
-        start = {'date': date, 'length': _dict_wet_prop[d]['length'],  'geometry': _dict_wet_prop[d]['coord_start']}
-        end = {'date': date, 'length': _dict_wet_prop[d]['length'], 'geometry': _dict_wet_prop[d]['coord_end']}
-        line = {'date': date, 'length': _dict_wet_prop[d]['length'], 'geometry': _dict_wet_prop[d]['linestring']}
-        
-        n_pools_data.append(start)
-        n_pools_data.append(end)
-        d_line_data.append(line)
-    # Create a GeoDataFrame for point geometries and save as shapefile
-    n_pools_gdf = gpd.GeoDataFrame(n_pools_data, crs=crs)
-    n_pools_gdf.to_file(os.path.join(out_shp_dir, 'dpoints_' + date + '.shp'))
-    # Create a GeoDataFrame for line geometries and save as shapefile
-    d_line_gdf = gpd.GeoDataFrame(d_line_data, crs=crs)
-    d_line_gdf.to_file(os.path.join(out_shp_dir, 'rline_' + date + '.shp'))
+    
+    # After processing all polygons and aggregating results
+    all_points_data = []
+    all_lines_data = []
+    for points, lines in results:
+        all_points_data.extend(points)
+        all_lines_data.extend(lines)
+
+    # Convert to GeoDataFrames
+    points_gdf = gpd.GeoDataFrame(all_points_data)
+    lines_gdf = gpd.GeoDataFrame(all_lines_data)
+
+    # Ensure geometry columns are correctly recognized
+    points_gdf['geometry'] = points_gdf['geometry'].apply(Point)
+    lines_gdf['geometry'] = lines_gdf['geometry'].apply(LineString)
+
+    # Set the CRS
+    points_gdf.set_crs(crs, inplace=True)
+    lines_gdf.set_crs(crs, inplace=True)
+
+    # Save as shapefiles
+    points_gdf.to_file(os.path.join(out_shp_dir, 'result_points.shp'))
+    lines_gdf.to_file(os.path.join(out_shp_dir, 'result_lines.shp'))
+
 def calculate_metrics_df(pd_metrics, section_length):
     """
     Calculate additional metrics and create a new DataFrame.
@@ -842,28 +884,30 @@ def calculate_metrics_df(pd_metrics, section_length):
                     'AWMPL', 'AWMPW', 'APSEC', 'LPSEC', 'PF', 'PFL']
     pdm[cols_to_zero] = pdm[cols_to_zero].where(pdm['npools'] != 0, 0.0)
     return pdm 
-## Pixel persistence metrics
-def calculate_pixel_persistence(da_wmask):
+
+def create_dataarray(layer, layer_metric, date_list, crs):
     """
-    Calculate pixel persistence of wet area in a DataArray.
+    Create a DataArray with provided layer metrics and coordinates.
 
     Parameters:
-    - da_wmask (xarray.DataArray): DataArray containing water mask over time.
+    - layer (xarray.DataArray): Original layer data.
+    - layer_metric (numpy.ndarray): Array containing layer metrics.
+    - date_list (list): List of dates corresponding to the metrics.
+    - crs (CRS): Coordinate Reference System.
 
     Returns:
-    - p_area (xarray.DataArray): DataArray containing pixel persistence of wet area.
+    - da (xarray.DataArray): Created DataArray with metrics.
     """
-    # Count the total number of observations in the time dimension
-    total_obs = int(da_wmask['time'].count().values)
-    # Calculate the number of wet observations for each pixel over time
-    p_area = (da_wmask.sum(dim='time') / total_obs).astype('float32')
-    # Replace pixels with zero wet area with a placeholder value
-    p_area = xr.where(p_area > 0, p_area, -1)
-    # Set dataarray nodata
-    p_area.attrs['_FillValue'] = -1
-    # Write the same CRS information as the input DataArray
-    p_area = p_area.rio.write_crs(da_wmask.rio.crs)
-    return p_area
+    da = xr.DataArray(
+        data=layer_metric,
+        dims=['time', 'y', 'x'],
+        coords=dict(time=date_list, y= layer.coords['y'], x= layer.coords['x']),
+        attrs={'_FillValue': -1},
+    )
+    da.rio.write_crs(crs, inplace=True)
+    da.attrs['crs'] = str(crs)
+    return da
+
 def pixel_persistence_section(da_area, pdm, interval_ranges = None):
     """
     Calculate pixel persistence metrics for section.
@@ -886,15 +930,41 @@ def pixel_persistence_section(da_area, pdm, interval_ranges = None):
     # Calculate pixel persistence for the wet area
     p_area = calculate_pixel_persistence (da_area)
     # Calculate the mean pixel persistence of the section exceeding 0.25 (PP metric)
-    pdm['PP'] = np.nanmean(xr.where(p_area >= 0.25, p_area, np.nan).values)
+    pdm['PP_%'] = xr.where(p_area >= 0.25, p_area, np.nan).mean().data * 100    
     # Calculate the refuge area (RA metric)
-    pdm['RA'] = (((np.nansum(xr.where(p_area >= 0.9, 1, np.nan).values))*resolution*resolution)/10**6)
+    ra_area = xr.where(p_area >= 0.9, 1, np.nan)
+    ra_sum = ra_area.sum(dim=['x', 'y']).data  # assuming 'x' and 'y' are your spatial dimensions
+    pdm['RA_km2'] = (ra_sum * resolution * resolution) / 10**6
+    
     # Calculate persistence interval metrics for specified ranges
     if interval_ranges:
         for lower_threshold, upper_threshold in interval_ranges:
             column_name = f'PP_{int(lower_threshold*100)}_{int(upper_threshold*100)}'
             pdm[column_name] = calculate_persistence_interval(p_area, lower_threshold, upper_threshold, resolution)
     return pdm
+
+def calculate_pixel_persistence(da_wmask):
+    """
+    Calculate pixel persistence of wet area in a DataArray.
+
+    Parameters:
+    - da_wmask (xarray.DataArray): DataArray containing water mask over time.
+
+    Returns:
+    - p_area (xarray.DataArray): DataArray containing pixel persistence of wet area.
+    """
+    # Count the total number of observations in the time dimension using Dask
+    total_obs = da_wmask['time'].size
+    # Calculate the number of wet observations for each pixel over time
+    p_area = (da_wmask.sum(dim='time') / total_obs).astype('float32')
+    # Replace pixels with zero wet area with a placeholder value
+    p_area = xr.where(p_area > 0, p_area, -1)
+    # Set dataarray nodata
+    p_area.attrs['_FillValue'] = -1
+    # Write the same CRS information as the input DataArray
+    p_area = p_area.rio.write_crs(da_wmask.rio.crs)
+    return p_area
+
 def calculate_persistence_interval(p_area, lower_threshold, upper_threshold, resolution):
     """
     Calculate persistence interval for specified threshold ranges.

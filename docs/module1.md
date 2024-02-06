@@ -26,6 +26,8 @@ Here's an example of how to use wd_batch module to perform batch water detection
 
     All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
 
+    The initial image will serve as a reference for the automated reprojection of any images with varying coordinate reference systems (CRS) or resolutions. If working with multiple satellites, execute the process separately for each satellite.
+
     The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
 
 - rcor_extent : str
