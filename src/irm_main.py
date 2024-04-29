@@ -1,76 +1,75 @@
 import os
-# import xarray as xr
 import waterdetect as wd
-import dask
 from dask import delayed
 from dask.distributed import Client, as_completed
+from tqdm import tqdm
 import pandas as pd
 
-from src.utils_wd_batch import *
-from src.utils_calc_metrics import *
-from src.utils_gen_sections import *
-
+from .utils import wd_batch
+from .utils import calc_metrics
+from .utils import gen_sections
 
 ## Module 1
-def wd_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=True):
+def waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False):
     """
-    Process a batch of input images to detect water using WaterDetect.
+    Detects water bodies in a batch of images using the WaterDetect algorithm and generates a water mask time series.
 
     Args:
-        input_img (str or xarray.DataArray): Directory path containing image files or xarray.DataArray.
-        r_lines (str): River lines that define the rivers to be considered for water detection.
-        ini_file (str): Path to the WaterDetect Initialization (.ini) file (default is None).
-        buffer (int, optional): Buffer size for processing (default is 1000).
-        img_ext (str, optional): Image file extension (default is '.tif').
-        reg (float, optional): Registration method for image alignment (default is None).
-        max_cluster (int, optional): Maximum number of clusters (default is None).
-        export_tif (bool, optional): Whether to export GeoTIFF files (default is True).
+    - input_img (str, xarray.DataArray or xarray.DataSet): Path to the directory containing image files, an xarray.DataArray or an xarray.DataSet of images.
+    - r_lines (str): Path to the file defining river lines for water detection.
+    - ini_file (str, optional): Path to the WaterDetect initialization (.ini) file. Defaults to None.
+    - outdir (str, optional): Output directory for results. Defaults to None.
+    - buffer (int, optional): Buffer size in pixels for processing. Defaults to 1000.
+    - img_ext (str, optional): Extension of image files to process. Defaults to '.tif'.
+    - reg (float, optional): Registration method for image alignment. Defaults to None.
+    - max_cluster (int, optional): Maximum number of clusters for the algorithm. Defaults to None.
+    - export_tif (bool, optional): Flag to export results as GeoTIFF files. Defaults to True.
+    - return_da_array (bool, optional): Flag to return results as an xarray.DataArray. Defaults to False.
 
     Returns:
-        xarray.DataArray: A DataArray containing the water mask time series.
+    - xarray.DataArray or None: Returns a DataArray containing the water mask time series if `return_da_array` is True; otherwise returns None.
     """
-    # Validate and preprocess the input images, bands, time list, and river corridor extent
-    input_img, n_bands, time_lst, outdir = validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
-    # Update the WaterDetect configuration file based on the number of bands
-    ini_file, bands = change_ini(ini_file, n_bands, reg, max_cluster)
+    # Initial validation and preprocessing of input parameters
+    input_img, n_bands, time_lst, outdir = wd_batch.validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
+    
+    # Adjust the initialization file based on input image properties.
+    ini_file, bands = wd_batch.change_ini(ini_file, n_bands, reg, max_cluster)
     print('Input data validated.\n')
 
-    # Configure WaterDetect using the updated .ini file
+    # Set up WaterDetect configuration for water detection
     config = wd.DWConfig(config_file=ini_file)
     config.detect_water_cluster
     
-     # Set up and verify the output directories based on the given river lines and .ini file
-    outdir, ini_file = setup_directories(ini_file, outdir, export_tif)
+    # Ensure output directories are properly set up for storing results
+    outdir, ini_file = wd_batch.setup_directories(ini_file, outdir, export_tif)
     print('\nExecuting...')
 
-    max_retries = 3 # Maximum number of retries for processing images
-    # Start parallel processing using Dask
-    with Client(memory_limit=f'{get_total_memory()}GB') as client:
-        # Initialize the retry counter
-        retries = 0 
+    # Define retry logic for robust image processing
+    max_retries = 3 # Allows up to 3 retry attempts for processing images
+    with Client(memory_limit=f'{wd_batch.get_total_memory()}GB') as client:
+        retries = 0 # Track the number of retry attempts
         # Prepare tuples of images and their corresponding dates
         to_retry = list(zip(input_img, time_lst))
-        # Prepare a list to store delayed results for concatenation
-        delayed_results = []
-        # Scatter configuration and bands data across Dask workers
+        delayed_results = [] # Collect results for final concatenation
+        
+        # Distribute shared configuration and bands to workers
         scattered_config = client.scatter(config, broadcast=True)
         scattered_bands = client.scatter(bands, broadcast=True)
 
-        # Retry loop for processing images
+        # Process images with retry logic for handling failures
         while to_retry and retries < max_retries:
-            # Map each image processing future to its corresponding date for tracking
-            future_to_date = {}
+            future_to_date = {} # Track processing futures to their corresponding dates.
             for img, date in to_retry:
                 scattered_img = client.scatter(img)
-                # Submit the image processing task to the Dask cluster
-                future = client.submit(process_image_parallel, scattered_img, scattered_bands, scattered_config, export_tif, date, outdir)
+                # Submit image for processing
+                future = client.submit(wd_batch.process_image_parallel, scattered_img, scattered_bands, scattered_config, export_tif, date, outdir)
                 future_to_date[future] = (img, date) # Map future to its date
 
-            failed_tasks = []  # List to store failed tasks for retrying
+            failed_tasks = []  # Track tasks that fail for retry
             total_images = len(future_to_date) # Total number of images to process
-            processed_images = 0 # Counter for processed images
+            processed_images = 0 # Count of successfully processed images
 
-            # Iterate over the completed tasks
+            # Monitor and collect results from processing tasks
             for future in as_completed(future_to_date):
                 try:
                     result = future.result() # Retrieve the result from the future
@@ -101,132 +100,162 @@ def wd_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ex
     if return_da_array:
         print('Working on results...')
         # Compute the concatenated results and sort by time
-        da_wmask = concatenate(delayed_results).compute().sortby('time')
+        da_wmask = wd_batch.concatenate(delayed_results).compute().sortby('time')
         print('Done!')
         return da_wmask
     else:
         return None
 
-## Module 2 
-
-# to do 
-
-# CREATE FOLDER TO EXPORT RESULTS AND EXPORT RESULTS
-# Issues
-
-# -	Rivers of the same order, if running in parallel, will be merged – fix it
-# -	Small polygons at the end vertices were clipped by higher river order – merge to adjacent polygon?
-# -	Gaps inside a few polygons – why?
-
-def estimate_section_for_cachtment(da_wmask, r_lines, str_order_col=None, initial_buffer=1000):
+## Module 2
+def estimate_section_for_pool(da_wmask, lower_thresh, higher_thresh, min_num_pixel=4, outdir=None, export_shp=False, img_ext='tif'):
     """
-    Estimates the size of sections for a given catchment area based on water mask data and river lines.
+    Estimates sections for pools within a given water mask based on persistence and size thresholds.
 
-    This function orchestrates the process of validating and preprocessing the input data, 
-    processing the line features, and then postprocessing the results to estimate the section size.
+    This function processes a time series of water mask data to identify stable water presence,
+    applies defined persistence thresholds to distinguish potential pool areas from other water bodies,
+    and filters these areas by size to ensure they meet a minimum pixel requirement. The identified pool
+    areas are then converted into spatial polygons, with overlapping polygons merged to form concise pool
+    sections.
 
-    Parameters:
-    da_wmask (xarray.core.dataarray.DataArray or str): Input data, either as a DataArray or a directory path.
-    r_lines (str): Path to a file containing river lines or similar linear features shapefile.
-    str_order_col (str): The name of the column in `r_lines` representing stream order.
+    Args:
+    - da_wmask (str, xarray.DataArray or xarray.DataSet): Path to the directory, xarray.DataArray or xarray.DataSet containing the water mask time series data.
+    - lower_thresh (float): Lower threshold for pixel persistence to identify water presence.
+    - higher_thresh (float): Higher threshold for persistent water areas to refine pool candidates.
+    - min_num_pixel (int): The minimum number of pixels required for a cluster to be considered a pool.
 
     Returns:
-    GeoDataFrame: A GeoDataFrame containing the estimated section sizes along with additional
-                  processed geospatial data.
+        geopandas.GeoDataFrame: A GeoDataFrame containing the estimated pool sections, their locations, and geometries.
     """
-    # Preprocess the input datasets and obtain necessary parameters for further processing
-    initial_buffer, filtered_PP, crs, r_lines_dissolved, str_order_list = validate_and_preprocess(da_wmask, r_lines, str_order_col, initial_buffer)
-    # Process the line features based on the preprocessed data and obtain buffer list,
-    # section lengths, widths, and original indices
-    buff_list, section_lengths, section_widths, original_indices = process_lines(initial_buffer, filtered_PP, crs, r_lines_dissolved, str_order_list)
-    # Postprocess the results from line processing to generate a final GeoDataFrame
-    # containing the estimated section sizes and other relevant data
-    result_gdf = postprocess_results(r_lines_dissolved, buff_list, section_lengths, section_widths, original_indices, str_order_col, crs)
-    # Return the final GeoDataFrame with the processed results
-    return result_gdf
-
-## Module 3
-# to do 
-
-## docstrings, comments
-
-
-def estimate_section_for_pool(da_wmask, lower_thresh, higher_thresh, min_num_pixel):
+    rcor_extent=None
+    section_length=None
+    
+    if export_shp:
+        assert outdir is not None, 'if export_shp is True. must provide an output directory.'
+    
+    # Validate the input water mask to ensure compatibility
+    da_wmask, rcor_extent, _ = calc_metrics.validate(da_wmask, rcor_extent, section_length, img_ext, module='pool')
     
     
-    ## not retrieve other variables
+    da_wmask = binary_dilation_ts(da_wmask)
+    # Calculate pixel persistence to identify stable water presence across the time series
+    args_list = calc_metrics.preprocess(da_wmask, rcor_extent, outdir)
     
-    da_wmask, _, _ = validate_input_img(da_wmask, img_ext='.tif')
+    PP = args_list[0][2]
+    
+    print('Estimating pool maximum extent...')
+    # Generate a pool mask by applying persistence thresholds and filtering by size
+    # This step distinguishes potential pool areas from the surrounding water body
+    pool_mask = gen_sections.process_masks(PP, lower_thresh, higher_thresh, min_num_pixel, radius=3)
 
-    PP = calculate_pixel_persistence(da_wmask)
-
-    ## Processes PP based on lower and higher thresholds.
-    pool_mask = process_masks(PP, lower_thresh, higher_thresh, min_num_pixel, radius=3)
-
-    pools_aoi = process_pool_mask_to_gdf(pool_mask, PP)
+    # Convert the identified pool areas from the mask into spatial polygons
+    # This step translates pixel clusters into geometries within a GeoDataFrame
+    pools_aoi = gen_sections.process_pool_mask_to_gdf(pool_mask, PP)
+    
+    # Merge any overlapping polygons to consolidate closely situated pools into single sections
+    # This helps reduce redundancy and simplifies the representation of pool areas
+    pools_aoi = gen_sections.merge_overlapping_polygons(pools_aoi)
+    
+    if export_shp:
+        pools_aoi.to_file(os.path.join(outdir, 'pools_aoi.shp'))
+    
+    print('Done!')
     
     return pools_aoi
 
-
-## Module 4
-def calc_metrics(da_wmask, rcor_extent, section_length=None, outdir=None, img_ext='.tif', export_shp=False):
+# Module 3
+def calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=2, outdir=None, img_ext='.tif', export_shp=False, return_da_array=False):   
     """
-    Calculate intermittent river metrics based on water mask data and river corridor extent.
+    Calculates ecohydological metrics for intermittent river sections using water mask data and predefined river corridor extents.
 
     Args:
-        da_wmask (str or xarray.DataArray): Directory path or xarray.DataArray containing Water masks.
-        rcor_extent (str): Path to the river corridor extent (river sections) shapefile (.shp).
-        section_length (float): Length of river sections for metrics calculation (km).
-        outdir (str, optional): Output directory for results. If None, it will be generated based on the shapefile location (default is None).
-        img_ext (str, optional): Image file extension (default is '.tif').
-        export_shp (bool, optional): Whether to export results as shapefiles.
+    - da_wmask (str or xarray.DataArray): The path to the directory containing water mask images or an xarray.DataArray of water masks.
+    - rcor_extent (str): The file path to the river corridor extent shapefile, defining the sections for metrics calculation.
+    - section_length (float, optional): The length of each river section for the metrics calculation in kilometers. Defaults to None.
+    - outdir (str, optional): The output directory where results will be saved. If not specified, a directory will be generated near the shapefile location.
+    - img_ext (str, optional): The file extension for input water mask images. Defaults to '.tif'.
+    - export_shp (bool, optional): A flag indicating whether to export the metrics calculation results as shapefiles. Defaults to False.
+    - return_da_array (bool, optional): A flag indicating whether to return the data array along with the calculation results. Defaults to False.
 
     Returns:
-        None
+        pandas.DataFrame or (pandas.DataFrame, xarray.DataArray, str): Returns a DataFrame containing the calculated metrics. If `return_da_array` is True, it also returns the data array of water masks and the river corridor extent path.
     """
-    # Validate and preprocess input data
-    da_wmask, rcor_extent, crs = validate(da_wmask, rcor_extent, section_length, img_ext, module='calc_metrics')
-    # Set up output directories and verify ini_file path
-    outdir, section_outdir_folder = setup_directories_cm(rcor_extent, outdir)
-    # Preprocess data and get arguments list for parallel processing
-    args_list, da_wmask, rcor_extent = preprocess(da_wmask, rcor_extent, crs, section_outdir_folder, export_shp, section_length)
-    # Create a Dask client with memory limit
-    print('Calculating metrics...')
+    # Initial validation and preprocessing of inputs to ensure compatibility and correctness
+    da_wmask, rcor_extent, crs = calc_metrics.validate(da_wmask, rcor_extent, section_length, img_ext, module='calc_metrics')
     
-    # Create a Dask client with memory limit
-    with Client(memory_limit=f"{get_total_memory()}GB") as client:
-        # Scatter the input data to workers
-        args_list = [client.scatter(args) for args in args_list]
-        # Process polygons in parallel using Dask's delayed function
-        delayed_results = [dask.delayed(process_polygon_parallel)(args) for args in args_list]
-        results = dask.compute(*delayed_results)
+    da_wmask = binary_dilation_ts(da_wmask).astype('int8')
+    # Prepare the output directory for storing calculation results
+    outdir = calc_metrics.setup_directories_cm(rcor_extent, outdir)  
     
+    # return da_wmask, rcor_extent, crs
+    
+    # Initialize a Dask client to manage distributed computing resources
+    with Client(memory_limit=f"{wd_batch.get_total_memory()}GB") as client:
+        print(f"Dask Dashboard available at: {client.dashboard_link}")
+        
+        # Preprocess data and generate a list of arguments for parallel processing of each river section
+        args_list = calc_metrics.preprocess(da_wmask, rcor_extent, outdir)
+        
+        # return args_list
+        print('Calculating metrics...')
+
+        # Submit each task to the Dask cluster for parallel execution
+        futures = [client.submit(calc_metrics.process_polygon_parallel, 
+                                 (feature, cliped_da_wmask, clipped_PP, section_length, export_shp, outdir, min_pool_size)) 
+                   for feature, cliped_da_wmask, clipped_PP in args_list]
+        
+        # Collect results from completed tasks
+        results = []
+        for future in tqdm(as_completed(futures), total=len(futures), desc='Processing Polygons'):
+            result = future.result()  # Retrieve task result
+            if result is not None:
+                results.append(result)
+        
     if export_shp:
+        # Attempt to export results as shapefiles, if enabled
         try:
             print('Exporting shapefiles...')
-            save_shp(results, outdir, crs)
+            calc_metrics.save_shp(results, outdir, crs)
             print('Shapefiles exported!')
-        except:
-            pass
+           
+        except Exception as e:
+            print(f"Failed to export shapefiles due to: {e}")
     
-    # Calculate pixel persistence layer
-    persistence_layer = calculate_pixel_persistence(da_wmask)
-    # Create output directory for persistence raster
-    outdir_persistence = os.path.join(outdir, '02.Persistence_raster')
-    create_new_dir(outdir_persistence, verbose=False)
-    print('Persistence raster will be exported to ', outdir_persistence)
-    # Export pixel persistence raster
-    persistence_layer.rio.to_raster(os.path.join(outdir_persistence, 'pixel_persistence.tif'), compress='lzw', lock=True)
-    # Loop through processed polygons and combine metrics
-    result = pd.DataFrame()
-    for polygon in rcor_extent.iloc:
-        pd_dir = os.path.join(section_outdir_folder, f'{polygon.name}', 'pd_metrics.csv')
-        df = pd.read_csv(pd_dir, index_col=0)
-        df['Section'] = polygon.name
-        result = pd.concat([result, df], axis=0, ignore_index=True)
+    all_metrics = pd.concat([res[0] for res in results if res is not None], ignore_index=True)
     # Save merged metrics to a CSV file
-    result.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))
+    all_metrics.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))
+    
+    print('Metric Calculation Successfull.')
+    
+    # Conditional return based on the `return_da_array` flag
+    if return_da_array:
+        # Return the DataFrame alongside the original data array and corridor extent path
+        return all_metrics, da_wmask, rcor_extent 
+    else:
+        return all_metrics
+    
+from dask_image.ndmorph import binary_dilation
+import numpy as np
+import xarray as xr
+def binary_dilation_ts(da_wmask):
+    
+    # Define a structuring element for dilation with the given radius; this is a square matrix of ones
+    structure = np.ones((1, 2, 2), dtype=bool)  
 
-    print('Calculating metrics...All done!')
+    # Step 1: Create a mask for valid data (where data is not -1)
+    valid_data_mask = da_wmask != -1
 
-    return da_wmask, rcor_extent
+    # Step 2: Apply binary dilation only on valid data (convert -1 to 0 temporarily for dilation)
+    # Temporarily set no data values to 0 to apply dilation
+    temp_data = da_wmask.where(valid_data_mask, 0)
+
+    # Define the structuring element for dilation
+    structure = np.ones((1, 3, 3), dtype=bool)
+
+    # Apply binary dilation on the valid data
+    # Note: Ensure to keep the original shape [time, y, x] in the structuring element if necessary
+    dilated_data = binary_dilation(temp_data.data, structure=structure).astype(int)
+
+    # Step 3: Create the final DataArray, restoring the -1 values
+    da_wmask = xr.where(valid_data_mask, dilated_data, -1)
+    
+    return da_wmask
