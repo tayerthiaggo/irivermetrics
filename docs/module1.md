@@ -83,7 +83,7 @@ A DataArray (xarray.DataArray) time series of water mask data. If the "export_ti
 
 ## Usage Example
 ```python
-#Add cloned directory to path
+# Add cloned directory to path
 import sys
 sys.path.append(r'path\to\clone\irivermetrics')
 
