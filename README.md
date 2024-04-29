@@ -1,5 +1,5 @@
 # iRiverMetrics
-![Alt text](docs/logo.png)
+![Alt text](docs/logo.jpg)
 ## Overview
 
 **iRiverMetrics** is an open-source Python toolkit designed for analysing the surface water dynamics of intermittent rivers. It offers a set of modules to help researchers and environmental professionals to detect water and compute ecohydrological metrics from multispectral satellite imagery efficiently.
