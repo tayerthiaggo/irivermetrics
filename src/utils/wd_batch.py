@@ -40,9 +40,12 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
     if export_tif and outdir is None:
         if isinstance(r_lines, str):  # When r_lines is a shapefile path
             outdir = os.path.join(os.path.dirname(os.path.abspath(r_lines)), 'results_iRiverMetrics')
-    
-    ## ADD CONDITIONAL TO USE DEFAULT INI 
-    
+    # Set default ini_file path if not provided
+    if ini_file is None:
+        default_ini_path = os.path.join(os.path.dirname(__file__), 'docs', 'WaterDetect.ini')
+        ini_file = default_ini_path
+        print(f"No initialization file provided. Using default ini file at {ini_file}")
+
     # Validate initialization file
     assert ini_file.endswith('.ini'), "Use WaterDetect .ini file"
     
@@ -50,6 +53,7 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
     input_img, n_bands, time_list = is_valid_input_img(input_img, r_lines, buffer, img_ext)        
     
     return input_img, n_bands, time_list, outdir
+
 
 def is_valid_input_img(input_img, r_lines, buffer, img_ext):
     """
