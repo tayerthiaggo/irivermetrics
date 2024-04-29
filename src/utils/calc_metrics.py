@@ -6,6 +6,7 @@ import xarray as xr
 import dask
 import dask.array as da
 from dask import delayed
+from dask_image.ndmorph import binary_dilation
 import rasterio
 from rasterio import features
 import shapely.geometry
@@ -19,9 +20,6 @@ from scipy.spatial.distance import cdist
 from collections import defaultdict
 from odc.geo.xr import xr_reproject
 from pyproj import CRS
-from dask_image.ndmorph import binary_dilation
-
-import logging
 
 from src.utils import wd_batch
 
@@ -169,6 +167,30 @@ def validate_shp_input(rcor_extent, img_crs, module):
             'Shapefile must contain valid Polygon geometries for calc_metrics module.'
 
     return rcor_extent
+
+def binary_dilation_ts(da_wmask):
+    
+    # Define a structuring element for dilation with the given radius; this is a square matrix of ones
+    structure = np.ones((1, 2, 2), dtype=bool)  
+
+    # Step 1: Create a mask for valid data (where data is not -1)
+    valid_data_mask = da_wmask != -1
+
+    # Step 2: Apply binary dilation only on valid data (convert -1 to 0 temporarily for dilation)
+    # Temporarily set no data values to 0 to apply dilation
+    temp_data = da_wmask.where(valid_data_mask, 0)
+
+    # Define the structuring element for dilation
+    structure = np.ones((1, 3, 3), dtype=bool)
+
+    # Apply binary dilation on the valid data
+    # Note: Ensure to keep the original shape [time, y, x] in the structuring element if necessary
+    dilated_data = binary_dilation(temp_data.data, structure=structure).astype(int)
+
+    # Step 3: Create the final DataArray, restoring the -1 values
+    da_wmask = xr.where(valid_data_mask, dilated_data, -1)
+    
+    return da_wmask
 
 def setup_directories_cm(rcor_extent, outdir):
     """
@@ -565,7 +587,7 @@ def process_polygon_parallel(args_list):
             return df_metrics
 
     except Exception as e:       
-        logging.error(f"Error processing polygon: {e}")
+        print(f"Error processing polygon: {e}")
         # Return an empty DataFrame or a meaningful error indicator for this task
         return pd.DataFrame()
 

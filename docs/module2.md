@@ -1,14 +1,14 @@
-# calc_metrics
+# calculate_metrics
 
-calc_metrics (da_wmask, rcor_extent, section_length=None, outdir=None, img_ext='.tif', export_shp=False)
+calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=2, outdir=None, img_ext='.tif', export_shp=False, return_da_array=False):
 
 ## Overview
 
-**calc_metrics** is the second module in the iRiverMetrics toolkit. This module is designed for calculating various intermittent river metrics based on binary water masks (generated or not by module 1 - [wd_batch](module1.md)). It provides valuable insights into surface water morphology, persistence, resilience, fragmentation and other relevant metrics. For detailed metric and method descriptions reference the [original paper](https://doi.org/10.1016/j.jhydrol.2023.129087).
+**calculate_metrics** is the second module of the iRiverMetrics toolkit, designed to compute a range of ecohydrological metrics from binary water masks (generated or not by module 1 - [wd_batch](module1.md)). These metrics representt various aspects of surface water dynamics in intermittent rivers, such as morphology, persistence, and fragmentation. For a deeper understanding of the metrics and methodologies, refer to the [original paper](https://doi.org/10.1016/j.jhydrol.2023.129087). For an application example, see [this paper](https://doi.org/10.1016/j.jhydrol.2023.130266).
 
-## Details
-
-Here's an example of how to use Module Two to calculate river metrics:
+## Usage Guide
+### Setup
+Here's an example of how to use this module to calculate surface water metrics:
 
 1. **Parameters:**
 
@@ -16,34 +16,37 @@ Here's an example of how to use Module Two to calculate river metrics:
 
     Directory path or xarray.DataArray containing binary water masks.
 
-    Note:
+    Note: Ensure all images have consistent CRS and spatial resolutions, and names include dates in "yyyy-mm-dd" or "yyyy_mm_dd" format.
 
-    Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
-    
-    All images in the directory must have the same coordinate reference system and spatial resolution.
-
-- rcor_extent : str
+- rcor_extent : str or geopandas.GeoDataFrame
 
     Path to the river corridor extent (river sections) shapefile (.shp) defining the Area of Interest (AOI).
 
-- section_length : float
+- section_length : float, optional
 
-    Length of river sections for metrics calculation (in km).
+    Length of river sections for metrics calculation in kilometers.
+
+- min_pool_size: int, optional, default=2
+
+    Minimum size of detectable water pools, specified in pixels. Defaults to 2 pixels.
 
 - outdir : str, optional, default = None
 
-    Output directory for results. If None, it will be generated based on the shapefile location.
+    Destination directory for results. Defaults to a directory adjacent to the rcor_extent file if not specified.
 
 - img_ext : str, optional, default = '.tif'
 
-    The water masks file extension.
+    File extension of the water mask images. Not required if using DataArrays.
 
 - export_shp : bool, optional, default = False
 
-    Flag to export shapefiles of river sections (Pool length and endpoints).
+    Whether to export detailed shapefiles of the analysed river sections. Shapefiles with wetted length, start/end and mipoints will be exported for each time step.
+
+- return_da_array : bool, optional, default=False
+    
+    Whether to return the data array of water masks along with the calculation results. Defaults to False.
 
 2. **How it works:**
-
 Run the module to perform the following tasks:
 
 - Validate the input data, ensuring compatibility and consistency.
@@ -67,15 +70,20 @@ Run the module to perform the following tasks:
     - Refuge area (RA)
 - Save the calculated metrics for each section to CSV files.
 - Merges metrics from processed polygons and saves them to a CSV file.
-- Export a pixel persistence raster for the entire AOI, if desired.
+- Export a pixel persistence raster for the entire AOI.
+- Generates shapefiles for visualization and further geographic analysis if requested.
 
 3. **Returns:**
 
-The module generates a series of metrics for the specified river sections and section length. Metrics include section- and AOI-level values for various metrics and a pixel persistence raster. Results are stored in organised directories within the output folder. If needed, the module can export shapefiles (Pool lenght and endpoints) for further analysis or visualization.
+The module generates a series of metrics for the specified river sections and section length. Metrics include section- and AOI-level values for various metrics and a pixel persistence raster. Results are stored in organised directories within the output folder. If needed, the module can export shapefiles for further analysis or visualisation.
 
 ## Usage Example
 ```python
-from src.irm_main import calc_metrics
+#Add cloned directory to path
+import sys
+sys.path.append(r'path\to\clone\irivermetrics')
+
+from src.irm_main import calculate_metrics
 
 # Define input parameters
 
@@ -84,16 +92,20 @@ da_wmask = "path/to/water_masks"
 # Path to the river corridor extent (sections) shapefile (.shp)
 rcor_extent = "path/to/rcor_extent.shp"
 # Section length in km
-section_length = 0.484
+section_length = 0.484 #Adjust as needed
+# Define minimum pool size in pixels
+min_pool_size=2 #Adjust as needed
 # Output directory to store results
 outdir = "path/to/output_directory"
 # Input images file extension
 img_ext = ".tif"
 # Export shapefiles (True or False)
 export_shp = True
+# Whether to return water masks as a DataArray
+return_da_array=False
 
 # Calculate river metrics
-calc_metrics(da_wmask, rcor_extent, section_length, outdir, img_ext, export_shp)
+calculate_metrics(da_wmask, rcor_extent, section_length, min_pool_size, outdir, img_ext, export_shp, return_da_array)
 ```
 
 [Back to Main README](../README.md)

@@ -2,25 +2,25 @@
 
 ## Overview
 
-**iRiverMetrics** is an open-source Python toolkit designed for analysing intermittent rivers surface water patterns. It offers a comprehensive set of modules to help researchers and environmental professionals analyse intermittent rivers characteristics based on remote sensing data. With iRiverMetrics, you can efficiently process multispectral imagery to detect water and calculate meaningful metrics.
+**iRiverMetrics** is an open-source Python toolkit designed for analysing the surface water dynamics of intermittent rivers. It offers a set of modules to help researchers and environmental professionals to detect water and compute ecohydrological metrics from multispectral satellite imagery efficiently.
 
 ## Key Features
 
-- **Modular Design:** iRiverMetrics is divided into modules, each serving a specific purpose, from generating water masks to calculating river metrics. This modular approach allows you to use only the components relevant to your project.
+- **Modular Design:** Divided into two modules, each serving a specific purpose. This modular approach allows you to use only the components relevant to your project.
 
-- **Remote Sensing Integration:** The toolkit leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
+- **Remote Sensing Integration:** Leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
 
-- **Efficient Processing:** iRiverMetrics is designed for efficiency. It employs Dask for parallel processing, making it suitable for analysing large datasets quickly.
+- **Efficient Processing:** Employs Dask for distributed computing, ensuring rapid processing of large-scale datasets.
 
-- **User-Friendly:** While powerful, iRiverMetrics is approachable for users with varying levels of expertise. It includes detailed documentation and code comments to guide you through the process.
+- **User-Friendly:** Suitable for users with varying levels of expertise. It includes detailed documentation and code comments to guide you through the process.
 
 ## Modules
 
 iRiverMetrics consists of two main modules:
 
-1. Water Detection ([`wd_batch`)](docs/module1.md)): Generate water masks from multispectral imagery using the Water Detect package. This module identifies open water features, combines spectral water indices, and clusters them to map water bodies.
+1. Water Detection ([`waterdetect_batch`)](docs/module1.md)): Generate water masks from multispectral imagery using the Water Detect package. It integrates spectral water indices and clustering techniques to delineate and map aquatic bodies accurately.
 
-2. Calculate Metrics ([`calc_metrics`)](docs/module2.md)): Calculate a variety of river metrics based on water masks. These metrics provide insights into surface water characteristics, such as morphology, persistence and fragmentation.
+2. Calculate Metrics ([`calc_metrics`)](docs/module2.md)): Utilises the water masks to compute a range of metrics comprising various aspects of river surface water, such as morphological characteristics, water persistence, and fragmentation.
 
 ## Getting Started
 
@@ -32,27 +32,29 @@ To get started with iRiverMetrics, follow these steps:
 git clone https://github.com/tayerthiaggo/iRiverMetrics.git
 ```
 
-2. **Requirements:** Make sure you have Python 3.x installed on your system. Install the required dependencies by running the following command:
+2. **Requirements:** Ensure Python 3.x is installed. Set up the environment and install dependencies using:
 
 (install GDAL with conda for less headache)
-
-
-
 ```bash
-conda install -c conda-forge --file requirements.txt
+conda create -n irivermetrics python=3.x
+conda activate irivermetrics
 
 conda install conda-forge::gdal
 pip install -r requirements.txt
 ```
 
-3. **Explore the Modules:** Dive into the documentation for each module to understand its functionality and usage.
+3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
 
-4. **Example Usage:** Review example use cases and code snippets in the documentation of each module ([wd_batch](docs/module1.md) and [calc_metrics](docs/module2.md))to see how iRiverMetrics can be applied to your specific research or projects. 
+4. **Example Usage:** Review example use cases and code snippets in the documentation of each module ([wd_batch](docs/module1.md) and [calc_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
 
-5. **Contribute:** If you find iRiverMetrics useful and have improvements or contributions to make, consider contributing to the open-source project on GitHub.
+5. **Contribute:** Contributions are welcome! If you have enhancements or additional features, please consider contributing back to the project via GitHub.
 
 ## Citation
 
 If you use iRiverMetrics in your research or projects, please consider citing the original paper:
 
 Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D. (2023) Ecohydrological metrics derived from multispectral images to characterize surface water in an intermittent river, Journal of Hydrology, Volume 617, Part C, DOI:[10.1016/j.jhydrol.2023.129087](https://doi.org/10.1016/j.jhydrol.2023.129087)
+
+and 
+
+Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D. (2023) Identifying intermittent river sections with similar hydrology using remotely sensed metrics, Journal of Hydrology, Volume 626, Part A, DOI:[10.1016/j.jhydrol.2023.130266](https://doi.org/10.1016/j.jhydrol.2023.130266)
