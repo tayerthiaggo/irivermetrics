@@ -1,6 +1,6 @@
 # waterdetect_batch
 
-waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False)
+**waterdetect_batch** (_**input_img**, **r_lines**, **ini_file**=None, **outdir**=None, **buffer**=1000, **img_ext**='.tif', **reg**=None, **max_cluster**=None, **export_tif**=True, **return_da_array**=False_)
 
 ## Overview
  **wd_batch** is the first module in the iRiverMetrics toolkit. It's designed for efficient batch water detection on a series of multispectral satellite images over large areas using the Water Detect algorithm (Cordeiro et al., 2021) which integrates various spectral water indices and agglomerative clustering to enhance the detection and delineation of water bodies. The module is designed to operate on batches of images, providing robustness and scalability in processing while allowing fine-tuning of parameters as needed.

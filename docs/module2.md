@@ -1,6 +1,6 @@
 # calculate_metrics
 
-calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=2, outdir=None, img_ext='.tif', export_shp=False, return_da_array=False):
+**calculate_metrics** (_**da_wmask**, **rcor_extent**, **section_length**=None, **min_pool_size**=2, **outdir**=None, **img_ext**='.tif', **export_shp**=False, **return_da_array**=False_)
 
 ## Overview
 
