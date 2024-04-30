@@ -1,4 +1,3 @@
-# iRiverMetrics
 ![Alt text](docs/logo.jpg)
 ## Overview
 
@@ -7,11 +6,8 @@
 ## Key Features
 
 - **Modular Design:** Divided into two modules, each serving a specific purpose. This modular approach allows you to use only the components relevant to your project.
-
 - **Remote Sensing Integration:** Leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
-
 - **Efficient Processing:** Employs Dask for distributed computing, ensuring rapid processing of large-scale datasets.
-
 - **User-Friendly:** Suitable for users with varying levels of expertise. It includes detailed documentation and code comments to guide you through the process.
 
 ## Modules
@@ -19,7 +15,6 @@
 iRiverMetrics consists of two main modules:
 
 1. Water Detection ([`waterdetect_batch`)](docs/module1.md)): Generate water masks from multispectral imagery using the Water Detect package. It integrates spectral water indices and clustering techniques to delineate and map aquatic bodies accurately.
-
 2. Calculate Metrics ([`calculate_metrics`)](docs/module2.md)): Utilises the water masks to compute a range of metrics comprising various aspects of river surface water, such as morphological characteristics, water persistence, and fragmentation.
 
 ## Getting Started
@@ -27,13 +22,12 @@ iRiverMetrics consists of two main modules:
 To get started with iRiverMetrics, follow these steps:
 
 1. **Clone the Repository:** Clone the iRiverMetrics repository from GitHub to your local machine.
-
 ```bash
+cd paste/your/directory/here
 git clone https://github.com/tayerthiaggo/iRiverMetrics.git
 ```
 
 2. **Requirements:** Ensure Python 3.x is installed. Set up the environment and install dependencies using:
-
 (install GDAL with conda for less headache)
 ```bash
 conda create -n irivermetrics python=3.x
@@ -45,7 +39,7 @@ pip install -r requirements.txt
 
 3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
 
-4. **Example Usage:** Review example use cases and code snippets in the documentation of each module ([wd_batch](docs/module1.md) and [calc_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
+4. **Example Usage:** Review example use cases and code snippets in the documentation of each module ([waterdetect_batch](docs/module1.md) and [calculate_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
 
 5. **Contribute:** Contributions are welcome! If you have enhancements or additional features, please consider contributing back to the project via GitHub.
 

@@ -9,7 +9,7 @@ from .utils import wd_batch
 from .utils import calc_metrics
 
 ## Module 1
-def waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False):
+def waterdetect_batch(input_img, r_lines, outdir=None, ini_file=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False):
     """
     Detects water bodies in a batch of images using the WaterDetect algorithm and generates a water mask time series.
 
@@ -28,8 +28,9 @@ def waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=100
     Returns:
     - xarray.DataArray or None: If return_da_array is True, returns a DataArray containing the water mask time series; otherwise, returns None.
     """
+    print('\nExecuting waterdetect_batch.\n')
     # Validate input data and preprocess parameters
-    input_img, n_bands, time_lst, outdir = wd_batch.validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
+    input_img, n_bands, time_lst, outdir, ini_file = wd_batch.validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
     
     # Adjust the initialization file based on input image properties
     ini_file, bands = wd_batch.change_ini(ini_file, n_bands, reg, max_cluster)
@@ -40,12 +41,13 @@ def waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=100
     config.detect_water_cluster
     
     # Setup output directories to store results
-    outdir, ini_file = wd_batch.setup_directories(ini_file, outdir, export_tif)
-    print('\nExecuting...')
+    outdir = wd_batch.setup_directories(outdir, export_tif)
+    print('Executing...')
 
     # Define retry mechanism to handle image processing failures
     max_retries = 3 # Allow up to 3 retries
     with Client(memory_limit=f'{wd_batch.get_total_memory()}GB') as client:
+        print(f"Dask Dashboard available at: {client.dashboard_link}")
         retries = 0 # Track the number of retry attempts
         # Prepare tuples of images and their corresponding dates
         to_retry = list(zip(input_img, time_lst))
@@ -106,7 +108,7 @@ def waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=100
         return None
 
 # Module 2
-def calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=2, outdir=None, img_ext='.tif', export_shp=False, return_da_array=False):
+def calculate_metrics(da_wmask, rcor_extent=None, outdir=None, section_length=None, min_pool_size=2, img_ext='.tif', export_shp=False, return_da_array=False):
     """
     Calculates ecohydrological metrics for defined sections of intermittent rivers using water mask data. 
     These metrics assist in understanding the water availability and ecological conditions of the river sections.
@@ -125,18 +127,19 @@ def calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=
     - pandas.DataFrame or (pandas.DataFrame, xarray.DataArray, str): Returns a DataFrame containing the calculated metrics. If `return_da_array` is True, additionally returns the data array of water masks and the river corridor extent path.    
     """
     # Validate and preprocess input parameters to ensure compatibility
-    da_wmask, rcor_extent, crs = calc_metrics.validate(da_wmask, rcor_extent, section_length, img_ext, module='calc_metrics')
+    da_wmask, rcor_extent, crs = calc_metrics.validate(da_wmask, rcor_extent, outdir, img_ext, module='calc_metrics')
     # Apply binary dilation to the water mask data array
-    da_wmask = calc_metrics.binary_dilation_ts(da_wmask).astype('int8')
+    da_wmask = calc_metrics.binary_dilation_ts(da_wmask)
     # Prepare the output directory to store results
-    outdir = calc_metrics.setup_directories_cm(rcor_extent, outdir)  
-        
+    outdir = calc_metrics.setup_directories_cm(rcor_extent, outdir)
+       
     # Initialize a distributed computing environment with Dask
     with Client(memory_limit=f"{wd_batch.get_total_memory()}GB") as client:
         print(f"Dask Dashboard available at: {client.dashboard_link}")
         
         # Prepare arguments for parallel processing of each river section
         args_list = calc_metrics.preprocess(da_wmask, rcor_extent, outdir)
+                
         print('Calculating metrics...')
 
         # Execute tasks in parallel for efficient metrics calculation
@@ -150,7 +153,7 @@ def calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=
             result = future.result()  # Retrieve task result
             if result is not None:
                 results.append(result)
-        
+
     if export_shp:
         # Export results as shapefiles if specified
         try:
@@ -160,14 +163,15 @@ def calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=
         except Exception as e:
             print(f"Failed to export shapefiles due to: {e}")
     
+    print(outdir)
     # Compile all individual section metrics into a single DataFrame
     all_metrics = pd.concat([res[0] for res in results if res is not None], ignore_index=True)
     # Save merged metrics to a CSV file
-    all_metrics.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))  
+    all_metrics.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))
     print('Metric Calculation Successfull.')
     
     # Return results based on user preference
     if return_da_array:
-        return all_metrics, da_wmask, rcor_extent 
+        return all_metrics, da_wmask, rcor_extent
     else:
         return all_metrics

@@ -1,6 +1,6 @@
 # waterdetect_batch
 
-**waterdetect_batch** (_**input_img**, **r_lines**, **ini_file**=None, **outdir**=None, **buffer**=1000, **img_ext**='.tif', **reg**=None, **max_cluster**=None, **export_tif**=True, **return_da_array**=False_)
+**waterdetect_batch** (_**input_img**, **r_lines**, **outdir**=None, **ini_file**=None, **buffer**=1000, **img_ext**='.tif', **reg**=None, **max_cluster**=None, **export_tif**=True, **return_da_array**=False_)
 
 ## Overview
  **wd_batch** is the first module in the iRiverMetrics toolkit. It's designed for efficient batch water detection on a series of multispectral satellite images over large areas using the Water Detect algorithm (Cordeiro et al., 2021) which integrates various spectral water indices and agglomerative clustering to enhance the detection and delineation of water bodies. The module is designed to operate on batches of images, providing robustness and scalability in processing while allowing fine-tuning of parameters as needed.
@@ -18,55 +18,39 @@ Here's an example of how to use waterdetect_batch module to perform batch water 
 
 2. **Parameters:**
 - input_img : str, xarray.DataArray or xarray.DataSet
-
     Provide a directory containing multispectral images (e.g., TIFF files), a DataArray (xarray.DataArray) or a DataSet (xarray.DataSet) as input. These images (or DataArray/DataSet) should contain at least 4 spectral bands (RGB+Near-infrared) for water detection.
 
-    Note:
-
-    Images in the directory must have a associate date in its name in the format "yyyy-mm-dd" or "yyyy_mm_dd".
-
-    All images in the directory must have the same coordinate reference system, spatial resolution, and number of bands.
-
+    **Note:** Ensure all images have consistent CRS, spatial resolutions and number of bands, and names include dates in "yyyy-mm-dd" or "yyyy_mm_dd" format.
     The initial image will serve as a reference for the automated reprojection of any images with varying coordinate reference systems (CRS) or spatial resolution. If working with multiple satellites, execute the process separately for each satellite.
 
     The first 4 bands must be stacked as B, G, R, NIR. If there are more than 4 bands, the first 6 bands must be B, G, R, NIR, SWIR1, and SWIR2.
 
 - r_lines : str or geopandas.GeoDataFrame
-
     Specify the river lines that define the rivers to be considered for water detection. These river lines help determine the area of interest (AOI) for the analysis.
 
-- ini_file : str, optional, default = None
-
-    The path to the WaterDetect Initialization File (.ini) file. This file contains key-value pairs for configuration settings, including spectral water indices combination, maximum clustering, and regularization. If no path is provided the WaterDetect default Initialization File (.ini) file will be used.
-
 - outdir : str, optional, default = None
-
     Output directory for results. If None, it will be generated based on the shapefile location.
 
-- buffer : int or float, optional, default = 1000 metres
+- ini_file : str, optional, default = None
+    The path to the WaterDetect Initialization File (.ini) file. This file contains key-value pairs for configuration settings, including spectral water indices combination, maximum clustering, and regularization. If no path is provided the WaterDetect default Initialization File (.ini) file will be used.
 
+- buffer : int or float, optional, default = 1000 metres
     Specify a buffer distance (in metres) around the river lines. This buffer distance will be used to create polygons around the river lines, defining the extended AOI for water detection.
 
 - img_ext : str, optional, default = .tif
-
     Set the file extension of the input images. This parameter helps the module recognize the image files.
 
 - reg : float, optional, default = None
-
     Define the regularization of the normalized spectral indices. If None, 0.07 for four bands or 0.08 for six bands. For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676).
 
 - max_cluster : int, optional, default = None
-    
     Specify the maximum number of possible targets to be identified as clusters. If None, max_cluster = 6 for four bands or 3 for six bands. For further information refer to [this paper](https://doi.org/10.1080/15481603.2023.2168676).
 
 - export_tif : bool, optional, default = True
-    
     Choose whether to export resulting water masks as raster files.
-
     If the export_tif parameter is set to True, the module creates a folder to store raster files for each time step (e.g., .tif files).
 
 - return_da_array : bool, optional, default = False
-
     Flag to return results as an xarray.DataArray. Defaults to False.
 
 3. **How it works:**

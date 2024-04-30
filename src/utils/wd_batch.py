@@ -40,10 +40,11 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
     if export_tif and outdir is None:
         if isinstance(r_lines, str):  # When r_lines is a shapefile path
             outdir = os.path.join(os.path.dirname(os.path.abspath(r_lines)), 'results_iRiverMetrics')
+    
     # Set default ini_file path if not provided
     if ini_file is None:
-        default_ini_path = os.path.join(os.path.dirname(__file__), 'docs', 'WaterDetect.ini')
-        ini_file = default_ini_path
+        # Set default .ini file path if not provided
+        ini_file = os.path.join(os.path.dirname(__file__), 'WaterDetect.ini')
         print(f"No initialization file provided. Using default ini file at {ini_file}")
 
     # Validate initialization file
@@ -52,8 +53,7 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
     # Validate input images or DataArray
     input_img, n_bands, time_list = is_valid_input_img(input_img, r_lines, buffer, img_ext)        
     
-    return input_img, n_bands, time_list, outdir
-
+    return input_img, n_bands, time_list, outdir, ini_file
 
 def is_valid_input_img(input_img, r_lines, buffer, img_ext):
     """
@@ -298,7 +298,7 @@ def validate_input_folder(input_dir, img_ext):
     # Concatenate image data along the 'time' dimension and sort by time
     input_img = xr.concat(da_images, dim=time
                           ).sortby('time'
-                            ).chunk({'auto'})
+                            ).chunk('auto')
     # Fill NaN values with na_value and set '_FillValue' attribute to na_value
     input_img = replace_nodata(input_img, na_value)         
     input_img.attrs['_FillValue'] = na_value
@@ -485,29 +485,24 @@ def change_ini(ini_file, n_bands, reg, max_cluster):
 
     return ini_file, bands
 
-def setup_directories(ini_file, outdir, export_tif):
+def setup_directories(outdir, export_tif):
     """
-    Configures directories for output files and ensures the initialization file exists.
+    Configures directories for output files.
 
     Args:
-    - ini_file (str): Path to the initialization (.ini) file. If None, defaults to a standard path.
     - outdir (str): Base directory for saving output files. A subdirectory for TIFF files is created if export_tif is True.
     - export_tif (bool): Flag indicating whether TIFF files will be exported, affecting directory setup.
 
     Returns:
-    - Tuple containing paths to the output directory and the .ini file.
+    - Paths to the output directory.
     """
-    # Default initialization file setup
-    if ini_file is None:
-        # Set default .ini file path if not provided
-        ini_file = os.path.join(os.getcwd(), 'docs', 'WaterDetect.ini')
     # Output directory setup for TIFF export
     if export_tif:
         create_new_dir(outdir, verbose=False)
         outdir = os.path.join(outdir, 'wd_batch')
         create_new_dir(outdir)
 
-    return outdir, ini_file
+    return outdir
 
 def create_new_dir(outdir, verbose=True):
     """
