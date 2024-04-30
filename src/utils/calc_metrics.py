@@ -23,14 +23,14 @@ from pyproj import CRS
 
 from src.utils import wd_batch
 
-def validate(da_wmask, rcor_extent, section_length, img_ext, module):
+def validate(da_wmask, rcor_extent, outdir, img_ext, module):
     """
     This function performs a series of checks and transformations on the input data to ensure they are in the correct format and structure for further processing.
 
     Parameters:
     - da_wmask (xarray.core.dataarray.DataArray or str): Water mask data as a DataArray or path to water mask images.
     - rcor_extent (geopandas.geodataframe.GeoDataFrame or str): geodatafrmae or path to river corridor extent shapefile.
-    - section_length (int or float): Length of river section for analysis, required for 'calc_metrics' module.
+    - section_length (int or float): Length of river section for analysis. Defaults to 0. 
     - img_ext (str): File extension for image processing, e.g., '.tif'.
     - module (str): Processing module name, e.g., 'calc_metrics'.
 
@@ -58,13 +58,9 @@ def validate(da_wmask, rcor_extent, section_length, img_ext, module):
     # Ensure da_wmask is a DataArray with a CRS attribute
     if isinstance(da_wmask, xr.core.dataarray.DataArray):
         crs = da_wmask.rio.crs
-
-    # Replace NaN values and validate CRS
-    da_wmask = wd_batch.replace_nodata(da_wmask, -1)
-    da_wmask.attrs['_FillValue'] = -1
-    da_wmask, crs = validate_data_array_cm(da_wmask, crs)
     
     if rcor_extent is None:
+        assert outdir != None, 'Invalid input. rcor_extent or outdir must be provided.'
         # Extract bounding box coordinates
         bounds = da_wmask.rio.bounds()
         # Create a polygon from the bounding box
@@ -75,11 +71,11 @@ def validate(da_wmask, rcor_extent, section_length, img_ext, module):
     if rcor_extent is not None:
         # Validate rcor_extent shapefile for correct file extension and CRS
         rcor_extent = validate_shp_input(rcor_extent, crs, module)
-    
-    # Check for section length if required by the module
-    if module == 'calc_metrics':
-        # Check if section length is present
-        assert section_length != None, 'Invalid input. Section length not found.' 
+
+    # Replace NaN values and validate CRS
+    da_wmask = wd_batch.replace_nodata(da_wmask, -1)
+    da_wmask.attrs['_FillValue'] = -1
+    da_wmask, crs = validate_data_array_cm(da_wmask, crs)
 
     print('Input data validated.')
     return da_wmask, rcor_extent, crs
@@ -185,7 +181,7 @@ def binary_dilation_ts(da_wmask):
 
     # Apply binary dilation on the valid data
     # Note: Ensure to keep the original shape [time, y, x] in the structuring element if necessary
-    dilated_data = binary_dilation(temp_data.data, structure=structure).astype(int)
+    dilated_data = binary_dilation(temp_data.data, structure=structure)#.astype('int8', casting='safe')
 
     # Step 3: Create the final DataArray, restoring the -1 values
     da_wmask = xr.where(valid_data_mask, dilated_data, -1)
@@ -244,9 +240,9 @@ def preprocess(da_wmask, rcor_extent, outdir):
     print('Preprocessing...')
     # Step 1: Clip input data and extent to match dimensions
     da_wmask, rcor_extent = match_input_extent(da_wmask, rcor_extent)
-    
+        
     # Step 2: Fill nodata values in the DataArray
-    da_wmask = fill_nodata(da_wmask, rcor_extent)    
+    da_wmask = fill_nodata(da_wmask, rcor_extent)   
 
     # Step 3: Calculate and save pixel persistence layer
     persistence_layer = calculate_pixel_persistence(da_wmask)
@@ -352,7 +348,7 @@ def update_nodata_in_rcor_extent(da_wmask, rcor_extent):
     raster_shape = (len(da_wmask.coords['y']), len(da_wmask.coords['x']))
     
     # Rasterize the dissolved and transformed GeoDataFrame
-    rasterized_polygon = features.rasterize(shapes=gdf.geometry, out_shape=raster_shape, transform=transform, fill=0, default_value=1) #, dtype='int8')
+    rasterized_polygon = features.rasterize(shapes=gdf.geometry, out_shape=raster_shape, transform=transform, fill=0, default_value=1, dtype='int8')
     # Convert the rasterized polygon to a Dask array
     rasterized_polygon_dask = da.from_array(rasterized_polygon, chunks='auto')
     
@@ -439,81 +435,6 @@ def prepare_args(da_wmask, persistence_layer, rcor_extent):
     
     return args_list
 
-@delayed
-def process_single_layer(layer, polygon, section_length, export_shp, min_pool_size):
-    
-    dict_area_2p, area_array = calculate_area_perimeter(layer, min_pool_size)
-    
-    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity(layer, area_array, min_pool_size)
-           
-    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
-    
-    date = pd.to_datetime(str(layer.time.values)).strftime('%Y-%m-%d')
-    res_metrics_data, res_points_data, res_lines_data = compile_results(date, polygon, section_length, export_shp, 
-                                                                        total_wet_area, total_wet_perimeter, AWMSI, 
-                                                                        AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop)
-    
-    return res_metrics_data, res_points_data, res_lines_data
-
-def calculate_area_perimeter(layer, min_pool_size):
-    dict_area_2p, area_array = calculate_pool_area_and_perimeter(layer, min_pool_size)
-    return dict_area_2p, area_array
-
-def calculate_connectivity(layer, area_array, min_pool_size):
-    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity_properties(layer, area_array, min_pool_size)
-    return _dict_wet_prop, area_length_index_lst, lines_index_lst_width
-
-def calculate_additional_metrics(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width):
-    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
-    return total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL
-
-def compile_results(date, polygon, section_length, 
-                    export_shp, total_wet_area, total_wet_perimeter, 
-                    AWMSI, AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop):
-    
-    res_metrics_data, res_points_data, res_lines_data = [], [], []
-
-    # Collect the calculated metrics for this layer
-    res_metrics_data.append({
-        'date': date,
-        'section': polygon.name,
-        'npools': len(_dict_wet_prop),
-        'section_area_km2': polygon.geometry.area / 1e6,  # Convert to square kilometers
-        'section_length': section_length,
-        'wet_area_km2': total_wet_area/ 1e6, # Convert area to square kilometers
-        'wet_perimeter_km': total_wet_perimeter / 1e3, # Convert to kilometers
-        'wet_length_km': sum(_dict_wet_prop[d]['length'] for d in _dict_wet_prop) / 1e3,
-        'AWMSI': AWMSI,
-        'AWRe': AWRe,
-        'AWMPA': AWMPA / 1e6, # Convert to square kilometers
-        'AWMPL': AWMPL / 1e3, # Convert to kilometers
-        'AWMPW': AWMPW / 1e3 # Convert to kilometers
-    })
-
-    # Optional: Export analysis results as shapefiles
-    if export_shp:
-        # Process points and lines data for shapefile export
-        for region_label, props in _dict_wet_prop.items():
-            point_entry = {
-                'Date': date, 
-                'Section': polygon.name, 
-                'Region': region_label
-            }
-            res_points_data.extend([
-                {**point_entry, 'Type': 'Coord_start', 'geometry': props['coord_start']},
-                {**point_entry, 'Type': 'Coord_end', 'geometry': props['coord_end']},
-                {**point_entry, 'Type': 'Midpoint', 'geometry': props['midpoint']}
-            ])
-            res_lines_data.append({
-                'Date': date, 
-                'Section': polygon.name, 
-                'Region': region_label, 
-                'Length': props['length'], 
-                'geometry': props['linestring']
-            })
-    
-    return res_metrics_data, res_points_data, res_lines_data
-
 def process_polygon_parallel(args_list):  
     """
     Process river sections in parallel to compute various ecohydrological metrics.
@@ -590,6 +511,81 @@ def process_polygon_parallel(args_list):
         print(f"Error processing polygon: {e}")
         # Return an empty DataFrame or a meaningful error indicator for this task
         return pd.DataFrame()
+
+# @delayed
+def process_single_layer(layer, polygon, section_length, export_shp, min_pool_size):
+    
+    dict_area_2p, area_array = calculate_area_perimeter(layer, min_pool_size)
+    
+    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity(layer, area_array, min_pool_size)
+           
+    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
+    
+    date = pd.to_datetime(str(layer.time.values)).strftime('%Y-%m-%d')
+    res_metrics_data, res_points_data, res_lines_data = compile_results(date, polygon, section_length, export_shp, 
+                                                                        total_wet_area, total_wet_perimeter, AWMSI, 
+                                                                        AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop)
+    
+    return res_metrics_data, res_points_data, res_lines_data
+
+def calculate_area_perimeter(layer, min_pool_size):
+    dict_area_2p, area_array = calculate_pool_area_and_perimeter(layer, min_pool_size)
+    return dict_area_2p, area_array
+
+def calculate_connectivity(layer, area_array, min_pool_size):
+    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity_properties(layer, area_array, min_pool_size)
+    return _dict_wet_prop, area_length_index_lst, lines_index_lst_width
+
+def calculate_additional_metrics(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width):
+    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
+    return total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL
+
+def compile_results(date, polygon, section_length, 
+                    export_shp, total_wet_area, total_wet_perimeter, 
+                    AWMSI, AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop):
+    
+    res_metrics_data, res_points_data, res_lines_data = [], [], []
+
+    # Collect the calculated metrics for this layer
+    res_metrics_data.append({
+        'date': date,
+        'section': polygon.name,
+        'npools': len(_dict_wet_prop),
+        'section_area_km2': polygon.geometry.area / 1e6,  # Convert to square kilometers
+        'section_length': section_length,
+        'wet_area_km2': total_wet_area/ 1e6, # Convert area to square kilometers
+        'wet_perimeter_km': total_wet_perimeter / 1e3, # Convert to kilometers
+        'wet_length_km': sum(_dict_wet_prop[d]['length'] for d in _dict_wet_prop) / 1e3,
+        'AWMSI': AWMSI,
+        'AWRe': AWRe,
+        'AWMPA': AWMPA / 1e6, # Convert to square kilometers
+        'AWMPL': AWMPL / 1e3, # Convert to kilometers
+        'AWMPW': AWMPW / 1e3 # Convert to kilometers
+    })
+
+    # Optional: Export analysis results as shapefiles
+    if export_shp:
+        # Process points and lines data for shapefile export
+        for region_label, props in _dict_wet_prop.items():
+            point_entry = {
+                'Date': date, 
+                'Section': polygon.name, 
+                'Region': region_label
+            }
+            res_points_data.extend([
+                {**point_entry, 'Type': 'Coord_start', 'geometry': props['coord_start']},
+                {**point_entry, 'Type': 'Coord_end', 'geometry': props['coord_end']},
+                {**point_entry, 'Type': 'Midpoint', 'geometry': props['midpoint']}
+            ])
+            res_lines_data.append({
+                'Date': date, 
+                'Section': polygon.name, 
+                'Region': region_label, 
+                'Length': props['length'], 
+                'geometry': props['linestring']
+            })
+    
+    return res_metrics_data, res_points_data, res_lines_data
 
 def calculate_pool_area_and_perimeter(layer, min_pool_size):   
     """
@@ -716,9 +712,9 @@ def find_closest_farthest_points(reference_point, region):
     
     Returns:
     - tuple: Contains the coordinates of the closest and farthest points to the reference point.
-    """
+    """  
     # Ensure access to the coordinates of the polygon's exterior
-    coords = region.coords
+    coords = region.coords    
     # Calculate distances from the reference point to all points in the region
     distances = cdist([reference_point], coords).flatten()
     # Find indices of the closest and farthest points
@@ -1029,7 +1025,7 @@ def calculate_pixel_persistence(da_wmask):
     da_wmask = da_wmask.where(da_wmask == 1, 0)
     
     # Sum wet observations over time and normalize by total observations to get persistence ratio
-    p_area = (da_wmask.sum(dim='time') / total_obs).astype('float32')
+    p_area = (da_wmask.sum(dim='time') / total_obs).astype('float32', casting='same_kind')
     
     # Apply a placeholder value for pixels with no wet observations
     p_area = xr.where(p_area > 0, p_area, -1)

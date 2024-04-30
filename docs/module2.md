@@ -1,10 +1,10 @@
 # calculate_metrics
 
-calculate_metrics(da_wmask, rcor_extent, section_length=None, min_pool_size=2, outdir=None, img_ext='.tif', export_shp=False, return_da_array=False):
+**calculate_metrics** (_**da_wmask**, **rcor_extent**=None, **outdir**=None, **section_length**=None, **min_pool_size**=2, **img_ext**='.tif', **export_shp**=False, **return_da_array**=False_)
 
 ## Overview
 
-**calculate_metrics** is the second module of the iRiverMetrics toolkit, designed to compute a range of ecohydrological metrics from binary water masks (generated or not by module 1 - [wd_batch](module1.md)). These metrics representt various aspects of surface water dynamics in intermittent rivers, such as morphology, persistence, and fragmentation. For a deeper understanding of the metrics and methodologies, refer to the [original paper](https://doi.org/10.1016/j.jhydrol.2023.129087). For an application example, see [this paper](https://doi.org/10.1016/j.jhydrol.2023.130266).
+**calculate_metrics** is the second module of the iRiverMetrics toolkit, designed to compute a range of ecohydrological metrics from binary water masks (generated or not by module 1 - [waterdetect_batch](module1.md)). These metrics representt various aspects of surface water dynamics in intermittent rivers, such as morphology, persistence, and fragmentation. For a deeper understanding of the metrics and methodologies, refer to the [original paper](https://doi.org/10.1016/j.jhydrol.2023.129087). For an application example, see [this paper](https://doi.org/10.1016/j.jhydrol.2023.130266).
 
 ## Usage Guide
 ### Setup
@@ -13,37 +13,30 @@ Here's an example of how to use this module to calculate surface water metrics:
 1. **Parameters:**
 
 - da_wmask : str or xarray.DataArray
-
     Directory path or xarray.DataArray containing binary water masks.
+    **Note:** Ensure all images have consistent CRS and spatial resolutions, and names include dates in "yyyy-mm-dd" or "yyyy_mm_dd" format.
 
-    Note: Ensure all images have consistent CRS and spatial resolutions, and names include dates in "yyyy-mm-dd" or "yyyy_mm_dd" format.
-
-- rcor_extent : str or geopandas.GeoDataFrame
-
-    Path to the river corridor extent (river sections) shapefile (.shp) defining the Area of Interest (AOI).
-
-- section_length : float, optional
-
-    Length of river sections for metrics calculation in kilometers.
-
-- min_pool_size: int, optional, default=2
-
-    Minimum size of detectable water pools, specified in pixels. Defaults to 2 pixels.
+- rcor_extent : str or geopandas.GeoDataFrame, default = None
+    Path to the river corridor extent (river sections) shapefile (.shp) defining the Area of Interest (AOI). Defaults to None - in this case the boundaries of the water mask will be used as the AOI.
+    **Note**: If rcor_extent is None, outdir must be provided. 
 
 - outdir : str, optional, default = None
-
     Destination directory for results. Defaults to a directory adjacent to the rcor_extent file if not specified.
 
-- img_ext : str, optional, default = '.tif'
+- section_length : float, optional, default = None
+    Length of river sections for metrics calculation in kilometers. If None, 
 
+- min_pool_size: int, optional, default=2
+    Minimum size of detectable water pools, specified in pixels. Defaults to 2 pixels.
+
+
+- img_ext : str, optional, default = '.tif'
     File extension of the water mask images. Not required if using DataArrays.
 
 - export_shp : bool, optional, default = False
-
     Whether to export detailed shapefiles of the analysed river sections. Shapefiles with wetted length, start/end and mipoints will be exported for each time step.
 
 - return_da_array : bool, optional, default=False
-    
     Whether to return the data array of water masks along with the calculation results. Defaults to False.
 
 2. **How it works:**
