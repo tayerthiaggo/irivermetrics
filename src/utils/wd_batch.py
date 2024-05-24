@@ -518,7 +518,7 @@ def create_new_dir(outdir, verbose=True):
     # Create output file
     os.makedirs(outdir, exist_ok=True)
     if verbose:
-        print(f'{outdir} created to export results.\n')
+        print(f'Results will be exported to {outdir}\n')
 
 def get_total_memory():
     """
@@ -534,7 +534,7 @@ def get_total_memory():
     # Convert total memory from bytes to gigabytes and calculate 95% of it
     total_memory_gb = total_memory_bytes // (1024 ** 3)  # Convert bytes to gigabytes
     
-    return total_memory_gb*0.95
+    return total_memory_gb*0.92
 
 def process_image_parallel(img_target, bands, config, export_tif, date, outdir):
     """

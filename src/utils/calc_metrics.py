@@ -1,48 +1,40 @@
+# Standard library imports
 import os
+from collections import deque
+
+# Third-party imports
+import dask.array as da
+import dask_image.ndmeasure as dask_ndmeasure
+from dask import delayed
+from dask_regionprops import regionprops
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-import xarray as xr
-import dask
-import dask.array as da
-from dask import delayed
-from dask_image.ndmorph import binary_dilation
-import rasterio
-from rasterio import features
-import shapely.geometry
-from shapely.geometry import Point, LineString, Polygon, MultiPolygon, MultiLineString, box
-from skimage.measure import label, regionprops
-from skimage.morphology import skeletonize
-from skimage.graph import MCP_Geometric
-from itertools import combinations
-from scipy import ndimage
-from scipy.spatial.distance import cdist
-from collections import defaultdict
 from odc.geo.xr import xr_reproject
 from pyproj import CRS
+from rasterio.features import rasterize, shapes
+from shapely.geometry import Point, LineString, Polygon, MultiPolygon, box, shape
+from scipy.ndimage import distance_transform_edt
+from skimage.morphology import skeletonize, remove_small_objects
+import xarray as xr
+import networkx as nx
 
+# Local imports
 from src.utils import wd_batch
 
-def validate(da_wmask, rcor_extent, outdir, img_ext, module):
+# Public functions
+def validate(da_wmask, rcor_extent, outdir, img_ext):
     """
-    This function performs a series of checks and transformations on the input data to ensure they are in the correct format and structure for further processing.
+    Validate and preprocess input data for the Calculate Metrics module.
 
     Parameters:
-    - da_wmask (xarray.core.dataarray.DataArray or str): Water mask data as a DataArray or path to water mask images.
-    - rcor_extent (geopandas.geodataframe.GeoDataFrame or str): geodatafrmae or path to river corridor extent shapefile.
-    - section_length (int or float): Length of river section for analysis. Defaults to 0. 
-    - img_ext (str): File extension for image processing, e.g., '.tif'.
-    - module (str): Processing module name, e.g., 'calc_metrics'.
+    - da_wmask (xarray.DataArray or str): Water mask data as a DataArray or path to water mask images.
+    - rcor_extent (geopandas.GeoDataFrame or str): Path to river corridor extent shapefile or GeoDataFrame.
+    - outdir (str): Output directory path.
+    - img_ext (str): Image file extension.
 
     Returns:
-    - tuple: Validated water mask DataArray, processed river corridor extent data, and CRS.
-    
-    Raises:
-    - AssertionError: If input validations fail, indicating incorrect data types, missing files, or unsupported formats.
-    
-    Notes:
-    - Replaces NaN values in the DataArray with -1 and sets '_FillValue' attribute.
-    - Validates and adjusts the CRS of the DataArray and shapefile to ensure compatibility.
+    - tuple: Validated water mask DataArray, processed river corridor extent data, CRS, pixel size, and output directory.
     """   
     print('Checking input data...')
     
@@ -59,6 +51,10 @@ def validate(da_wmask, rcor_extent, outdir, img_ext, module):
     if isinstance(da_wmask, xr.core.dataarray.DataArray):
         crs = da_wmask.rio.crs
     
+        # Prepare the output directory to store results
+    # if outdir is None:
+    outdir = setup_directories_cm(rcor_extent, outdir)
+        
     if rcor_extent is None:
         assert outdir != None, 'Invalid input. rcor_extent or outdir must be provided.'
         # Extract bounding box coordinates
@@ -70,16 +66,175 @@ def validate(da_wmask, rcor_extent, outdir, img_ext, module):
     
     if rcor_extent is not None:
         # Validate rcor_extent shapefile for correct file extension and CRS
-        rcor_extent = validate_shp_input(rcor_extent, crs, module)
+        rcor_extent = validate_shp_input(rcor_extent, crs)
 
     # Replace NaN values and validate CRS
     da_wmask = wd_batch.replace_nodata(da_wmask, -1)
     da_wmask.attrs['_FillValue'] = -1
-    da_wmask, crs = validate_data_array_cm(da_wmask, crs)
+    da_wmask, crs, pixel_size = validate_data_array_cm(da_wmask, crs)
 
     print('Input data validated.')
-    return da_wmask, rcor_extent, crs
+    return da_wmask, rcor_extent, crs, pixel_size, outdir
 
+def preprocess(da_wmask, rcor_extent):
+    print('Preprocessing...')
+    da_wmask, rcor_extent = match_input_extent (da_wmask, rcor_extent)
+    da_wmask = fill_nodata (da_wmask, rcor_extent)
+    return da_wmask, rcor_extent
+
+def calculate_pixel_persistence(da_wmask):   
+    """
+    Calculate pixel persistence for the entire DataArray.
+
+    Parameters:
+    - da_wmask (xarray.DataArray): DataArray containing water mask data.
+
+    Returns:
+    - xarray.DataArray: DataArray containing pixel persistence values.
+    """
+    # Total number of observations in the time dimension
+    total_obs = da_wmask.sizes['time'] 
+    # Sum wet observations over time
+    wet_sum = da_wmask.sum(dim='time')
+    # Normalize by total observations to get persistence ratio
+    p_area = wet_sum / total_obs
+    # Set pixels with no wet observations to -1
+    PP = p_area.where(p_area > 0, -1).chunk('auto')
+    PP.attrs['_FillValue'] = -1
+    return PP
+
+@delayed
+def process_PP_metrics (PP, feature, pixel_size):
+    """
+    Process pixel persistence metrics for a specific feature.
+
+    Parameters:
+    - PP (xarray.DataArray): DataArray containing pixel persistence values.
+    - feature (geopandas.GeoDataFrame): Feature to process.
+    - pixel_size (float): Size of each pixel in the DataArray.
+
+    Returns:
+    - dict: Dictionary containing pixel persistence metrics for the feature.
+    """
+    section = feature.name
+    PP_feature = clip_da_to_boundaries(PP, feature)
+    transform = PP_feature.rio.transform()
+    mask = mask_da(PP_feature, feature, transform)
+    masked_PP = da.where(mask == 1, PP_feature, 0)
+
+    pixel_area_km2 = pixel_size**2 / 10**6
+    
+    pp_mean = np.array(masked_PP[masked_PP > 0.1]).mean()
+    ra_area = np.array(da.where(masked_PP > 0.9, pixel_area_km2, 0)).sum()
+
+    PP_row = {
+        'section': section,
+        'PP_mean': pp_mean,
+        'RA_area_km2': ra_area
+    }
+    return PP_row
+
+@delayed
+def process_feature_time(feature, da_wmask_time, min_pool_size, section_length, pixel_size, export_shp, crs):
+    """
+    Process metrics for a specific feature (Polygon) over time.
+
+    Parameters:
+    - feature (geopandas.GeoDataFrame): Feature to process.
+    - da_wmask_time (xarray.DataArray): DataArray for the specific time step.
+    - min_pool_size (int): Minimum size of water pools to consider in the analysis in pixels.
+    - section_length (float): Length of the section in kilometers.
+    - pixel_size (float): Size of each pixel in the DataArray.
+    - export_shp (bool): Whether to export shapefiles.
+    - crs (pyproj.CRS): Coordinate reference system.
+
+    Returns:
+    - tuple: DataFrame with metrics and GeoDataFrames for points, lines, and polygons if export_shp is True.
+    """
+    section = feature.name
+    section_area = feature.geometry.area / 1e6
+    date = pd.to_datetime(da_wmask_time.time.data).strftime('%Y-%m-%d')
+    
+    da_wmask_feature = clip_da_to_boundaries(da_wmask_time, feature)
+    transform = da_wmask_feature.rio.transform()
+    mask = mask_da(da_wmask_feature, feature, transform)
+    masked_da = da_wmask_feature.where(mask == 1, other=0)  
+    masked_da_coords = masked_da.coords
+    layer = masked_da.data.rechunk('auto')
+    
+    if da.logical_not(layer).all():
+        df_attrs = pd.DataFrame([{
+        'label': 0, 'path': [], 'length': 0, 'width': 0,
+        'area_km2': 0, 'length_km': 0, 'width_km': 0, 'perimeter_km': 0,
+        'date': date, 'section': section, 'section_area_km2': section_area,
+        'section_length': section_length}])
+
+        point_gdf, line_gdf, polygon_gdf = None, None, None
+    else:
+        df_attrs = process_layer(layer, min_pool_size, pixel_size, date, section, section_area, section_length)
+
+    if export_shp:
+        point_gdf, line_gdf, polygon_gdf = process_export_shp (layer, df_attrs, masked_da_coords, transform, crs)
+    else:
+        point_gdf, line_gdf, polygon_gdf = None, None, None
+   
+    return df_attrs, point_gdf, line_gdf, polygon_gdf
+
+def process_metrics(group):
+    areas = group['area_km2']
+    lengths = group['length_km']
+    widths = group['width_km']
+    perimeters = group['perimeter_km']
+    section_area_km2 = group['section_area_km2'].iloc[0]
+    section_length = group['section_length'].iloc[0]
+
+    npools = int(areas.size)
+    
+    if npools == 0:
+        return pd.Series({
+        'section_area_km2': section_area_km2,
+        'section_length': section_length,
+        'npools': npools,  'wet_area_km2': 0,
+        'wet_perimeter_km': 0, 'wet_length_km': 0, 'AWMSI': 0, 'AWRe': np.nan,
+        'AWMPA': 0, 'AWMPL': 0, 'AWMPW': 0, 'PF': 0, 'PFL': 0, 'APSEC': 0, 'LPSEC': 0
+        })
+    
+    else:
+        total_wetted_area = np.sum(areas)
+        total_wetted_perimeter = np.sum(perimeters)
+        total_wetted_length = np.sum(lengths)
+
+        AWMSI = np.sum((0.25 * perimeters / np.sqrt(areas)) * (areas / total_wetted_area))
+        AWMPA = np.average(areas, weights=areas)
+        radii = 2 * (np.sqrt(areas) / np.pi)
+        AWRe = np.nansum((radii / lengths) * areas) / total_wetted_area
+        AWMPL = np.average(lengths, weights=areas)
+        AWMPW = np.average(widths, weights=areas)
+        PF = npools / total_wetted_area
+        PFL = npools / total_wetted_length
+        APSEC = (total_wetted_area / section_area_km2) * 100
+        LPSEC = (total_wetted_length / section_length) * 100
+
+        return pd.Series({
+            'section_area_km2': section_area_km2,
+            'section_length': section_length,
+            'npools': npools, 
+            'wet_area_km2': total_wetted_area,
+            'wet_length_km': total_wetted_length, 
+            'wet_perimeter_km': total_wetted_perimeter,
+            'AWMSI': AWMSI, 
+            'AWRe': AWRe,
+            'AWMPA': AWMPA, 
+            'AWMPL': AWMPL, 
+            'AWMPW': AWMPW, 
+            'PF': PF, 
+            'PFL': PFL,
+            'APSEC': APSEC, 
+            'LPSEC': LPSEC
+        })
+
+
+# Helper functions
 def validate_data_array_cm(da_wmask, crs):
     """
     Adjusts a DataArray with water mask data for proper dimensions and CRS.
@@ -125,16 +280,17 @@ def validate_data_array_cm(da_wmask, crs):
     da_wmask = da_wmask.chunk('auto')
     da_wmask.attrs['_FillValue'] = -1
     
-    return da_wmask, crs
+    pixel_size = da_wmask.rio.resolution()[0]
+    
+    return da_wmask, crs, pixel_size
 
-def validate_shp_input(rcor_extent, img_crs, module):
+def validate_shp_input(rcor_extent, img_crs):
     """
     Validates and loads a shapefile for river corridor analysis, ensuring compatibility with the specified module.
 
     Parameters:
     - rcor_extent (str or geopandas.GeoDataFrame): Path to the shapefile or a GeoDataFrame to be validated.
     - img_crs (str or dict): The coordinate reference system of the image data to ensure CRS compatibility.
-    - module (str): The processing module name, affecting validation criteria ('generate_sections' or 'calc_metrics').
 
     Returns:
     - geopandas.GeoDataFrame: GeoDataFrame containing the validated and potentially reprojected shapefile data.
@@ -149,44 +305,12 @@ def validate_shp_input(rcor_extent, img_crs, module):
     # Load and validate shapefile projection
     rcor_extent = wd_batch.validate_input_projection(rcor_extent, img_crs)
 
-    # Validation based on the specified module
-    if module == 'generate_sections':
-        # Validate for LineString geometries
-        valid_geometry = any(isinstance(geom, (LineString, MultiLineString)) for geom in rcor_extent.geometry)
-        assert not rcor_extent.empty and valid_geometry, \
-            'Shapefile must contain valid LineString geometries for generate_sections module.' 
-
-    elif module == 'calc_metrics':
-        # Validate for Polygon geometries
-        valid_geometry = any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry)
-        assert not rcor_extent.empty and valid_geometry, \
-            'Shapefile must contain valid Polygon geometries for calc_metrics module.'
-
+    # Validate for Polygon geometries
+    valid_geometry = any(isinstance(geom, (Polygon, MultiPolygon)) for geom in rcor_extent.geometry)
+    assert not rcor_extent.empty and valid_geometry, \
+        'Shapefile must contain valid Polygon geometries. For processing the entire water mask extent, set rcor_extent to None'
+    rcor_extent.sindex
     return rcor_extent
-
-def binary_dilation_ts(da_wmask):
-    
-    # Define a structuring element for dilation with the given radius; this is a square matrix of ones
-    structure = np.ones((1, 2, 2), dtype=bool)  
-
-    # Step 1: Create a mask for valid data (where data is not -1)
-    valid_data_mask = da_wmask != -1
-
-    # Step 2: Apply binary dilation only on valid data (convert -1 to 0 temporarily for dilation)
-    # Temporarily set no data values to 0 to apply dilation
-    temp_data = da_wmask.where(valid_data_mask, 0)
-
-    # Define the structuring element for dilation
-    structure = np.ones((1, 3, 3), dtype=bool)
-
-    # Apply binary dilation on the valid data
-    # Note: Ensure to keep the original shape [time, y, x] in the structuring element if necessary
-    dilated_data = binary_dilation(temp_data.data, structure=structure)#.astype('int8', casting='safe')
-
-    # Step 3: Create the final DataArray, restoring the -1 values
-    da_wmask = xr.where(valid_data_mask, dilated_data, -1)
-    
-    return da_wmask
 
 def setup_directories_cm(rcor_extent, outdir):
     """
@@ -210,7 +334,8 @@ def setup_directories_cm(rcor_extent, outdir):
         if not os.path.isfile(rcor_extent):
             raise FileNotFoundError(f"The specified rcor_extent path does not exist: {rcor_extent}")
         outdir = os.path.join(os.path.dirname(os.path.abspath(rcor_extent)), 'results_iRiverMetrics')
-        
+    else:
+        outdir = os.path.join(outdir, 'results_iRiverMetrics')
     # Determine the base output directory
     outdir = os.path.join(outdir, 'metrics')
     # Create output folder
@@ -219,39 +344,11 @@ def setup_directories_cm(rcor_extent, outdir):
     
     return outdir
 
-def preprocess(da_wmask, rcor_extent, outdir):   
-    """
-    Performs preprocessing steps on input water mask and river corridor extent shapefile to prepare for analysis.
-
-    The preprocessing includes clipping the water mask and extent shapefile to matching dimensions, filling no-data
-    values in the water mask, calculating a pixel persistence layer, and preparing arguments for subsequent processing.
-
-    Parameters:
-    - da_wmask (xarray.DataArray): Input DataArray containing the water mask.
-    - rcor_extent (geopandas.GeoDataFrame): GeoDataFrame representing the river corridor extent.
-    - outdir (str): Output directory path for saving intermediate files, such as the pixel persistence layer.
-
-    Returns:
-    - list: A list of arguments prepared for further processing, including preprocessed DataArray and GeoDataFrame.
-
-    Notes:
-    - This function saves the pixel persistence layer as a TIFF file in the specified output directory.
-    """
-    print('Preprocessing...')
-    # Step 1: Clip input data and extent to match dimensions
-    da_wmask, rcor_extent = match_input_extent(da_wmask, rcor_extent)
-        
-    # Step 2: Fill nodata values in the DataArray
-    da_wmask = fill_nodata(da_wmask, rcor_extent)   
-
-    # Step 3: Calculate and save pixel persistence layer
-    persistence_layer = calculate_pixel_persistence(da_wmask)
-    persistence_layer.rio.to_raster(os.path.join(outdir, 'pixel_persistence.tif'), compress='lzw')
-    
-    # Step 4: Prepare arguments for further processing
-    args_list = prepare_args(da_wmask, persistence_layer, rcor_extent)
-    
-    return args_list
+def clip_data(data, xmin, xmax, ymin, ymax):
+    """Clips the data array based on given bounds."""
+    col_mask = (data.x >= xmin) & (data.x <= xmax)
+    row_mask = (data.y >= ymin) & (data.y <= ymax)
+    return data.sel(x=col_mask, y=row_mask)
 
 def match_input_extent(da_wmask, rcor_extent):
     """
@@ -280,50 +377,10 @@ def match_input_extent(da_wmask, rcor_extent):
     if rcor_extent.empty:
         raise ValueError("No overlapping region found between da_wmask and rcor_extent.")
 
-    # # Clip DataArray to the bounding box of filtered extent
-    # da_wmask = da_wmask.rio.clip(rcor_extent.geometry, all_touched=True)
-        
+    xmin, ymin, xmax, ymax = rcor_extent.dissolve().geometry.total_bounds
+    da_wmask = clip_data(da_wmask, xmin, xmax, ymin, ymax)
+    
     return da_wmask, rcor_extent
-
-def fill_nodata(da_wmask, rcor_extent):
-    """
-    Fills NoData values in a DataArray, specifically targeting NoData within a specified river corridor extent,
-    and then using parallel processing with Dask to fill remaining NoData values across the entire DataArray.
-
-    Parameters:
-    - da_wmask (xarray.DataArray): The DataArray to process, assumed to have a 'time' dimension.
-    - rcor_extent (geopandas.GeoDataFrame): The geographical extent within which NoData values are specifically updated.
-
-    Returns:
-    - xarray.DataArray: The DataArray with NoData values filled.
-    """
-    if rcor_extent is not None:
-        # Update 'no data' values within the specified river corridor extent
-        da_wmask = update_nodata_in_rcor_extent(da_wmask, rcor_extent)
-    crs = da_wmask.rio.crs
-    
-    # Ensure data is 8-bit before applying fill_nodata_layer function
-    da_wmask = da_wmask.astype('int8')
-    
-    # Apply fill_nodata_layer function with Dask's map_overlap to the updated DataArray
-    filled_data = da.map_overlap(
-        fill_nodata_layer,
-        da_wmask.data,
-        depth={'time': 2},  # Buffer size for two layers ahead/behind
-        boundary={'time': 'reflect'}, # Reflect boundary for edge chunks
-        dtype=da_wmask.dtype
-    )
-       
-    # Convert the filled Dask array back to an xarray DataArray
-    da_wmask = xr.DataArray(filled_data, coords=da_wmask.coords, dims=da_wmask.dims)
-    da_wmask.attrs['_FillValue'] = -1
-    
-    # Replace remaining NoData values (2) with -1 
-    da_wmask = xr.where(da_wmask != 2, da_wmask, -1)
-    # Update CRS information
-    da_wmask.rio.write_crs(crs, inplace=True)
-    
-    return da_wmask
 
 def update_nodata_in_rcor_extent(da_wmask, rcor_extent):
     """
@@ -342,27 +399,29 @@ def update_nodata_in_rcor_extent(da_wmask, rcor_extent):
     gdf = rcor_extent.dissolve() 
     # Ensure the polygon is in the same CRS as the xarray
     gdf = gdf.to_crs(da_wmask.rio.crs.to_string())
-    
-    # Define rasterization transformation and shape
-    transform = rasterio.transform.from_bounds(*da_wmask.rio.bounds(), len(da_wmask.coords['x']), len(da_wmask.coords['y']))
-    raster_shape = (len(da_wmask.coords['y']), len(da_wmask.coords['x']))
-    
-    # Rasterize the dissolved and transformed GeoDataFrame
-    rasterized_polygon = features.rasterize(shapes=gdf.geometry, out_shape=raster_shape, transform=transform, fill=0, default_value=1, dtype='int8')
-    # Convert the rasterized polygon to a Dask array
-    rasterized_polygon_dask = da.from_array(rasterized_polygon, chunks='auto')
-    
-    # Apply the rasterized mask to identify and update NoData values within the river corridor
-    river_corridor_raster = da_wmask.isel(time=0).copy()
-    river_corridor_raster = river_corridor_raster.copy(data=rasterized_polygon_dask)
-    # Identify areas with -1 in the water mask within the river corridor
-    no_data_areas = (da_wmask == -1) & (river_corridor_raster == 1)
-    # Ensure the updated DataArray retains the original CRS
-    da_wmask = xr.where(no_data_areas, 2, da_wmask).rio.write_crs(da_wmask.rio.crs, inplace=True)
-    
+        
+    transform = da_wmask.rio.transform()
+    mask_dummy = da_wmask.isel(time=0).data.copy()
+    shapes = gdf.geometry
+    # Map the function across blocks
+    mask = da.map_blocks(
+        map_rasterize,
+        mask_dummy,
+        chunks=da_wmask.chunks[1:3],
+        meta=np.array((), dtype=da_wmask.dtype),
+        shapes=shapes,
+        transform=transform
+    )
+    da_wmask_array = da.where((da_wmask == -1) & (mask == 1), 2, da_wmask)
+    da_wmask = xr.DataArray(da_wmask_array,
+                        coords=da_wmask.coords, 
+                        dims=da_wmask.dims,
+                        attrs=da_wmask.attrs
+                        )
+        
     return da_wmask
 
-def fill_nodata_layer(chunk):   
+def fill_nodata_layer(chunk):
     """
     Fill NoData values in a chunk of a DataArray.
 
@@ -405,655 +464,376 @@ def fill_nodata_layer(chunk):
                     chunk[num][valid_mask] = chunk[adj_layer][valid_mask]
     return chunk
 
-def prepare_args(da_wmask, persistence_layer, rcor_extent):
+def fill_nodata(da_wmask, rcor_extent):
     """
-    Prepares a list of arguments for parallel processing of geospatial data, focusing on clipping the data
-    to the extents defined by river corridor geometries.
+    Fills NoData values in a DataArray, specifically targeting NoData within a specified river corridor extent,
+    and then using parallel processing with Dask to fill remaining NoData values across the entire DataArray.
 
     Parameters:
-    - da_wmask (xarray.DataArray): Input raster data array representing a water mask.
-    - persistence_layer (xarray.DataArray): DataArray representing the pixel persistence layer.
-    - rcor_extent (geopandas.GeoDataFrame): GeoDataFrame containing river corridor extent polygons.
+    - da_wmask (xarray.DataArray): The DataArray to process, assumed to have a 'time' dimension.
+    - rcor_extent (geopandas.GeoDataFrame): The geographical extent within which NoData values are specifically updated.
 
     Returns:
-        list: A list of arguments, each a tuple with (feature geometry, clipped water mask DataArray, clipped pixel persistence DataArray).
-    """   
-    args_list = []
-    for index, feature in rcor_extent.iterrows():
-        # Extract bounds for each polygon
-        xmin, ymin, xmax, ymax = feature.geometry.bounds
-        # Use the bounds to clip the da_wmask and persistence_layer
-        col_mask = (da_wmask.x >= xmin) & (da_wmask.x <= xmax)
-        row_mask = (da_wmask.y >= ymin) & (da_wmask.y <= ymax)
-        
-        # Clip the data arrays to the bounds of the current feature
-        cliped_da_wmask = da_wmask.sel(x=col_mask, y=row_mask)
-        clipped_PP = persistence_layer.sel(x=col_mask, y=row_mask)
-        
-        # Append the polygon and the clipped DataArrays as a tuple to the args list   
-        args_list.append((feature, cliped_da_wmask, clipped_PP))
+    - xarray.DataArray: The DataArray with NoData values filled.
+    """    
+    if rcor_extent is not None:
+        # Update 'no data' values within the specified river corridor extent
+        da_wmask = update_nodata_in_rcor_extent(da_wmask, rcor_extent)
     
-    return args_list
+    # Apply fill_nodata_layer function with Dask's map_overlap to the updated DataArray
+    filled_data = da.map_overlap(
+        fill_nodata_layer,
+        da_wmask.data,
+        depth={'time': 2},  # Buffer size for two layers ahead/behind
+        boundary={'time': 'reflect'}, # Reflect boundary for edge chunks
+        dtype=da_wmask.dtype
+    )
+    da_wmask_data = da.where(filled_data == 1, filled_data, 0)
+    da_wmask = xr.DataArray(da_wmask_data,
+                    coords=da_wmask.coords, 
+                    dims=da_wmask.dims,
+                    attrs=da_wmask.attrs
+                    )
+    return da_wmask
 
-def process_polygon_parallel(args_list):  
+def label_and_distance_layer(layer, min_pool_size):
     """
-    Process river sections in parallel to compute various ecohydrological metrics.
-
-    This function performs spatial analysis on a given river section defined by a polygon.
-    It calculates metrics such as area, perimeter, connectivity properties, and more, based
-    on the input water mask and persistence layer. Optionally, it can export the results as
-    shapefiles.
+    Labels connected components in a binary layer and computes distance transform.
 
     Parameters:
-    - args_list (tuple): A tuple containing parameters for processing a single river section.
-                        Expected order: (polygon, da_wmask, PP, section_length, export_shp, outdir).
+    - layer (dask.array.Array): The binary layer to process.
+    - min_pool_size (int): Minimum size of water pools to consider in the analysis in pixels.
 
     Returns:
-    - tuple: Returns a tuple of DataFrames (metrics_data, points_data, lines_data) containing the computed metrics.
-                If `export_shp` is False, only metrics_data DataFrame is returned.
+    - tuple: Labeled layer, number of features, properties, and distance transform layer.
     """
-    try:
-        # Unpack the arguments for clarity
-        polygon, da_wmask, PP, section_length, export_shp, outdir, min_pool_size = args_list
+    distance_transform_layer = da.map_overlap(
+        lambda block: distance_transform_edt(block),
+        layer,
+        depth=1,
+        dtype=float,
+    ).rechunk('auto')
+    
+    structure = np.ones((3, 3))  
+    labeled_layer, _ = dask_ndmeasure.label(layer, structure=structure)
+    
+    filtered_labels = da.map_overlap(
+        lambda block: remove_small_objects(block, min_size=min_pool_size, connectivity=2),
+        labeled_layer,
+        depth=1,
+        dtype='int16',
+    )
+    
+    labeled_layer, num_features = dask_ndmeasure.label(filtered_labels, structure=structure)
+    props = regionprops(labeled_layer, properties=('label', 'area', 'perimeter_crofton'))
+    
+    return labeled_layer.rechunk('auto'), num_features, props, distance_transform_layer
 
-        # Initialize lists to collect data for each metric
-        metrics_data = []
-        points_data = []
-        lines_data = []
+def adaptive_skeletonization(labeled_layer, num_features, max_depth=10):
+    """
+    Perform skeletonization with adaptive boundary conditions to ensure connectivity.
+
+    Parameters:
+    - labeled_layer (dask.array.Array): The labeled layer to skeletonize.
+    - num_features (int): Number of features in the labeled layer.
+    - max_depth (int): Maximum depth for boundary conditions. Defaults to 10.
+
+    Returns:
+    - tuple: Coordinates and labels of skeletonized features.
+    """
+    depth = 1
+    num_features_skel = 0
+    structure = np.ones((3, 3))
+
+    while num_features != num_features_skel and depth <= max_depth:
+        # Apply map_overlap with the adaptive boundary parameter
+        skeleton = da.map_overlap(
+            lambda block: skeletonize(block),
+            labeled_layer,
+            depth=(depth, depth),
+            boundary='reflect',
+            dtype='uint8'
+        )
         
-        # Clip the input water mask to the polygon's extent for focused analysis
-        da_wmask = da_wmask.rio.clip([polygon.geometry]).chunk('auto').persist()
-        # Convert da_wmask into a list of delayed tasks, one per layer
-        tasks = [process_single_layer(da_wmask[num], polygon, section_length, export_shp, min_pool_size) for num in range(da_wmask.shape[0])]
+        # Label connected components
+        labeled_skel, num_features_skel = dask_ndmeasure.label(skeleton, structure=structure)
+        
+        if num_features == num_features_skel:
+            break
+        
+        depth += 2  # Increase depth for the next iteration if needed
+   
+    pixels = np.array(da.argwhere(labeled_skel > 0))
+    labels = np.array(labeled_skel[labeled_skel > 0])
 
-        # Use dask.compute to execute all tasks in parallel
-        polygon_results = dask.compute(*tasks)
+    return pixels, labels
+
+def retrieve_coordinates(indices, masked_da_coords):
+    indices = np.array(indices)
+    # Directly use numpy for coordinate extraction and shapely creation
+    coords = np.column_stack((
+        np.array(masked_da_coords['x'])[indices[:, 1]],
+        np.array(masked_da_coords['y'])[indices[:, 0]]
+    ))
+    return LineString(coords)
+
+def create_points(row):
+    return [
+        {'Date': row['date'], 'section': row['section'], 'line': int(row.name), 'Type': 'coord_start', 'geometry': Point(row['geometry'].coords[0])},
+        {'Date': row['date'], 'section': row['section'], 'line': int(row.name), 'Type': 'coord_end', 'geometry': Point(row['geometry'].coords[-1])},
+        {'Date': row['date'], 'section': row['section'], 'line': int(row.name), 'Type': 'midpoint', 'geometry': row['geometry'].interpolate(0.5, normalized=True)}
+    ]
+    
+def shp_process_points_and_lines(df_attrs, masked_da_coords, crs):
+    """
+    Process and create GeoDataFrames for points and lines from attributes.
+
+    Parameters:
+    - df_attrs (pandas.DataFrame): DataFrame containing attributes.
+    - masked_da_coords (xarray.DataArray): Masked DataArray coordinates.
+    - crs (pyproj.CRS): Coordinate reference system.
+
+    Returns:
+    - tuple: GeoDataFrames for lines and points.
+    """
+    df_attrs = df_attrs[df_attrs['path'].apply(lambda x: len(x) > 1)]
+    
+    df_attrs['geometry'] = df_attrs['path'].apply(
+        lambda x: retrieve_coordinates(x, masked_da_coords)
+        )
+
+    line_gdf = df_attrs[['date', 'section', 'label', 'length', 'geometry']]
+
+    line_gdf = gpd.GeoDataFrame(line_gdf, crs=crs)
+
+    # Apply the function to each row and explode the list of dictionaries into a flat DataFrame
+    point_gdf = gpd.GeoDataFrame(
+        [item for sublist in line_gdf.apply(create_points, axis=1).tolist() for item in sublist],
+        crs=crs
+    )
+    return line_gdf, point_gdf
+
+def shp_process_polygons(layer, df_attrs, transform, crs):
+    """
+    Process and create GeoDataFrame for polygons from a layer.
+
+    Parameters:
+    - layer (dask.array.Array): Binary layer containing polygons.
+    - df_attrs (pandas.DataFrame): DataFrame containing attributes.
+    - transform (Affine): Affine transformation for the layer.
+    - crs (pyproj.CRS): Coordinate reference system.
+
+    Returns:
+    - geopandas.GeoDataFrame: GeoDataFrame containing polygons.
+    """
+    data_uint8 = layer.astype('uint8')
+    mask = data_uint8 == 1
+    # Generate polygons from shapes where mask is True
+    polygon_list = [{'Date': df_attrs['date'].iloc[0], 'section': df_attrs['section'].iloc[0], 'Type': 'polygon', 'geometry': shape(polygon[0])}
+                     for polygon in shapes(data_uint8, mask=mask, connectivity = 8, transform=transform)]
+    polygon_gdf = gpd.GeoDataFrame([gdf for gdf in polygon_list if gdf is not None], crs=crs)
+    return polygon_gdf
+
+def clip_da_to_boundaries(da_wmask, feature):
+    xmin, ymin, xmax, ymax = feature.geometry.bounds
+    col_mask = (da_wmask.x >= xmin) & (da_wmask.x <= xmax)
+    row_mask = (da_wmask.y >= ymin) & (da_wmask.y <= ymax)
+    da_wmask_feature = da_wmask.sel(x=col_mask, y=row_mask)
+    return da_wmask_feature
+
+def map_rasterize(block, shapes, transform):
+    # Get block metadata
+    block_shape = block.shape[-2:]
+    # Rasterize the geometry for the current block
+    rasterized_polygon = rasterize(
+        shapes=shapes,
+        out_shape=block_shape,
+        transform=transform,
+        fill=0,
+        default_value=1,
+        all_touched=True,
+        dtype='int8',
+    )
+    return rasterized_polygon
+
+def mask_da(da_wmask_feature, feature, transform):
+    """
+    Mask a DataArray using a feature's geometry.
+
+    Parameters:
+    - da_wmask_feature (xarray.DataArray): DataArray to be masked.
+    - feature (geopandas.GeoDataFrame): Feature used for masking.
+    - transform (Affine): Affine transformation for the DataArray.
+
+    Returns:
+    - dask.array.Array: Masked DataArray.
+    """
+    shapes = [(feature.geometry, 1)]
+    # Map the function across blocks
+    mask = da.map_blocks(
+        map_rasterize,
+        da_wmask_feature.data,
+        chunks=da_wmask_feature.chunks,
+        meta=np.array((), dtype=da_wmask_feature.dtype),
+        shapes=shapes,
+        transform=transform
+    )
+    return mask
+
+def process_length(pixels, labels):
+    """
+    Process pool length from skeletonized coordinates.
+
+    Parameters:
+    - pixels (numpy.ndarray): Coordinates of the skeletonized pixels.
+    - labels (numpy.ndarray): Labels of the skeletonized pixels.
+
+    Returns:
+    - pandas.DataFrame: DataFrame containing length and width metrics.
+    """
+    def bfs_farthest_node(G, start_node):
+        visited = {start_node: 0}
+        queue = deque([start_node])
+        last_node = start_node
+
+        while queue:
+            node = queue.popleft()
+            for neighbor in G.neighbors(node):
+                if neighbor not in visited:
+                    visited[neighbor] = visited[node] + 1
+                    queue.append(neighbor)
+                    last_node = neighbor
+
+        return last_node, visited
+
+    def calculate_total_distance(points):
+        if len(points) < 2:
+            return 1
+        differences = np.diff(points, axis=0)
+        distances = np.linalg.norm(differences, axis=1)
+        total_distance = np.sum(distances)
+        return total_distance
+
+    def find_longest_path_in_subgraph(G, label):
+        subgraph = G.subgraph([node for node in G if G.nodes[node]['label'] == label])
+        if subgraph.number_of_nodes() == 0:
+            return label, [], 0, 0
+
+        start_node = next(iter(subgraph.nodes))
+        far_node, _ = bfs_farthest_node(subgraph, start_node)
+        farthest_node, distances = bfs_farthest_node(subgraph, far_node)
+
+        path = []
+        current_node = farthest_node
+        while distances[current_node] > 0:
+            path.append(current_node)
+            current_node = next(n for n in subgraph.neighbors(current_node) if distances[n] == distances[current_node] - 1)
+        path.append(far_node)
+
+        path_length = calculate_total_distance(np.array(path))
+        
+        return label, path, path_length
+
+    def calculate_length(G):
+        labels = set(nx.get_node_attributes(G, 'label').values())
+        results = [find_longest_path_in_subgraph(G, label) for label in labels]
+        df = pd.DataFrame(results, columns=['label', 'path', 'length'])      
+        return df
+    
+    # Create a graph
+    G = nx.Graph()
+
+    # Define 8-connected neighbors
+    neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
                 
-        # Aggregate results
-        metrics_data, points_data, lines_data = [], [], []
-
-        for res_metrics_data, res_points_data, res_lines_data in polygon_results:
-            metrics_data.extend(res_metrics_data)
-            points_data.extend(res_points_data)
-            lines_data.extend(res_lines_data)
-
-        # Convert collected metrics data into a DataFrame for further analysis and reporting
-        df_metrics = pd.DataFrame(metrics_data)
-        df_metrics['date'] = pd.to_datetime(df_metrics['date'], format='%Y-%m-%d')
-
-        # Perform vectorized calculations for additional metrics directly on the DataFrame
-        df_metrics['APSEC'] = (df_metrics['wet_area_km2'] / df_metrics['section_area_km2']) * 100
-        df_metrics['LPSEC'] = (df_metrics['wet_length_km'] / df_metrics['section_length']) * 100
-        df_metrics['PF'] = df_metrics['npools'] / df_metrics['wet_area_km2']
-        df_metrics['PFL'] = df_metrics['npools'] / df_metrics['wet_length_km']
-        # Replace infinite values and NaNs
-        df_metrics.replace([np.inf, -np.inf, np.nan], 0.0, inplace=True)
-
-        # Set specified columns to zero when 'npools' is zero using DataFrame.where
-        cols_to_zero = ['wet_area_km2', 'wet_perimeter_km', 'AWMSI', 'AWMPA', 'AWMPL', 'AWMPW', 'APSEC', 'LPSEC', 'PF', 'PFL']
-        df_metrics[cols_to_zero] = df_metrics[cols_to_zero].where(df_metrics['npools'] != 0, 0.0)
-        
-        # Calculate pixel persistence for the section and update metrics DataFrame
-        PP = PP.rio.clip([polygon.geometry]).compute()
-        df_metrics = pixel_persistence_section(PP, df_metrics, interval_ranges = None)
-
-        # Conditionally return data based on `export_shp` flag
-        if export_shp:
-            # Convert points_data and lines_data to DataFrames as before
-            df_points = pd.DataFrame(points_data)
-            df_lines = pd.DataFrame(lines_data)
-
-            return df_metrics, df_points, df_lines
-        else:
-            return df_metrics
-
-    except Exception as e:       
-        print(f"Error processing polygon: {e}")
-        # Return an empty DataFrame or a meaningful error indicator for this task
-        return pd.DataFrame()
-
-# @delayed
-def process_single_layer(layer, polygon, section_length, export_shp, min_pool_size):
+    for (x, y), label in zip(pixels, labels):
+        G.add_node((x, y), label=label)
+        for dx, dy in neighbors:
+            neighbor = (x + dx, y + dy)
+            if neighbor in G.nodes and G.nodes[neighbor]['label'] == label:
+                G.add_edge((x, y), neighbor)
+                
+    df = calculate_length(G)
     
-    dict_area_2p, area_array = calculate_area_perimeter(layer, min_pool_size)
-    
-    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity(layer, area_array, min_pool_size)
-           
-    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
-    
-    date = pd.to_datetime(str(layer.time.values)).strftime('%Y-%m-%d')
-    res_metrics_data, res_points_data, res_lines_data = compile_results(date, polygon, section_length, export_shp, 
-                                                                        total_wet_area, total_wet_perimeter, AWMSI, 
-                                                                        AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop)
-    
-    return res_metrics_data, res_points_data, res_lines_data
+    return df
 
-def calculate_area_perimeter(layer, min_pool_size):
-    dict_area_2p, area_array = calculate_pool_area_and_perimeter(layer, min_pool_size)
-    return dict_area_2p, area_array
-
-def calculate_connectivity(layer, area_array, min_pool_size):
-    _dict_wet_prop, area_length_index_lst, lines_index_lst_width = calculate_connectivity_properties(layer, area_array, min_pool_size)
-    return _dict_wet_prop, area_length_index_lst, lines_index_lst_width
-
-def calculate_additional_metrics(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width):
-    total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL = calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width)
-    return total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL
-
-def compile_results(date, polygon, section_length, 
-                    export_shp, total_wet_area, total_wet_perimeter, 
-                    AWMSI, AWMPA, AWRe, AWMPW, AWMPL, _dict_wet_prop):
-    
-    res_metrics_data, res_points_data, res_lines_data = [], [], []
-
-    # Collect the calculated metrics for this layer
-    res_metrics_data.append({
-        'date': date,
-        'section': polygon.name,
-        'npools': len(_dict_wet_prop),
-        'section_area_km2': polygon.geometry.area / 1e6,  # Convert to square kilometers
-        'section_length': section_length,
-        'wet_area_km2': total_wet_area/ 1e6, # Convert area to square kilometers
-        'wet_perimeter_km': total_wet_perimeter / 1e3, # Convert to kilometers
-        'wet_length_km': sum(_dict_wet_prop[d]['length'] for d in _dict_wet_prop) / 1e3,
-        'AWMSI': AWMSI,
-        'AWRe': AWRe,
-        'AWMPA': AWMPA / 1e6, # Convert to square kilometers
-        'AWMPL': AWMPL / 1e3, # Convert to kilometers
-        'AWMPW': AWMPW / 1e3 # Convert to kilometers
-    })
-
-    # Optional: Export analysis results as shapefiles
-    if export_shp:
-        # Process points and lines data for shapefile export
-        for region_label, props in _dict_wet_prop.items():
-            point_entry = {
-                'Date': date, 
-                'Section': polygon.name, 
-                'Region': region_label
-            }
-            res_points_data.extend([
-                {**point_entry, 'Type': 'Coord_start', 'geometry': props['coord_start']},
-                {**point_entry, 'Type': 'Coord_end', 'geometry': props['coord_end']},
-                {**point_entry, 'Type': 'Midpoint', 'geometry': props['midpoint']}
-            ])
-            res_lines_data.append({
-                'Date': date, 
-                'Section': polygon.name, 
-                'Region': region_label, 
-                'Length': props['length'], 
-                'geometry': props['linestring']
-            })
-    
-    return res_metrics_data, res_points_data, res_lines_data
-
-def calculate_pool_area_and_perimeter(layer, min_pool_size):   
+def process_edt_width(paths, distance_transform_layer):
     """
-    Calculate the perimeter and area of connected regions in a given water mask layer.
+    Process width metrics using distance transform values.
 
     Parameters:
-    - layer (numpy.ndarray): Input 2D array representing a single layer of the water mask.
+    - paths (list): List of paths to process.
+    - distance_transform_layer (dask.array.Array): Distance transform layer.
 
     Returns:
-    - dict_area_2p (defaultdict): A dictionary mapping labels of connected regions to [perimeter, area].
-    - area_array (numpy.ndarray): Array of the same shape as `layer`, where each pixel's value is the area of its connected region.
+    - list: List of mean widths for each path.
     """
-    # Initialize a dictionary to store calculated perimeter and area for each label
-    dict_area_2p = defaultdict(lambda: [0.0, 0.0])
-      
-    # Label connected pixels in the layer
-    pre_label = label(layer, connectivity=2)
-    # Calculate geometric properties for each labeled region
-    pre_label_shapes = list(rasterio.features.shapes((pre_label.astype('int32')), transform=layer.rio.transform()))
+    # Flatten the list of paths and convert to numpy arrays
+    flat_idx, flat_idy = zip(*[point for path in paths for point in path])
+    flat_idx = np.array(flat_idx)
+    flat_idy = np.array(flat_idy)
     
-    # Calculate perimeter and area for each region and store in the dictionary
-    for polygon, value in pre_label_shapes:
-        if value == 0:
-            continue  # Skip processing for group 0, which is no data
-        size = pre_label[pre_label == value].size
-        if size >= min_pool_size: # Only process if the region contains more than X pixels
-            shape = shapely.geometry.shape(polygon)
-            perimeter = shape.length
-            area = shape.area
-            dict_area_2p[value][0] += perimeter
-            dict_area_2p[value][1] += area
+    # Get the corresponding distance transform values
+    widths = distance_transform_layer.vindex[flat_idx, flat_idy]
+    
+    # Split the widths back into lists corresponding to each path
+    split_indices = np.cumsum([len(path) for path in paths])[:-1]
+    width_segments = np.split(widths, split_indices)
+    
+    # Calculate the mean width for each path
+    mean_widths = [np.mean(segment) for segment in width_segments]
+    
+    return mean_widths
 
-    # Generate an area array based on labeled regions and their calculated areas
-    u, inv = np.unique(pre_label, return_inverse=True)
-    areas = np.array([dict_area_2p[x][1] if x in dict_area_2p else 0.0 for x in u]) # Fill non-existent entries with 0.0
-    area_array = areas[inv].reshape(pre_label.shape)
-
-    return dict_area_2p, area_array
-
-def calculate_connectivity_properties(layer, area_array, min_pool_size):   
+def process_layer(layer, min_pool_size, pixel_size, date, section, section_area, section_length):
     """
-    Calculates connectivity properties for wet regions in a layer, employing image processing and geometric analyses.
-    
-    Skeletonization is used to reduce regions to their simplest form to facilitate pathfinding. The function identifies
-    the longest paths within these skeletonized regions, calculating properties such as length, endpoints, and centroids.
-    
+    Process a binary layer to calculate various metrics.
+
     Parameters:
-    - layer (numpy.ndarray): Input 2D array representing a single layer of the water mask.
-    - area_array (numpy.ndarray): Array with calculated areas for each pixel's region, used for additional metrics.
-    
+    - layer (dask.array.Array): Binary layer to process.
+    - min_pool_size (int): Minimum size of water pools to consider in the analysis in pixels.
+    - pixel_size (float): Size of each pixel in the DataArray.
+    - date (str): Date of the layer.
+    - section (int): Section number.
+    - section_area (float): Area of the section in square kilometers.
+    - section_length (float): Length of the section in kilometers.
+
     Returns:
-    - _dict_wet_prop (dict): Properties of wet regions, including start and end coordinates, length, linestring, and centroid.
-    - area_length_index_lst (list): List of tuples with area and path length for each region.
-    - lines_index_lst_width (list): List of tuples with path indices and corresponding lengths.
+    - pandas.DataFrame: DataFrame containing calculated metrics.
     """
-    # Initializations for results storage
-    _dict_wet_prop = {}
-    endpoints_index_lst = []
-    lines_index_lst = []
-    lines_index_lst_width = []
-    area_length_index_lst = []
-    
-    # Skeletonization to simplify the connectivity analysis
-    skeleton = skeletonize(layer, method='lee')
-    
-    # Labeling the skeletonized image to identify distinct regions
-    labeled_skeleton = label(skeleton)
-    regions = regionprops(labeled_skeleton)
-    # Convert the skeleton image to binary (-1 for background, 1 for foreground)
-    skeleton = np.where(skeleton == 0, -1, 1)
-    # Initialize the MCP_Geometric object for path finding
-    m = MCP_Geometric(skeleton, fully_connected=True)
-    # Set origin and lower left points
-    origin = (0,0)
-    lower_left = (skeleton.shape[-1], 0)
-    
-    # Iterate over regions (Pools) extracted from the labeled skeleton
-    for region in regions:
-        coord_list = [] # Reset the coordinate list for each region
-        longest_distance = 0 # Reset the longest distance for each region
-        if region.num_pixels >= min_pool_size: # Process only if the region has more than X pixels
-            # Find the furthest nodes within the region from the specified points
-            closest_origin, farthest_origin = find_closest_farthest_points(origin, region)
-            closest_lower_left, farthest_lower_left = find_closest_farthest_points(lower_left, region)
-            points = [closest_origin, farthest_origin, closest_lower_left, farthest_lower_left]
-            # Generate unique combinations of points
-            unique_combinations = combine_points(points)
-            # Loop through each unique point combination
-            for combination in unique_combinations:
-                # Find the most cost-efficient path between the combination points
-                path, dist = find_most_cost_path(m, combination[0], combination[1])
-                # Check if the current path's distance is greater than the longest recorded distance
-                if dist > longest_distance:
-                    longest_distance = dist # Update the longest distance
-                    longest_path = path # Update the longest path
-            # Update the lists and dictionary with calculated information
-            endpoints_index_lst.extend([longest_path[0], longest_path[-1]])
-            lines_index_lst.extend(longest_path)
-            coord_list = np_positions_to_coord_point_list(longest_path, layer, coord_list)
-            line_path = LineString(coord_list)
-            # Extract the midpoint of the line
-            midpoint = line_path.interpolate(0.5, normalized=True)
+    labeled_layer, num_features, props, distance_transform_layer = label_and_distance_layer(layer, min_pool_size)
             
-            _dict_wet_prop[region.label] = {
-                # 'date': layer['time'].values[0].strftime('%Y-%m-%d'),
-                'coord_start': Point(line_path.coords[0]),
-                'coord_end': Point(line_path.coords[-1]),
-                'length': line_path.length, 
-                'linestring': line_path,
-                'midpoint': midpoint
-            }
-            area_length_index_lst.append(((area_array[path[0]]), line_path.length))
-            lines_index_lst_width.append((longest_path, line_path.length))
-
-    return _dict_wet_prop, area_length_index_lst, lines_index_lst_width
-
-def find_closest_farthest_points(reference_point, region):
-    """
-    Finds the closest and farthest points within a given region to a reference point.
+    pixels, labels = adaptive_skeletonization(labeled_layer, num_features, max_depth=10)
     
-    Parameters:
-    - reference_point (tuple or list): The reference point's coordinates (x, y).
-    - region (shapely.geometry.Polygon): The region as a Polygon object.
+    df_attrs = process_length(pixels, labels)
     
-    Returns:
-    - tuple: Contains the coordinates of the closest and farthest points to the reference point.
-    """  
-    # Ensure access to the coordinates of the polygon's exterior
-    coords = region.coords    
-    # Calculate distances from the reference point to all points in the region
-    distances = cdist([reference_point], coords).flatten()
-    # Find indices of the closest and farthest points
-    closest_idx = np.argmin(distances)
-    farthest_idx = np.argmax(distances)
-    
-    # Return the coordinates of the closest and farthest points
-    return coords[closest_idx], coords[farthest_idx]
-
-def combine_points(points):
-    """
-    Generates unique pairs of combinations from a list of points.
-
-    This function is useful for creating potential pairings of points when analyzing
-    distances or connections between them in geospatial analyses.
-
-    Parameters:
-    - points (list): A list of points, where each point is represented as a tuple (x, y).
-
-    Returns:
-    - list: A list of unique point combinations, where each combination is represented
-            as a list containing two point tuples.
-    """
-    unique_combinations = set()
-    # Iterate over all possible 2-point combinations
-    for combo_indices in combinations(range(len(points)), 2):
-        unique_combination = [tuple(points[i]) for i in combo_indices]
-        unique_combinations.add(tuple(sorted(unique_combination)))
-    # Convert the set of unique combinations back to a list of lists
-    return [list(combination) for combination in unique_combinations]
-
-def find_most_cost_path(m, start, end):
-    """
-    Find the most cost-efficient path using a cost matrix.
-
-    Parameters:
-    - m (CostMatrix): An instance of a cost matrix.
-    - start (tuple): Starting point (row, column) in the cost matrix.
-    - end (tuple): Ending point (row, column) in the cost matrix.
-
-    Returns:
-    - path (list): List of points representing the most cost-efficient path.
-    - cost (float): Total cost of the found path.
-    """
-    costs, traceback_array = m.find_costs([start], [end])
-    return m.traceback(end), costs[end]
-
-def np_positions_to_coord_point_list(np_positions, layer, coord_list):
-    """
-    Convert positions in a NumPy array to a list of coordinate points.
-
-    Parameters:
-    - np_positions (numpy.ndarray): NumPy array containing positions (row, column).
-    - layer (dict): Layer data containing 'x' and 'y' coordinates.
-    - coord_list (list): List to store the resulting coordinate points.
-
-    Returns:
-    - coord_list (list): Updated list of coordinate points.
-    """
-    # Iterate over each position in the input NumPy array
-    for np_position in np_positions:
-        # Retrieve the corresponding 'x' and 'y' coordinates for the current position
-        x = float(layer['x'][np_position[1]])
-        y = float(layer['y'][np_position[0]])
-        # Append a new Point object with these coordinates to the coord_list
-        coord_list.append(Point(x, y))
-    return coord_list
-
-def calculate_metrics_AW(dict_area_2p, area_length_index_lst, layer, lines_index_lst_width):   
-    """
-    Computes Area-weighted metrics based on provided data and indices.
-
-    Parameters:
-    - dict_area_2p (dict): Dictionary with keys as region labels and values as [perimeter, area] lists.
-    - area_length_index_lst (list): List of tuples, each containing (area, path length) for regions.
-    - layer (xarray.DataArray): The data array from which these regions are derived.
-    - lines_index_lst_width (list): List of tuples, each containing (path indices, path length) for region paths.
-
-    Returns:
-    - A tuple containing calculated area-weighted metrics, including: 
-        - total_wet_area (float): Total wetted area.
-        - total_wet_perimeter (float): Total wetted length.
-        - AWMSI (float): Area-weighted Mean Shape Index.
-        - AWMPA (float): Area-weighted Mean Pixel Area.
-        - AWRe (float): Area-weighted Elongation Ratio.
-        - AWMPW (float): Area-weighted Mean Pool Width.
-        - AWMPL (float): Area-weighted Mean Pool Length.
-    """
-    # Ensure areas and perimeters are numpy arrays for efficient computation
-    areas = np.array([info[1] for info in dict_area_2p.values()])
-    perimeters = np.array([info[0] for info in dict_area_2p.values()])
-    
-    # Total area and perimeter of all regions
-    total_wet_area = areas.sum()
-    total_wet_perimeter = perimeters.sum()
-    
-    # Area-Weighted Mean Shape Index (AWMSI)
-    AWMSI = np.sum((0.25 * perimeters / np.sqrt(areas)) * (areas / total_wet_area))
-    
-    # Area-Weighted Mean Pixel Area (AWMPA)
-    AWMPA = np.average(areas, weights=areas) if areas.size > 0 else 0
-    
-    # Calculate AWRe, AWMPW, and AWMPL using their respective functions
-    AWRe = calculate_AWRe(area_length_index_lst)
-    AWMPW, AWMPL = calculate_AWMPW_AWMPL(layer, lines_index_lst_width)
-
-    return total_wet_area, total_wet_perimeter, AWMSI, AWMPA, AWRe, AWMPW, AWMPL
-
-def calculate_AWRe(area_length_index_lst):
-    """
-    Computes the Area-weighted Elongation Ratio (AWRe) based on area-length information.
-
-    Parameters:
-    - area_length_index_lst (list): A list of tuples, each containing the area and length
-                                    of a region.
-
-    Returns:
-    - AWRe (float): The computed Area-weighted Elongation Ratio. If the total area sum is zero,
-                    returns NaN to indicate the calculation is undefined.
-    """   
-    # Initialize arrays for areas and lengths for vectorized computation 
-    Re = []
-    for x in area_length_index_lst:
-        try:
-            value = (2 * (np.sqrt(x[0]) / np.pi) / x[1]) * x[0]
-            Re.append(value)
-        except ZeroDivisionError:
-            Re.append(np.nan)
-    # Calculate the total sum of areas
-    total_area_sum = np.nansum([x[0] for x in area_length_index_lst])
-    if total_area_sum != 0:
-        AWRe = np.nansum(Re) / total_area_sum
-    else:
-        AWRe = np.nan
-
-    return AWRe
-
-def calculate_AWMPW_AWMPL(layer, lines_index_lst_width):
-    """
-    Calculate the Area-weighted Mean Pool Width (AWMPW) and Area-weighted Mean Pool Length (AWMPL)
-    based on width and length information of lines in a layer.
-
-    Parameters:
-    - layer (xarray.DataArray): Input DataArray.
-    - lines_index_lst_width (list): List of tuples containing indexes and corresponding path lengths.
-
-    Returns:
-    - AWMPW (float): Area-weighted Mean Pool Width (AWMPW).
-    - AWMPL (float): Area-weighted Mean Pool Length (AWMPL).
-    """
-    # Euclidean distance transform to find the distance to the nearest background pixel
-    euc_dist_trans_array = ndimage.distance_transform_edt(layer.values)
-    
-    # Calculate pixel scale based on the layer's spatial resolution to convert distances to real-world measurements
-    pixel_scale = 2 * layer.rio.transform()[0] # Assuming uniform pixel size
-    
-    # Initialize accumulators for weighted width, length, and total weight calculations
-    total_width = total_length = total_weight = 0
-    
-    for idxw, length in lines_index_lst_width:
-        # Extract row and column indices
-        idx, idy = zip(*idxw)
-        # Calculate mean width of the segment, scaled to real-world distances
-        width_seg = np.mean(euc_dist_trans_array[idx, idy]) * pixel_scale
-        # Calculate weight as the product of segment width and length
-        weight = width_seg * length
+    df_attrs['width'] = process_edt_width(df_attrs['path'], distance_transform_layer)
         
-        # Accumulate weighted width and length, along with the total weight
-        total_width += width_seg * weight
-        total_length += length * weight
-        total_weight += weight
-    
-    # Calculate area-weighted averages, ensuring no division by zero
-    AWMPW = total_width / total_weight if total_weight > 0 else 0
-    AWMPL = total_length / total_weight if total_weight > 0 else 0
-    
-    return AWMPW, AWMPL
+    df_attrs['area_km2'] = (props['area'].to_dask_array(lengths=True) * (pixel_size**2)) / 1e6
+    df_attrs['perimeter_km'] = (props['perimeter_crofton'].to_dask_array(lengths=True) * pixel_size) / 1e3
+    df_attrs['length_km'] = (df_attrs['length'] * pixel_size) / 1e3
+    df_attrs['width_km'] = (df_attrs['width'] * pixel_size * 2) / 1e3
+    df_attrs['date'] = date
+    df_attrs['section'] = section
+    df_attrs['section_area_km2'] = section_area
+    df_attrs['section_length'] = section_length
+   
+    return df_attrs
 
-def save_shp(results, outdir, crs):   
+def process_export_shp(layer, df_attrs, masked_da_coords, transform, crs):
     """
-    Saves points and lines data from analysis results as shapefiles, including setting the appropriate CRS.
+    Process and export shapefiles for points, lines, and polygons.
 
     Parameters:
-    - results (tuple): A tuple containing DataFrames of metrics, points, and lines data.
-    - outdir (str): The output directory path where the shapefiles will be saved.
-    - crs (str or dict): The coordinate reference system to set for the GeoDataFrames before saving.
-    """
-    # Initialize lists to aggregate points and lines data
-    all_points_data = []
-    all_lines_data = []
-    # Extract and aggregate points and lines data from each result in the tuple
-    for result in results:
-        _, points_df, lines_df = result
-        all_points_data.append(points_df)
-        all_lines_data.append(lines_df)
-        
-    # Concatenate all DataFrame parts into single DataFrames for points and lines
-    points_gdf = gpd.GeoDataFrame(pd.concat(all_points_data, ignore_index=True), geometry='geometry')
-    lines_gdf = gpd.GeoDataFrame(pd.concat(all_lines_data, ignore_index=True), geometry='geometry')
-    
-    # Set the CRS for both GeoDataFrames
-    points_gdf.crs = crs
-    lines_gdf.crs = crs
-    
-    # Save the GeoDataFrames as shapefiles
-    points_gdf.to_file(os.path.join(outdir, 'result_points.shp'))
-    lines_gdf.to_file(os.path.join(outdir, 'result_lines.shp'))
-
-def calculate_metrics_df(pd_metrics, section_length):
-    """
-    Calculate additional metrics and create a new DataFrame.
-    APSEC: Wetted Area Percentage of Section.
-    LPSEC: Wetted Length Percentage of Section.
-    PF: Pool Fragmentation.
-    PFL: Pool Longitudinal Fragmentation.
-
-    Parameters:
-    - pd_metrics (DataFrame): DataFrame containing initial calculated wetness metrics.
-    - section_length (float): Length of the section being analyzed, necessary for some metric calculations.
-    
-    Returns:
-    - pdm (DataFrame): Enhanced DataFrame with additional metrics included.
-    """
-    # Ensure all necessary columns are present
-    pdm = pd_metrics[['section_area', 'wet_area_km2', 'wet_perimeter_km2', 'wet_length_km', 'npools', 'AWMSI', 'AWRe', 
-                            'AWMPA', 'AWMPL', 'AWMPW']].copy()
-    
-    # Add a new column for section length
-    pdm['section_length'] = section_length
-    
-    # Calculate Wetted Area Percentage of Section (APSEC) and Wetted Length Percentage of Section (LPSEC)
-    pdm.loc[:,'APSEC'] = ((pdm['wet_area_km2']/pdm['section_area'])*100).replace(np.inf, 0.0)
-    pdm.loc[:,'LPSEC'] = ((pdm['wet_length_km']/section_length)*100).replace(np.inf, 0.0)
-    
-    # Calculate Pool Fragmentation (PF) and Pool Longitudinal Fragmentation (PFL)
-    pdm.loc[:,'PF'] = (pdm['npools']/pdm['wet_area_km2'])
-    pdm.loc[:,'PFL'] = (pdm['npools']/pdm['wet_length_km'])
-    pdm[['PF', 'PFL']] = pdm[['PF', 'PFL']].replace([np.inf, -np.inf, np.nan], 0.0)
-
-    # Convert the 'date' column to datetime format
-    
-    pdm['date'] = pd.to_datetime(pd_metrics['date'], format='%Y-%m-%d')
-    # Order the columns
-    col_order = ['date', 'section_area', 'section_length', 'wet_area_km2', 'wet_perimeter_km2', 'wet_length_km', 'npools', 
-                    'AWMSI', 'AWRe', 'AWMPA', 'AWMPL', 'AWMPW', 'APSEC', 'LPSEC', 'PF', 'PFL']
-    pdm = pdm[col_order]
-
-    # Set specified columns to zero when 'npools' is zero
-    cols_to_zero = ['wet_area_km2', 'wet_perimeter_km2', 'AWMSI', 'AWMPA', 
-                    'AWMPL', 'AWMPW', 'APSEC', 'LPSEC', 'PF', 'PFL']
-    pdm[cols_to_zero] = pdm[cols_to_zero].where(pdm['npools'] != 0, 0.0)
-    
-    return pdm 
-
-def pixel_persistence_section(PP, df_metrics, interval_ranges=None):
-    """
-    Calculate pixel persistence metrics for a section, integrating with Dask and Xarray for efficiency.
-
-    Parameters:
-    - PP (xarray.DataArray): Pixel Persistence array, indicating the persistence of conditions across time.
-    - df_metrics (pandas.DataFrame): DataFrame to which persistence metrics will be added.
-    - interval_ranges (list of tuples, optional): List of (lower_bound, upper_bound) tuples for additional
-      persistence interval calculations.
+    - layer (dask.array.Array): Binary layer containing polygons.
+    - df_attrs (pandas.DataFrame): DataFrame containing attributes.
+    - masked_da_coords (xarray.DataArray): Masked DataArray coordinates.
+    - transform (Affine): Affine transformation for the layer.
+    - crs (pyproj.CRS): Coordinate reference system.
 
     Returns:
-    - pandas.DataFrame: The input DataFrame enhanced with pixel persistence metrics.
+    - tuple: GeoDataFrames for points, lines, and polygons.
     """
-    # Calculate pixel area in km^2 based on raster resolution
-    pixel_area_km2 = abs(PP.rio.resolution()[0] * PP.rio.resolution()[1]) / 10**6
-    
-    # Mean pixel persistence (%)
-    pp_threshold = 0.1
-    df_metrics['PP_%'] = (PP >= pp_threshold).mean(dim=['x', 'y']).data * 100
-    
-    # Calculate refuge area (RA) in km^2
-    ra_threshold = 0.9
-    df_metrics['RA_km2'] = ((PP >= ra_threshold).sum(dim=['x', 'y']) * pixel_area_km2).data
-    
-    # Calculate persistence intervals if specified
-    if interval_ranges:
-        for lower_threshold, upper_threshold in interval_ranges:
-            column_name = f'PP_{int(lower_threshold*100)}_{int(upper_threshold*100)}'
-            df_metrics[column_name] = (((PP >= lower_threshold) & (PP < upper_threshold)).sum(dim=['x', 'y']) * pixel_area_km2).data
-
-    return df_metrics
-
-def calculate_pixel_persistence(da_wmask):   
-    """
-    Calculates the pixel persistence of wet areas within a series of water mask observations.
-
-    This function determines the frequency of wet conditions for each pixel across the temporal
-    dimension of the input DataArray, providing a measure of how persistently each location remains
-    wet over time.
-
-    Parameters:
-    - da_wmask (xarray.DataArray): An xarray DataArray containing a water mask over time, with dimensions
-                                   including 'time', 'x', and 'y', and values indicating wet (1) or dry (0) conditions.
-
-    Returns:
-    - p_area (xarray.DataArray): An xarray DataArray representing the pixel persistence of wet areas, with values
-                                 ranging from 0 to 1, where 1 indicates 100% persistence (always wet) and -1 for areas
-                                 with no wet observations.
-    """
-    # Total number of observations in the time dimension
-    total_obs = da_wmask.sizes['time']
-    
-    # Mask out no data values (-1) by setting them to 0 temporarily for the calculation
-    da_wmask = da_wmask.where(da_wmask == 1, 0)
-    
-    # Sum wet observations over time and normalize by total observations to get persistence ratio
-    p_area = (da_wmask.sum(dim='time') / total_obs).astype('float32', casting='same_kind')
-    
-    # Apply a placeholder value for pixels with no wet observations
-    p_area = xr.where(p_area > 0, p_area, -1)
-    
-    # Set DataArray attributes for NoData value
-    p_area.attrs['_FillValue'] = -1
-    
-    # Write the same CRS information as the input DataArray
-    p_area = p_area.rio.write_crs(da_wmask.rio.crs)
-    
-    return p_area
-
-def calculate_persistence_interval(p_area, lower_threshold, upper_threshold, resolution):
-    """
-    Calculate persistence interval for specified threshold ranges.
-
-    Parameters:
-    - p_area (xarray.DataArray): DataArray containing wet area information.
-    - lower_threshold (float): Lower threshold value for the persistence interval.
-    - upper_threshold (float): Upper threshold value for the persistence interval.
-    - resolution (float): Pixel resolution value.
-
-    Returns:
-    - interval_persistence (float): Persistence interval for the specified threshold range.
-
-    This function calculates the persistence interval for the specified threshold range in the wet area DataArray.
-    It multiplies the sum of pixels within the threshold range by the square of the resolution and converts the result to square kilometers (10^6 square meters).
-    The function returns the persistence interval in square kilometers.
-    """
-    interval_persistence = np.nansum(xr.where((p_area >= lower_threshold) & (p_area <= upper_threshold), 1, np.nan).values)
-    return interval_persistence * resolution * resolution / 10**6
+    line_gdf, point_gdf = shp_process_points_and_lines(df_attrs, masked_da_coords, crs)
+    polygon_gdf = shp_process_polygons(layer, df_attrs, transform, crs)
+    return point_gdf, line_gdf, polygon_gdf

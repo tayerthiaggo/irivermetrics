@@ -1,9 +1,10 @@
 import os
-import waterdetect as wd
-from dask import delayed
-from dask.distributed import Client, as_completed
-from tqdm import tqdm
+import gc
 import pandas as pd
+import waterdetect as wd
+from dask import delayed, compute
+from dask.distributed import Client, as_completed
+from dask.diagnostics import ProgressBar
 
 from .utils import wd_batch
 from .utils import calc_metrics
@@ -108,70 +109,71 @@ def waterdetect_batch(input_img, r_lines, outdir=None, ini_file=None, buffer=100
         return None
 
 # Module 2
-def calculate_metrics(da_wmask, rcor_extent=None, outdir=None, section_length=None, min_pool_size=2, img_ext='.tif', export_shp=False, return_da_array=False):
+def calculate_metrics(da_wmask, rcor_extent=None, outdir=None, section_length=None, min_pool_size=2, img_ext='.tif', export_shp=False, export_PP = False):   
     """
-    Calculates ecohydrological metrics for defined sections of intermittent rivers using water mask data. 
+    Calculates ecohydrological metrics for defined sections of intermittent rivers using water mask data.
     These metrics assist in understanding the water availability and ecological conditions of the river sections.
 
     Args:
     - da_wmask (str or xarray.DataArray): Path to a directory containing water mask images or an xarray.DataArray of water masks.
-    - rcor_extent (str): Path to the river corridor extent shapefile, which defines the sections for metrics calculation.
+    - rcor_extent (str): Path to the river corridor extent shapefile, which defines the sections for metrics calculation. If None, the entire extent of the water mask images will be used.
     - section_length (float, optional): The desired length of each river section for metrics calculation in kilometers. Defaults to None.
     - min_pool_size (int, optional): Minimum size of water pools to consider in the analysis in pixels. Defaults to 2 pixels.
     - outdir (str, optional): Directory to save the output results. Defaults to the same location as the input shapefile if not specified.
     - img_ext (str, optional): File extension for the input water mask images. Defaults to '.tif'.
-    - export_shp (bool, optional): Whether to export part of the results as shapefiles (pool wetted line, start/end midpoints). Defaults to False.
-    - return_da_array (bool, optional): Whether to return the data array of water masks along with the calculation results. Defaults to False.
+    - export_shp (bool, optional): Whether to export part of the results as shapefiles (pool wetted area/line, start/end midpoints). Defaults to False.
+    - export_PP (bool, optional): Whether to export pixel persistence data as a raster. Defaults to False.
 
     Returns:
-    - pandas.DataFrame or (pandas.DataFrame, xarray.DataArray, str): Returns a DataFrame containing the calculated metrics. If `return_da_array` is True, additionally returns the data array of water masks and the river corridor extent path.    
-    """
-    # Validate and preprocess input parameters to ensure compatibility
-    da_wmask, rcor_extent, crs = calc_metrics.validate(da_wmask, rcor_extent, outdir, img_ext, module='calc_metrics')
-    # Apply binary dilation to the water mask data array
-    da_wmask = calc_metrics.binary_dilation_ts(da_wmask)
-    # Prepare the output directory to store results
-    outdir = calc_metrics.setup_directories_cm(rcor_extent, outdir)
+    - pandas.DataFrame: DataFrame containing the calculated metrics. 
+    """   
+    # Validate and preprocess inputs
+    da_wmask, rcor_extent, crs, pixel_size, outdir = calc_metrics.validate(da_wmask, rcor_extent, outdir, img_ext)
+    da_wmask, rcor_extent = calc_metrics.preprocess(da_wmask, rcor_extent)
+                  
+    print('Calculating metrics...')
+    
+    # Calculate Pixel Persistence
+    PP = calc_metrics.calculate_pixel_persistence(da_wmask).chunk('auto')
+    if export_PP:
+        PP.rio.to_raster(os.path.join(outdir, 'full_scene_persistence.tif'), compress='lzw')
+    
+    # Process Pixel Persistence metrics
+    PP_metric_tasks = [calc_metrics.process_PP_metrics (PP, feature, pixel_size)
+                        for _, feature in rcor_extent.iterrows()]       
+    
+    PP_metrics = compute(*PP_metric_tasks)
+    PP_df = pd.DataFrame(PP_metrics, columns=['section', 'PP_mean', 'RA_area_km2'])
+    
+    # Free memory after PP metrics computation
+    del PP_metric_tasks, PP_metrics, PP
+    gc.collect()
+    
+    # Prepare metric tasks using Dask
+    metric_tasks = [calc_metrics.process_feature_time(feature, da_wmask.sel(time=time_value), min_pool_size, 
+                                                      section_length, pixel_size, export_shp, crs)
+                    for _, feature in rcor_extent.iterrows() for time_value in da_wmask.time.data]
+
+    with ProgressBar():
+        # Compute all metric tasks using Dask
+        computed_tasks = compute(*metric_tasks)
        
-    # Initialize a distributed computing environment with Dask
-    with Client(memory_limit=f"{wd_batch.get_total_memory()}GB") as client:
-        print(f"Dask Dashboard available at: {client.dashboard_link}")
-        
-        # Prepare arguments for parallel processing of each river section
-        args_list = calc_metrics.preprocess(da_wmask, rcor_extent, outdir)
-                
-        print('Calculating metrics...')
-
-        # Execute tasks in parallel for efficient metrics calculation
-        futures = [client.submit(calc_metrics.process_polygon_parallel, 
-                                 (feature, cliped_da_wmask, clipped_PP, section_length, export_shp, outdir, min_pool_size)) 
-                   for feature, cliped_da_wmask, clipped_PP in args_list]
-        
-        # Collect and combine results from each task
-        results = []
-        for future in tqdm(as_completed(futures), total=len(futures), desc='Processing Polygons'):
-            result = future.result()  # Retrieve task result
-            if result is not None:
-                results.append(result)
-
+    del metric_tasks
+    gc.collect()
+   
+    # Extracting the metric results from computed tasks
+    attributes_results = pd.concat([task[0] for task in computed_tasks if task[0] is not None], ignore_index=True)
+    # Group by date and section and apply the calculation function
+    metrics_df = attributes_results.groupby(
+        ['date', 'section']).apply(
+        calc_metrics.process_metrics, include_groups=False).reset_index()
+    
+    metrics_results = pd.merge(metrics_df, PP_df, on='section', how='left')
+    metrics_results.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))
+    
     if export_shp:
-        # Export results as shapefiles if specified
-        try:
-            print('Exporting shapefiles...')
-            calc_metrics.save_shp(results, outdir, crs)
-            print('Shapefiles exported!') 
-        except Exception as e:
-            print(f"Failed to export shapefiles due to: {e}")
-    
-    print(outdir)
-    # Compile all individual section metrics into a single DataFrame
-    all_metrics = pd.concat([res[0] for res in results if res is not None], ignore_index=True)
-    # Save merged metrics to a CSV file
-    all_metrics.to_csv(os.path.join(outdir, 'Calculated_metrics.csv'))
-    print('Metric Calculation Successfull.')
-    
-    # Return results based on user preference
-    if return_da_array:
-        return all_metrics, da_wmask, rcor_extent
-    else:
-        return all_metrics
+        geo_dfs = [pd.concat([task[i] for task in computed_tasks], ignore_index=True) for i in range(1, 4)]
+        for df, name in zip(geo_dfs, ['Points', 'Lines', 'Polygons']):
+            df.to_file(os.path.join(outdir, f'result_{name}.shp'))
+
+    return metrics_results
