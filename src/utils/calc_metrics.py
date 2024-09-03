@@ -78,8 +78,8 @@ def validate(da_wmask, rcor_extent, outdir, img_ext):
 
 def preprocess(da_wmask, rcor_extent):
     print('Preprocessing...')
-    da_wmask, rcor_extent = match_input_extent (da_wmask, rcor_extent)
-    da_wmask = fill_nodata (da_wmask, rcor_extent)
+    da_wmask, rcor_extent = match_input_extent(da_wmask, rcor_extent)
+    da_wmask = fill_nodata(da_wmask, rcor_extent)
     return da_wmask, rcor_extent
 
 def calculate_pixel_persistence(da_wmask):   

@@ -31,7 +31,7 @@ def waterdetect_batch(input_img, r_lines, outdir=None, ini_file=None, buffer=100
     """
     print('\nExecuting waterdetect_batch.\n')
     # Validate input data and preprocess parameters
-    input_img, n_bands, time_lst, outdir, ini_file = wd_batch.validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
+    input_img, n_bands, time_lst, outdir, ini_file, _ = wd_batch.validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif)
     
     # Adjust the initialization file based on input image properties
     ini_file, bands = wd_batch.change_ini(ini_file, n_bands, reg, max_cluster)
