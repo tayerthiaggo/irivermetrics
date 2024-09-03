@@ -7,7 +7,7 @@
 
 - **Modular Design:** Divided into two modules, each serving a specific purpose. This modular approach allows you to use only the components relevant to your project.
 - **Remote Sensing Integration:** Leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
-- **Efficient Processing:** Employs Dask for distributed computing, ensuring rapid processing of large-scale datasets.
+- **Efficient Processing:** Employs Dask for distributed computing, ensuring local processing of large-scale datasets.
 - **User-Friendly:** Suitable for users with varying levels of expertise. It includes detailed documentation and code comments to guide you through the process.
 
 ## Modules
@@ -34,7 +34,7 @@ conda create -n irivermetrics python=3.x
 conda activate irivermetrics
 
 conda install conda-forge::gdal
-pip install -r requirements.txt
+pip install -r paste/clone/directory/requirements.txt
 ```
 
 3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
@@ -53,8 +53,6 @@ sys.path.append(r'path\to\clone\irivermetrics')
 from src.irm_main import waterdetect_batch, calculate_metrics
 
 ## Module 1
-# Define input non-optional parameters
-
 # Path to a directory containing multispectral images (e.g., TIFF files)
 input_img = "path/to/images"
 # Path to the river corridor extent shapefile (.shp)
@@ -63,15 +61,13 @@ r_lines = "path/to/rcor_extent.shp"
 da_wmask = waterdetect_batch(input_img, r_lines)
 
 ## Module 2
+# Path to a directory containing water masks or use a defined DataArray
+da_wmask = "path/to/water masks"
 # Path to the river corridor extent (sections) shapefile (.shp)
 rcor_extent = "path/to/rcor_extent.shp"
-# Section length in km
-section_length = 0.484 #Adjust as needed
-# Define minimum pool size in pixels
-min_pool_size=4 #Adjust as needed
 
 # Calculate river metrics
-calculate_metrics(da_wmask, rcor_extent, section_length, min_pool_size)
+metrics = calculate_metrics(da_wmask, rcor_extent)
 ```
 
 ## Citation

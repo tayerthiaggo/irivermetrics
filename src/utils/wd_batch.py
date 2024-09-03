@@ -9,7 +9,7 @@ import rioxarray as rxr
 import dask.array as da
 from dask import delayed
 import waterdetect as wd
-from shapely.geometry import mapping
+from shapely.geometry import mapping, box
 from pyproj import CRS
 
 def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, export_tif):
@@ -27,10 +27,11 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
 
     Returns:
     - tuple: Validated input values ready for processing.
-    """
+    """  
     # Validate river lines input
-    assert isinstance(r_lines, gpd.GeoDataFrame) or (isinstance(r_lines, str) and r_lines.endswith('.shp')), \
-        'River corridor extent (r_lines) must be a .shp file path or a geopandas.GeoDataFrame.'
+    if r_lines is not None:
+        assert isinstance(r_lines, gpd.GeoDataFrame) or (isinstance(r_lines, str) and r_lines.endswith('.shp')), \
+            'River corridor extent (r_lines) must be a .shp file path or a geopandas.GeoDataFrame.'
     
     # Additional assertion: if r_lines is a GeoDataFrame and outdir is None
     assert not (isinstance(r_lines, gpd.GeoDataFrame) and outdir is None), \
@@ -51,9 +52,9 @@ def validate_inputs(input_img, r_lines, ini_file, outdir, buffer, img_ext, expor
     assert ini_file.endswith('.ini'), "Use WaterDetect .ini file"
     
     # Validate input images or DataArray
-    input_img, n_bands, time_list = is_valid_input_img(input_img, r_lines, buffer, img_ext)        
+    input_img, n_bands, time_list, r_lines = is_valid_input_img(input_img, r_lines, buffer, img_ext)        
     
-    return input_img, n_bands, time_list, outdir, ini_file
+    return input_img, n_bands, time_list, outdir, ini_file, r_lines
 
 def is_valid_input_img(input_img, r_lines, buffer, img_ext):
     """
@@ -74,20 +75,24 @@ def is_valid_input_img(input_img, r_lines, buffer, img_ext):
             river corridor extent.
     """               
     print('Validating input image data...')
-    
     # Step 1: Validate the input image or directory path
     input_img, n_bands, crs = validate_input_img(input_img, img_ext)
-    
-    # Step 2: Validate the projection of r_lines against the input image's CRS
-    r_lines = validate_input_projection(r_lines, crs)
-    
-    # Step 3: Apply buffer to r_lines and clip input image to this area
-    input_img = buffer_clip_aoi(r_lines, buffer, input_img)
-    
-    # Step 4: Extract time values from the input image DataArray
     time_list = pd.DatetimeIndex(input_img['time'].values).strftime('%Y-%m-%d').tolist()
-
-    return input_img, n_bands, time_list
+    
+    if r_lines is None:
+        # Extract bounding box coordinates
+        bounds = input_img.rio.bounds()
+        # Create a polygon from the bounding box
+        bbox_polygon = box(*bounds)
+        # Create a GeoDataFrame from the polygon
+        r_lines = gpd.GeoDataFrame({'geometry': [bbox_polygon]}, crs=crs) 
+    else:  
+        # Step 2: Validate the projection of r_lines against the input image's CRS
+        r_lines = validate_input_projection(r_lines, crs)
+        # Step 3: Apply buffer to r_lines and clip input image to this area
+        input_img = buffer_clip_aoi(r_lines, buffer, input_img)
+    
+    return input_img, n_bands, time_list, r_lines
 
 def validate_input_img(input_img, img_ext):
     """
@@ -121,6 +126,8 @@ def validate_input_img(input_img, img_ext):
         input_img, n_bands, crs = validate_input_folder(input_img, img_ext)
     else:
         raise ValueError('Input must be a valid xarray DataArray, Dataset, or directory path.')
+    
+    input_img = validate_band_names(input_img, n_bands)
     
     return input_img, n_bands, crs
 
@@ -174,7 +181,7 @@ def validate_data_array(input_datarray):
     if len(input_datarray.band) == 4:
         print('Reminder: Ensure bands are ordered as B,G,R,NIR for 4-band data.')
     else:
-        print(f'{len(input_datarray.band)} bands found. Reminder: First 6 bands must be stacked as B,G,R,NIR,SWIR1,SWIR2')
+        print(f'{len(input_datarray.band)} bands found. Reminder: First 5 bands must be stacked as B,G,R,NIR,SWIR2')
 
     return input_datarray, n_bands, crs
 
@@ -213,8 +220,8 @@ def validate_dataset(input_dataset):
 
     # Standardize band names and stack data variables into a single DataArray
     var_names = list(input_dataset.data_vars)
-    rename_bands = dict(zip(var_names, ['Blue', 'Green', 'Red', 'Nir'] + [f'Mir{i}' for i in range(1, n_bands-3)]))
-    input_dataset = input_dataset.rename(rename_bands)
+    # rename_bands = dict(zip(var_names, ['Blue', 'Green', 'Red', 'Nir'] + [f'Mir{i}' for i in range(2, n_bands-3)]))
+    # input_dataset = input_dataset.rename(rename_bands)
     final_data_array = input_dataset.to_array(dim='band').transpose('time', 'band', 'y', 'x')
     final_data_array.attrs['_FillValue'] = 0
     
@@ -222,7 +229,7 @@ def validate_dataset(input_dataset):
     if len(final_data_array.band) == 4:
         print('Reminder: Ensure bands are ordered as B,G,R,NIR for 4-band data.')
     else:
-        print(f'{len(final_data_array.band)} bands found. Reminder: First 6 bands must be stacked as B,G,R,NIR,SWIR1,SWIR2')
+        print(f'{len(final_data_array.band)} bands found. Reminder: First 5 bands must be stacked as B,G,R,NIR,SWIR2')
 
     return final_data_array, n_bands, crs
 
@@ -291,7 +298,7 @@ def validate_input_folder(input_dir, img_ext):
         print(f'Single band raster found as water mask')
     else:
         na_value = 0
-        print(f'{band_lst[0]} bands found. Reminder: First 6 bands must be stacked as B,G,R,NIR,SWIR2')
+        print(f'{band_lst[0]} bands found. Reminder: First 5 bands must be stacked as B,G,R,NIR,SWIR2')
     
     # Create an xarray DataArray with a 'time' dimension
     time = xr.Variable('time', time_values)
@@ -304,6 +311,19 @@ def validate_input_folder(input_dir, img_ext):
     input_img.attrs['_FillValue'] = na_value
 
     return input_img, band_lst[0], crs
+
+def validate_band_names(input_img, n_bands):
+    if n_bands == 4:
+        expected_band_names = ['Blue', 'Green', 'Red', 'Nir']
+    elif n_bands > 4:
+        expected_band_names = ['Blue', 'Green', 'Red', 'Nir', 'Mir2'] + [f'Band_{i+6}' for i in range(n_bands - 5)]
+    else:
+        raise ValueError('Unsupported number of bands. Expected at least 4 bands.')
+    # Rename bands if necessary
+    if list(input_img.band.values) != expected_band_names:
+        input_img = input_img.assign_coords(band=expected_band_names)
+    
+    return input_img
 
 def process_images(img_files, reference_crs, reference_resolution):   
     """
@@ -469,10 +489,13 @@ def change_ini(ini_file, n_bands, reg, max_cluster):
         list_of_lines[104] = "\t\t    ['ndwi', 'Nir' ],\n"
     else:
         # If not 4 bands, add additional bands 'Mir' and 'Mir2' to the list
-        bands += ['Mir', 'Mir2']
+        # bands += ['Mir', 'Mir2']
+        bands += ['Mir2']
         if max_cluster == None and reg == None:
             max_cluster = 3
             reg = 0.08
+        list_of_lines[84] = "\t\t    ['mndwi', 'ndwi', 'Mir2'],\n"
+        list_of_lines[104] = "\t\t    ['ndwi', 'Nir' ],\n"
 
     # Update max_cluster and regularization parameters in the .ini file
     list_of_lines[117] = 'regularization = ' + str(reg) + '\n'
@@ -518,7 +541,7 @@ def create_new_dir(outdir, verbose=True):
     # Create output file
     os.makedirs(outdir, exist_ok=True)
     if verbose:
-        print(f'{outdir} created to export results.\n')
+        print(f'Results will be exported to {outdir}\n')
 
 def get_total_memory():
     """
@@ -534,7 +557,7 @@ def get_total_memory():
     # Convert total memory from bytes to gigabytes and calculate 95% of it
     total_memory_gb = total_memory_bytes // (1024 ** 3)  # Convert bytes to gigabytes
     
-    return total_memory_gb*0.95
+    return total_memory_gb*0.92
 
 def process_image_parallel(img_target, bands, config, export_tif, date, outdir):
     """
@@ -626,14 +649,14 @@ def create_wd_dict (img_target, bands):
     - tuple: Contains a dictionary with band data and a dummy xarray.DataArray.
     """
     # Specify the division factor for rescaling, if necessary     
-    div_factor = 1
+    div_factor = 10000
     # Rescale the target image data
     cube = (img_target/div_factor)
     # Create a dictionary mapping band names to their respective rescaled data arrays
     arrays = {layer: cube[i].values for i, layer in enumerate(bands)}
     # Select a single band from the target image to create a dummy DataArray
     # This DataArray will be used as a template for metadata and spatial references
-    water_xarray = img_target.isel(band=1)  
+    water_xarray = img_target.isel(band=1) 
 
     return arrays, water_xarray
 
