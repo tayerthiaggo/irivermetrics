@@ -47,6 +47,8 @@ def validate(da_wmask, rcor_extent, outdir, section_length, img_ext, section_nam
 
     # Process directory input to create DataArray
     if isinstance(da_wmask, str) and os.path.isdir(da_wmask):
+        if outdir == None and rcor_extent == None:
+            outdir = os.path.join(da_wmask, 'results_iRiverMetrics')
         # Create DataArray and validade rasters within the provided folder
         da_wmask, n_bands, crs = wd_batch.validate_input_folder(da_wmask, img_ext)
             
@@ -89,10 +91,12 @@ def preprocess(da_wmask, rcor_extent, fill_nodata):
     
     if valid_time_count < original_time_count:
         print(f'    Excluding {original_time_count - valid_time_count} time steps with only nodata values.')
-            
+    
     if rcor_extent is not None:
         # Update 'no data' values within the specified river corridor extent
         da_wmask, mask_array = update_nodata_in_rcor_extent(da_wmask, rcor_extent)
+    
+    assert da_wmask.sizes['time'] > 1, 'Check your input data. - Not enough data to calculate metrics.'
     
     if fill_nodata:
         print('    Filling nodata values...')
@@ -1017,21 +1021,33 @@ def compute_area_and_perimeter_df(labeled_block, pixel_size):
 ### Export Poligons ###
 
 def export_polygons(da_wmask_feature, outdir, section, min_pool_size, pixel_size):
-    
+    """
+    Export polygons from a water mask DataArray.
+
+    Parameters:
+    - da_wmask_feature (dask.array.Array): 3D DataArray with water mask features.
+    - outdir (str): Output directory for shapefile (commented out).
+    - section (str): Section identifier.
+    - min_pool_size (int): Minimum number of pixels for a polygon.
+    - pixel_size (float): Size of each pixel in meters.
+
+    Returns:
+    - geopandas.GeoDataFrame: Filtered GeoDataFrame of polygons.
+    """
     time_data = da_wmask_feature.time.data
     date_list = pd.to_datetime(time_data).strftime('%Y-%m-%d').to_list()
     
     transform = da_wmask_feature.rio.transform()
     crs = da_wmask_feature.rio.crs
 
-    polygon_gdf = extract_polygons_map_blocks(da_wmask_feature, date_list, transform, crs, section)
+    polygon_gdf = extract_polygons_map_blocks(da_wmask_feature, date_list, transform, crs, section, min_pool_size)
     
     filtered_polygon_gdf = filter_polygons(polygon_gdf, min_pool_size, pixel_size)
     
     return filtered_polygon_gdf
     
     filtered_polygon_gdf.to_file(os.path.join(outdir, f'Polygons_section_{section}.shp'))
-def process_polygons_gdf(block, date, transform, crs, section):
+def process_polygons_gdf(block, date, transform, crs, section, min_pool_size):
     """
     Process a single block (time step) to extract polygons.
 
@@ -1044,10 +1060,14 @@ def process_polygons_gdf(block, date, transform, crs, section):
     Returns:
     - geopandas.GeoDataFrame: GeoDataFrame containing polygons for the block.
     """
-    data_uint8 = block.astype('uint8')
+    data_uint8 = np.asarray(block.astype('uint8'))
     mask = data_uint8 == 1
+
+    mask_filtered = remove_small_objects(mask, min_size=min_pool_size)
+
     polygon_list = []
-    for geom, value in shapes(data_uint8, mask=mask, connectivity=8, transform=transform):
+    for geom, value in shapes(data_uint8, mask=mask_filtered, connectivity=8, transform=transform):
+    # for geom, value in shapes(data_uint8, mask=mask, connectivity=8, transform=transform):
         if value == 1:
             polygon = {
                 'Date': date,
@@ -1063,45 +1083,35 @@ def process_polygons_gdf(block, date, transform, crs, section):
     polygon_gdf = gpd.GeoDataFrame(polygon_list, columns=columns, crs=crs)
     return polygon_gdf
 
-def extract_polygons_map_blocks(da_wmask_feature, date_list, transform, crs, section):
+
+def extract_polygons_map_blocks(da_wmask_feature, date_list, transform, crs, section, min_pool_size):
     """
-    Apply shp_process_polygons to each time step in the Dask array using map_blocks.
+    Apply process_polygons_gdf to each time step in the Dask array.
 
     Parameters:
-    - dask_array (dask.array.Array): 3D Dask array with dimensions (time, y, x).
-    - time_coords (list or array-like): List of dates corresponding to each time step.
+    - da_wmask_feature (dask.array.Array): 3D Dask array with dimensions (time, y, x).
+    - date_list (list): List of dates corresponding to each time step.
     - transform (Affine): Affine transformation for the raster.
     - crs (str or dict): Coordinate reference system.
+    - section (str): Section identifier.
+    - min_pool_size (int): Minimum number of pixels for a polygon.
 
     Returns:
-    - list of dask.delayed GeoDataFrame: List of GeoDataFrames for each time step.
+    - geopandas.GeoDataFrame: Combined GeoDataFrame of polygons.
     """
     polygon_tasks = []
     for i in range(da_wmask_feature.shape[0]):
         date = date_list[i]
         block = da_wmask_feature[i]
-        # Use map_blocks to apply the function to each block
-        task = da.map_blocks(
-            process_polygons_gdf,
-            block,
-            date,
-            transform,
-            crs,
-            section,
-            dtype=object,
-            chunks=(),
-            name=f'polygon_{i}',
-        )
+        task = delayed(process_polygons_gdf)(block, date, transform, crs, section, min_pool_size)
         polygon_tasks.append(task)
+    
     polygon_gdfs = compute(*polygon_tasks)
-    # Filter out any None results just in case
     polygon_gdfs = [gdf for gdf in polygon_gdfs if gdf is not None]
     
     if not polygon_gdfs:
-        # Return an empty GeoDataFrame with the correct columns and CRS
         combined_gdf = gpd.GeoDataFrame(columns=['Date', 'Section', 'Type', 'geometry'], crs=crs)
     else:
-        # Concatenate all GeoDataFrames
         combined_gdf = gpd.GeoDataFrame(pd.concat(polygon_gdfs, ignore_index=True), crs=crs)
     
     return combined_gdf
@@ -1175,6 +1185,3 @@ def export_points_and_lines(summary_ddf, section, masked_da_coords, outdir, crs)
     )
     
     return line_gdf, point_gdf
-    
-    line_gdf.to_file(os.path.join(outdir, f'LineStrings_section_{section}.shp'))
-    point_gdf.to_file(os.path.join(outdir, f'Points_section_{section}.shp'))

@@ -164,7 +164,7 @@ calculatemetrics_utils.py
 wd_batch_utils.py
 refact_metrics.py
 iRiverMetrics_GitHub.ipynb
-irm_example.ipynb
 tests.ipynb
 section_tests.ipynb
 irm_utils.py
+setup.py

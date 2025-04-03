@@ -41,7 +41,7 @@ pip install -r paste/clone/directory/requirements.txt
 
 3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
 
-4. **Example Usage:** Review example use cases and code snippets in the documentation of each module ([waterdetect_batch](docs/module1.md) and [calculate_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
+4. **Example Usage:** Review [example use cases](examples/irm_example.ipynb)  and code snippets in the documentation of each module ([waterdetect_batch](docs/module1.md) and [calculate_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
 
 5. **Contribute:** Contributions are welcome! If you have enhancements or additional features, please consider contributing back to the project via GitHub.
 
