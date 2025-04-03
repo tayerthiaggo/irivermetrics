@@ -268,7 +268,6 @@ def validate_input_folder(input_dir, img_ext):
             first_raster = first_raster.rio.reproject(reference_crs)
             reference_resolution = first_raster.rio.resolution()[0] 
         else:
-            reference_crs = reference_crs
             reference_resolution = first_raster.rio.resolution()[0]
     
     # Process and load each image, aligning to the reference CRS and resolution
@@ -279,20 +278,21 @@ def validate_input_folder(input_dir, img_ext):
     # Process and concatenate images one at a time
     for pimg, time_value, crs, res, n_bands in image_generator:
         da_images.append(pimg)
-        crs_lst.append(crs)
+        crs_lst.append(crs.to_string())
         res_lst.append(res)
         band_lst.append(n_bands)
         time_values.append(time_value)
-
+    
     # Check consistency of CRS, resolution, and band count across images
     assert len(set(crs_lst)) == 1, 'Check projection. Images must have the same EPSG'
     assert len(set(res_lst)) == 1, 'Check spatial resolution. Images must have the same pixel size'
     assert len(set(band_lst)) == 1, 'Check spatial resolution. Images must have the same number of bands'
-
+    
     # Check the number of bands and provide a reminder to stack them appropriately
     if band_lst[0] == 4:
         na_value = 0
         print(f'Reminder: 4 bands in source must be stacked as B,G,R,NIR')
+        input_img = replace_nodata(input_img, na_value)    
     elif band_lst[0] == 1:
         na_value = -1
         print(f'Single band raster found as water mask')
@@ -303,12 +303,13 @@ def validate_input_folder(input_dir, img_ext):
     # Create an xarray DataArray with a 'time' dimension
     time = xr.Variable('time', time_values)
     # Concatenate image data along the 'time' dimension and sort by time
-    input_img = xr.concat(da_images, dim=time
+    input_img = xr.concat(da_images, dim=time, join='override'
                           ).sortby('time'
                             ).chunk('auto')
-    # Fill NaN values with na_value and set '_FillValue' attribute to na_value
-    input_img = replace_nodata(input_img, na_value)         
-    input_img.attrs['_FillValue'] = na_value
+    
+    # # Fill NaN values with na_value and set '_FillValue' attribute to na_value
+    # input_img = replace_nodata(input_img, na_value)         
+    # input_img.attrs['_FillValue'] = na_value
 
     return input_img, band_lst[0], crs
 
@@ -386,7 +387,6 @@ def replace_nodata(input_img, new_nodata_val):
     nodata_val = input_img.attrs.get('_FillValue', None)
     if nodata_val is None:
         nodata_val = input_img.attrs.get('nodatavals', None)
-    
     # Replace existing NoData values with the new specified value
     if nodata_val is not None:
         # Replace the NoData value with the new value where it occurs
@@ -394,7 +394,7 @@ def replace_nodata(input_img, new_nodata_val):
     else:
         # If NoData values are represented as NaNs, use fillna to replace them
         input_img = input_img.fillna(new_nodata_val)
-    
+
     return input_img
 
 def validate_input_projection(r_lines, img_crs):
