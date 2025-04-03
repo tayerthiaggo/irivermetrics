@@ -12,6 +12,8 @@ from .utils import calc_metrics
 
 import dask.dataframe as dd
 
+import warnings
+
 ## Module 1
 def waterdetect_batch(input_img, r_lines, outdir=None, ini_file=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False):
     """
@@ -122,9 +124,9 @@ def calculate_metrics(da_wmask,
                     export_shp=False, 
                     export_PP=False, 
                     fill_nodata=True):   
-    """
-    [Your existing docstring]
-    """
+
+    warnings.filterwarnings("ignore", category=UserWarning)
+
     # Validate and preprocess inputs
     da_wmask, rcor_extent, section_length, crs, pixel_size, outdir = calc_metrics.validate(da_wmask, 
                                                                            rcor_extent, 
@@ -132,11 +134,12 @@ def calculate_metrics(da_wmask,
                                                                            section_length,
                                                                            img_ext,
                                                                            section_name_col)
+
     da_wmask, rcor_extent = calc_metrics.preprocess(da_wmask, 
                                                     rcor_extent, 
                                                     fill_nodata)
     
-    # return da_wmask
+
     date_list = pd.to_datetime(da_wmask.time.data).strftime('%Y-%m-%d').to_list()       
     features = list(rcor_extent.iterrows())
     
