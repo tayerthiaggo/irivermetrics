@@ -26,7 +26,7 @@ To get started with iRiverMetrics, follow these steps:
 1. **Clone the Repository:** Clone the iRiverMetrics repository from GitHub to your local machine.
 ```bash
 cd paste/your/directory/here
-git clone https://github.com/tayerthiaggo/iRiverMetrics.git
+git clone https://github.com/tayerthiaggo/irivermetrics.git
 ```
 
 2. **Requirements:** Ensure Python 3.x is installed. Set up the environment and install dependencies using:
