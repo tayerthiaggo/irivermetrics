@@ -96,4 +96,4 @@ return_da_array=False
 da_wmask = waterdetect_batch(input_img, r_lines, ini_file=None, outdir=None, buffer=1000, img_ext='.tif', reg=None, max_cluster=None, export_tif=True, return_da_array=False)
 ```
 
-[Back to Main README](../README.md)
+[Back to Main README](../README.md) · [Back to docs index](./index.md)

@@ -1,6 +1,6 @@
 # calculate_metrics
 
-**calculate_metrics** (_**da_wmask**, **rcor_extent**=None, **outdir**=None, **section_length**=None, **min_pool_size**=2, **img_ext**='.tif', **export_shp**=False, **return_da_array**=False_)
+**calculate_metrics** (_**da_wmask**, **rcor_extent**=None, **outdir**=None, **section_length**=None, **section_name_col**=None, **min_pool_size**=2, **img_ext**='.tif', **export_shp**=False, **export_PP**=False, **fill_nodata**=True_)
 
 ## Overview
 
@@ -26,6 +26,9 @@ Here's an example of how to use this module to calculate surface water metrics:
 - section_length : float, optional, default = None
     Length of river sections for metrics calculation in kilometers. If None, 
 
+- section_name_col : str, optional, default = None
+    Name of a column in `rcor_extent` to use as the section identifier in output. If None, the GeoDataFrame row index is used.
+
 - min_pool_size: int, optional, default=2
     Minimum size of detectable water pools, specified in pixels. Defaults to 2 pixels.
 
@@ -36,8 +39,11 @@ Here's an example of how to use this module to calculate surface water metrics:
 - export_shp : bool, optional, default = False
     Whether to export detailed shapefiles of the analysed river sections. Shapefiles with wetted length, start/end and mipoints will be exported for each time step.
 
-- return_da_array : bool, optional, default=False
-    Whether to return the data array of water masks along with the calculation results. Defaults to False.
+- export_PP : bool, optional, default = False
+    Whether to export a pixel persistence GeoTIFF raster for the AOI.
+
+- fill_nodata : bool, optional, default = True
+    Whether to fill missing (no-data / cloud-obscured) observations using temporal interpolation (±2 timesteps). If False, missing pixels are treated as non-water.
 
 2. **How it works:**
 Run the module to perform the following tasks:
@@ -97,4 +103,49 @@ return_da_array=False
 calculate_metrics(da_wmask, rcor_extent, section_length, min_pool_size, outdir, img_ext, export_shp, return_da_array)
 ```
 
-[Back to Main README](../README.md)
+## Metric definitions
+
+All metrics are computed per section per timestep unless noted otherwise.
+
+| Metric | Formula | Unit | Category |
+|--------|---------|------|----------|
+| `npools` | Count of labeled connected water bodies | count | Morphology |
+| `wet_area_km2` | Σ aᵢ | km² | Morphology |
+| `wet_length_km` | Σ lᵢ | km | Morphology |
+| `wet_perimeter_km` | Σ pᵢ | km | Morphology |
+| `section_area_km2` | Section polygon area | km² | Context |
+| `section_length_km` | User-supplied drainage-line length | km | Context |
+| `AWMSI` | Σ[(0.25 × pᵢ/√aᵢ) × (aᵢ/Σaᵢ)] | dimensionless | Morphology |
+| `AWRe` | Σ[(2√(aᵢ/π)/lᵢ) × (aᵢ/Σaᵢ)] | dimensionless | Morphology |
+| `AWMPA` | Σ(aᵢ²)/Σaᵢ | km² | Morphology |
+| `AWMPL` | Σ(lᵢ × aᵢ)/Σaᵢ | km | Morphology |
+| `AWMPW` | Σ(wᵢ × aᵢ)/Σaᵢ | km | Morphology |
+| `APSEC` | (Σaᵢ / sa) × 100 | % | Resilience |
+| `LPSEC` | (Σlᵢ / sl) × 100 — requires `section_length` | % | Resilience |
+| `PF` | N / Σaᵢ | pools/km² | Fragmentation |
+| `PLF` | N / Σlᵢ | pools/km | Fragmentation |
+| `pp_mean_%` | Mean PP of pixels where PP > 25% (temporal, section-wide) | % | Persistence |
+| `ra_area_km2` | Total area of pixels where PP > 90% (temporal, section-wide) | km² | Persistence |
+
+**Notation:** i = pool index; aᵢ = area; pᵢ = perimeter; lᵢ = pool length (igraph BFS); wᵢ = mean width (EDT along skeleton); N = total pools; sa = section polygon area; sl = section drainage-line length (`section_length` parameter).
+
+> **PP and RA** are computed once over the full time series, not per-timestep. They appear as constant values across all rows for a given section in the output CSV.
+
+## QA filtering
+
+Before computing metrics, the module applies two QA passes:
+
+1. **Pre-fill** — timesteps where fewer than 70% of section pixels are valid are excluded.
+2. **Post-fill** — after temporal nodata interpolation, timesteps where fewer than 95% of section pixels are valid are excluded.
+
+"Valid pixel" means: not NaN, not −1 (sensor no-data), not 2 (cloud/fill sentinel), and inside the section mask.
+
+This protocol matches the NESP Technical Report (Tayer et al., NESP) and [Tayer et al. (2026)](https://doi.org/10.1016/j.jhydrol.2025.134750).
+
+## Pool length algorithm
+
+Pool length is the longest geodesic path through the skeletonized water pool, computed by double-BFS on the skeleton's undirected connectivity graph (using `igraph`). This replaces the original OpenCV convolution + `MCP_Geometric` approach and delivers >95% speedup on large water bodies.
+
+See [Architecture — Pool length](./architecture.md#pool-length--igraph-double-bfs) for details.
+
+[Back to Main README](../README.md) · [Back to docs index](./index.md)
