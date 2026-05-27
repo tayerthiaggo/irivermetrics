@@ -23,7 +23,7 @@ from scipy.ndimage import generate_binary_structure
 import dask.dataframe as dd
 
 # Local imports
-from src.utils import wd_batch
+from irivermetrics.utils import wd_batch
 
 # Public functions
 def validate(da_wmask, rcor_extent, outdir, section_length, img_ext, section_name_col):
@@ -40,10 +40,11 @@ def validate(da_wmask, rcor_extent, outdir, section_length, img_ext, section_nam
     - tuple: Validated water mask DataArray, processed river corridor extent data, CRS, pixel size, and output directory.
     """   
     print('Checking input data...')
-    
-    # Validate da_wmask as DataArray or directory path
-    assert (isinstance(da_wmask, xr.core.dataarray.DataArray) or 
-           (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), 'Invalid input. da_wmask must be a valid DataArray or a directory path'
+
+    # Validate da_wmask as DataArray, Dataset, or directory path
+    assert (isinstance(da_wmask, (xr.DataArray, xr.Dataset)) or
+            (isinstance(da_wmask, str) and os.path.isdir(da_wmask))), \
+        'Invalid input. da_wmask must be a valid DataArray, Dataset, or directory path'
 
     # Process directory input to create DataArray
     if isinstance(da_wmask, str) and os.path.isdir(da_wmask):
@@ -52,8 +53,10 @@ def validate(da_wmask, rcor_extent, outdir, section_length, img_ext, section_nam
         # Create DataArray and validade rasters within the provided folder
         da_wmask, n_bands, crs = wd_batch.validate_input_folder(da_wmask, img_ext)
             
+    da_wmask = coerce_water_mask_dataarray(da_wmask)
+
     # Ensure da_wmask is a DataArray with a CRS attribute
-    if isinstance(da_wmask, xr.core.dataarray.DataArray):
+    if isinstance(da_wmask, xr.DataArray):
         crs = da_wmask.rio.crs
     
     if section_length is None:
@@ -85,8 +88,9 @@ def preprocess(da_wmask, rcor_extent, fill_nodata):
     
     original_time_count = da_wmask.sizes['time']
     # Exclude time steps with only nodata values
-    valid_time_mask = da_wmask.isnull().all(dim=['y', 'x'])
-    da_wmask = da_wmask.sel(time=~valid_time_mask)
+    valid_time_mask = ~da_wmask.isnull().all(dim=['y', 'x'])
+    valid_time_mask = valid_time_mask.compute() if hasattr(valid_time_mask.data, 'compute') else valid_time_mask
+    da_wmask = da_wmask.sel(time=valid_time_mask)
     valid_time_count = da_wmask.sizes['time'] 
     
     if valid_time_count < original_time_count:
@@ -248,7 +252,7 @@ def process_metrics(group):
         'AWMPL': 0, 
         'AWMPW': 0, 
         'PF': 0, 
-        'PFL': 0, 
+        'PLF': 0, 
         'APSEC': 0, 
         'LPSEC': LPSEC,
         'pp_mean_%': pp_mean,
@@ -262,15 +266,15 @@ def process_metrics(group):
 
         AWMSI = np.sum((0.25 * perimeters / np.sqrt(areas)) * (areas / total_wetted_area))
         AWMPA = np.average(areas, weights=areas)
-        radii = 2 * (np.sqrt(areas) / np.pi)
+        radii = 2 * np.sqrt(areas / np.pi)
         AWRe = np.nansum((radii / lengths) * areas) / total_wetted_area
         AWMPL = np.average(lengths, weights=areas)
         AWMPW = np.average(widths, weights=areas)
         PF = npools / total_wetted_area
-        PFL = npools / total_wetted_length
+        PLF = np.nan if total_wetted_length == 0 else npools / total_wetted_length
         APSEC = (total_wetted_area / section_area_km2) * 100
         
-        LPSEC = (total_wetted_length / section_length) * 100 if not np.isnan(section_length) or section_length != 0 else np.nan
+        LPSEC = np.nan if pd.isna(section_length) or section_length == 0 else (total_wetted_length / section_length) * 100
 
         return pd.Series({
             'section_area_km2': section_area_km2,
@@ -285,7 +289,7 @@ def process_metrics(group):
             'AWMPL': AWMPL, 
             'AWMPW': AWMPW, 
             'PF': PF, 
-            'PFL': PFL,
+            'PLF': PLF,
             'APSEC': APSEC, 
             'LPSEC': LPSEC,
             'pp_mean_%': pp_mean,
@@ -300,8 +304,20 @@ def calculate_pixel_persistence(
     # Sum wet observations over time
     wet_sum = da_wmask_feature.sum(dim='time')
     # Normalize by total observations to get persistence ratio
-    p_area = wet_sum / total_obs
+    p_area = (wet_sum / total_obs) * 100
     return p_area
+
+def coerce_water_mask_dataarray(da_wmask):
+    if isinstance(da_wmask, xr.Dataset):
+        if 'water' in da_wmask.data_vars:
+            return da_wmask['water']
+        if len(da_wmask.data_vars) == 1:
+            data_var = next(iter(da_wmask.data_vars))
+            return da_wmask[data_var]
+        raise AssertionError(
+            'Dataset inputs must contain a single water-mask variable or a variable named "water".'
+        )
+    return da_wmask
 
 # Helper functions
 ### Validate ###
@@ -508,8 +524,9 @@ def update_nodata_in_rcor_extent(da_wmask, rcor_extent):
     valid_data_proportion = valid_pixel_counts / total_pixel_counts
     # Create a mask to select time steps where at least 70% of the valid pixels are not -1 or 2
     valid_time_mask = valid_data_proportion >= 0.7
+    valid_time_mask = valid_time_mask.compute() if hasattr(valid_time_mask.data, 'compute') else valid_time_mask
     
-    num_invalid_time_steps = (~valid_time_mask).sum().values
+    num_invalid_time_steps = int((~valid_time_mask).sum().item())
     if num_invalid_time_steps > 0:
         # Print the message with the number of invalid time steps
         print(f"    {num_invalid_time_steps} layer(s) excluded - below 70% valid data threshold.")
@@ -582,8 +599,7 @@ def fill_nodata_darray(da_wmask, mask_array):
         boundary={'time': 'reflect'}, # Reflect boundary for edge chunks
         dtype=da_wmask.dtype
     )
-    da_wmask_data = da.where(filled_data == 1, filled_data, 0)
-    da_wmask = xr.DataArray(da_wmask_data.astype(np.int8),
+    filled_da = xr.DataArray(filled_data.astype(np.int8),
                     coords=da_wmask.coords,
                     dims=da_wmask.dims,
                     attrs=da_wmask.attrs
@@ -592,8 +608,9 @@ def fill_nodata_darray(da_wmask, mask_array):
     ## Check valid pixels
     print('    Checking filled NoData values quality...')
     valid_pixel_mask = (
-    da_wmask.notnull() &  # Check for not NaN
-    (da_wmask != -1) &    # Exclude NoData (-1)
+    filled_da.notnull() &  # Check for not NaN
+    (filled_da != -1) &    # Exclude NoData (-1)
+    (filled_da != 2) &     # Exclude filled sentinel values that remain unresolved
     (mask_array == 1)     # Include only where mask_array == 1
     )
     # Count the valid pixels where the mask is True
@@ -602,13 +619,20 @@ def fill_nodata_darray(da_wmask, mask_array):
     valid_data_proportion = valid_pixel_counts / total_pixel_counts
     # Create a mask to select time steps where at least 95% of the valid pixels are not -1
     valid_time_mask = valid_data_proportion >= 0.95
+    valid_time_mask = valid_time_mask.compute() if hasattr(valid_time_mask.data, 'compute') else valid_time_mask
     
-    num_invalid_time_steps = (~valid_time_mask).sum().values
+    num_invalid_time_steps = int((~valid_time_mask).sum().item())
     if num_invalid_time_steps > 0:
         # Print the message with the number of invalid time steps
         print(f"    {num_invalid_time_steps} layer(s) excluded - below 95% valid data threshold after filling nodata.")
-    # Filter only the valid time steps
-    da_wmask = da_wmask.sel(time=valid_time_mask)
+    # Filter only the valid time steps and convert unresolved nodata to non-water.
+    filled_da = filled_da.sel(time=valid_time_mask)
+    da_wmask_data = da.where(filled_da.data == 1, 1, 0)
+    da_wmask = xr.DataArray(da_wmask_data.astype(np.int8),
+                    coords=filled_da.coords,
+                    dims=filled_da.dims,
+                    attrs=filled_da.attrs
+                    )
     
     return da_wmask
 
@@ -660,23 +684,26 @@ def calculate_pixel_persistence_metrics(
     # Convert pixel size from meters to kilometers and calculate area in km²
     pixel_area_km2 = pixel_size**2 / 10**6
     
-    # Calculate mean persistence for pixels with p_area > 0.1
-    pp_mean = p_area.where(p_area > 0.1).mean(skipna=True).values.item()
-    ra_area = p_area.where(p_area > 0.9, other=0).sum(skipna=True) * pixel_area_km2
+    # Calculate mean persistence for pixels with p_area > 25%.
+    pp_mean = p_area.where(p_area > 25).mean(skipna=True).values.item()
+    ra_area = (p_area > 90).sum(skipna=True) * pixel_area_km2
 
     return pp_mean, ra_area.values.item()
 
 def find_connected_components(block, min_pool_size):
     structure = np.ones((3, 3), dtype=int) 
-    labeled_array, _ = label(block, structure=structure)
+    labeled_array, _ = label(block == 1, structure=structure)
     # Remove small objects
     labeled_array = remove_small_objects(labeled_array, min_size=min_pool_size)
+    labeled_array, _ = label(labeled_array > 0, structure=structure)
     return labeled_array.astype(np.int16)
 
 def skeletonize_label(labeled_layer):
-    skel = skeletonize(labeled_layer).astype(np.uint8)
-    structure = np.ones((3, 3), dtype=int) 
-    labeled_skel, _ = label(skel, structure=structure)
+    labeled_skel = np.zeros_like(labeled_layer, dtype=np.int16)
+    for label_value in np.unique(labeled_layer):
+        if label_value == 0:
+            continue
+        labeled_skel[skeletonize(labeled_layer == label_value)] = label_value
     return labeled_skel
 
 def distance_transform(labeled_layer_block):
@@ -808,6 +835,8 @@ def summarize_block(labeled_block, labeled_skel_block, distance_transform_block,
 def compute_length_single_graph(labeled_skel_block, pixel_size):
     # Get the coordinates of skeleton pixels and their labels
     skeleton_pixels = np.argwhere(labeled_skel_block > 0)
+    if skeleton_pixels.size == 0:
+        return pd.DataFrame(columns=['label', 'length_km', 'path'])
     labels = labeled_skel_block[labeled_skel_block > 0]
 
     # Create a DataFrame for easy manipulation
@@ -863,7 +892,7 @@ def compute_length_single_graph(labeled_skel_block, pixel_size):
         subgraph = g.induced_subgraph(label_indices)
 
         # Find the longest path in the subgraph
-        path_length, path_coords = find_longest_path_subgraph(subgraph, pixels_df, pixel_size=30)
+        path_length, path_coords = find_longest_path_subgraph(subgraph, pixels_df, pixel_size=pixel_size)
 
         results.append({
             'label': label_val,
@@ -953,42 +982,19 @@ def process_edt_width(paths, distance_transform_block, pixel_size):
     Returns:
     - pandas.DataFrame: DataFrame with columns ['width_km'].
     """
-    # Filter out empty paths
-    non_empty_paths = [path for path in paths if len(path) > 0]  # Corrected condition
+    width_values = []
+    for path in paths:
+        if len(path) == 0:
+            width_values.append(np.nan)
+            continue
 
-    if not non_empty_paths:
-        return pd.DataFrame(columns=['width_km'])  # Return empty DataFrame if no valid paths
+        points = np.asarray(path)
+        rows = np.clip(points[:, 0], 0, distance_transform_block.shape[0] - 1)
+        cols = np.clip(points[:, 1], 0, distance_transform_block.shape[1] - 1)
+        mean_width = distance_transform_block[rows, cols].mean()
+        width_values.append((mean_width * pixel_size * 2) / 1e3)
 
-    # Flatten the list of paths
-    flat_points = np.vstack(non_empty_paths)  # Shape: (total_points, 2)
-
-    # Separate row and column indices
-    flat_idx, flat_idy = flat_points[:, 0], flat_points[:, 1]
-
-    # Ensure indices are within the bounds of the distance_transform_block
-    flat_idx = np.clip(flat_idx, 0, distance_transform_block.shape[0] - 1)
-    flat_idy = np.clip(flat_idy, 0, distance_transform_block.shape[1] - 1)
-
-    # Get the corresponding distance transform values
-    widths = distance_transform_block[flat_idx, flat_idy]
-
-    # Determine the split indices for each path
-    lengths = [len(path) for path in non_empty_paths]
-    split_indices = np.cumsum(lengths)[:-1]
-
-    # Split the widths back into individual paths
-    width_segments = np.split(widths, split_indices)
-
-    # Calculate the mean width for each path
-    mean_widths = np.array([segment.mean() if len(segment) > 0 else np.nan for segment in width_segments])
-
-    # Convert to km (assuming pixel_size is in meters and width is diameter)
-    width_km = (mean_widths * pixel_size * 2) / 1e3  # diameter to radius if necessary
-
-    # Create the DataFrame
-    df = pd.DataFrame({'width_km': width_km})
-
-    return df
+    return pd.DataFrame({'width_km': width_values})
 
 def compute_area_and_perimeter_df(labeled_block, pixel_size):
     
@@ -1012,7 +1018,7 @@ def compute_area_and_perimeter_df(labeled_block, pixel_size):
     df = pd.DataFrame({
         'area_km2': area_km2,
         'perimeter_km': perimeter_km,
-        'label': np.arange(1, len(props['label']) + 1),
+        'label': props['label'],
     })
     
     return df

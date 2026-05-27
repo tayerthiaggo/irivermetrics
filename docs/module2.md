@@ -72,11 +72,7 @@ The module generates a series of metrics for the specified river sections and se
 
 ## Usage Example
 ```python
-#Add cloned directory to path
-import sys
-sys.path.append(r'path\to\clone\irivermetrics')
-
-from src.irm_main import calculate_metrics
+from irivermetrics.irm_main import calculate_metrics
 
 # Define input parameters
 

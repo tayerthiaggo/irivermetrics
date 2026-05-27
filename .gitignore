@@ -167,4 +167,14 @@ iRiverMetrics_GitHub.ipynb
 tests.ipynb
 section_tests.ipynb
 irm_utils.py
-setup.py
+setup.py.venv/
+.ipynb_checkpoints/
+.ruff_cache/
+.DS_Store
+Thumbs.db
+node_modules/
+.idea/
+.vscode/
+.cache/
+tmp/
+temp/

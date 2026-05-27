@@ -292,7 +292,6 @@ def validate_input_folder(input_dir, img_ext):
     if band_lst[0] == 4:
         na_value = 0
         print(f'Reminder: 4 bands in source must be stacked as B,G,R,NIR')
-        input_img = replace_nodata(input_img, na_value)    
     elif band_lst[0] == 1:
         na_value = -1
         print(f'Single band raster found as water mask')
@@ -306,10 +305,10 @@ def validate_input_folder(input_dir, img_ext):
     input_img = xr.concat(da_images, dim=time, join='override'
                           ).sortby('time'
                             ).chunk('auto')
-    
-    # # Fill NaN values with na_value and set '_FillValue' attribute to na_value
-    # input_img = replace_nodata(input_img, na_value)         
-    # input_img.attrs['_FillValue'] = na_value
+
+    # Fill NoData values with the convention expected by the downstream module.
+    input_img = replace_nodata(input_img, na_value)
+    input_img.attrs['_FillValue'] = na_value
 
     return input_img, band_lst[0], crs
 

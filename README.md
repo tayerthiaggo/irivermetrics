@@ -29,14 +29,12 @@ cd paste/your/directory/here
 git clone https://github.com/tayerthiaggo/irivermetrics.git
 ```
 
-2. **Requirements:** Ensure Python 3.x is installed. Set up the environment and install dependencies using:
-(install GDAL with conda for less headache)
+2. **Install:** Ensure Python ≥ 3.10 is installed. Create a conda environment, install GDAL, then install the package in editable mode:
 ```bash
-conda create -n irivermetrics python=3.x
+conda create -n irivermetrics python=3.10
 conda activate irivermetrics
-
 conda install conda-forge::gdal
-pip install -r paste/clone/directory/requirements.txt
+pip install -e path/to/clone/irivermetrics
 ```
 
 3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
@@ -47,12 +45,8 @@ pip install -r paste/clone/directory/requirements.txt
 
 ## Usage Example
 ```python
-# Add cloned directory to path
-import sys
-sys.path.append(r'path\to\clone\irivermetrics')
-
 # Import modules
-from src.irm_main import waterdetect_batch, calculate_metrics
+from irivermetrics.irm_main import waterdetect_batch, calculate_metrics
 
 ## Module 1
 # Path to a directory containing multispectral images (e.g., TIFF files)
