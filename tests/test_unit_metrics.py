@@ -1,4 +1,14 @@
-"""Unit tests for ecofragments.utils.calc_metrics helper functions."""
+"""Unit tests for ecofragments.utils.calc_metrics helper functions.
+
+Scope note (Milestone 1 quarantine, U7/Q5): these tests characterise the CURRENT
+legacy implementation's own formulas in isolation (``process_metrics``,
+``calculate_pixel_persistence``, etc.). They intentionally exercise metrics such as
+``AWMPA``/``PF``/``PLF``/``pp_mean_%`` that v1.2's canonical schema forbids or
+redefines (see ``docs/audit/decisions.md`` Q5) - that is correct here because this
+module documents unchanged legacy behaviour, not a v1.2 correctness contract. No test
+in this module may be read as validating v1.2 occurrence, schema, or metric
+correctness; see ``docs/testing.md`` for the quarantine rules.
+"""
 import numpy as np
 import pandas as pd
 import pytest

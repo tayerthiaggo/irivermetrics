@@ -1,11 +1,21 @@
-"""Integration test: run calculate_metrics on bundled test data and
-compare outputs against the reference CSV shipped in tests/.
+"""Integration test: run calculate_metrics on bundled test data.
 
 This test is marked 'slow' because it runs the full processing pipeline.
 Run it with:
     pytest -m slow
 or together with unit tests via:
     pytest
+
+Quarantine note (U7, approved - see docs/audit/decisions.md and docs/testing.md):
+``tests/results_iRiverMetrics/metrics/irm_metrics.csv`` is retired as a v1.2
+correctness oracle. It contains dropped/forbidden metrics and a naive
+total-timestep ``pp_mean_%`` that must never be treated as a target value. The
+only legacy-CSV comparison this module performs is
+``test_calculate_metrics_section_area_matches_legacy_geometry_smoke``, which checks
+``section_area_km2`` - pure section-polygon geometry that does not depend on the
+water mask, the valid-observation denominator, or any of the disqualifying defects.
+See ``tests/contracts/test_legacy_baseline_quarantine.py`` for the canonical test
+proving the CSV is rejected as a correctness baseline.
 """
 import numpy as np
 import pandas as pd
@@ -13,20 +23,38 @@ import pytest
 
 from ecofragments import calculate_metrics
 
-# Columns present in both the old reference CSV and the current output.
-# The reference CSV uses 'PFL'; current code produces 'PLF'.
-_OLD_TO_NEW = {"PFL": "PLF"}
-_NUMERIC_COLS = [
+_RETAINED_WIDE_COLS = {
+    "date",
+    "section",
     "section_area_km2",
     "n_patches",
-    "wet_area_km2",
-    "wet_length_km",
-    "wet_perimeter_km",
+    "APSEC",
     "AWMSI",
+    "AWRe",
+    "LPI",
+    "pp_mean_%",
+    "ra_area_km2",
+}
+
+_DROPPED_LEGACY_COLS = {
+    "PF",
+    "PLF",
     "AWMPA",
     "AWMPL",
     "AWMPW",
+    "LPSEC",
+    "wet_area_km2",
+    "wet_length_km",
+    "wet_perimeter_km",
+}
+
+_NUMERIC_COLS = [
+    "section_area_km2",
+    "n_patches",
     "APSEC",
+    "AWMSI",
+    "AWRe",
+    "LPI",
     "pp_mean_%",
     "ra_area_km2",
 ]
@@ -50,20 +78,15 @@ def test_calculate_metrics_shape(da_wmask, rcor_extent_path, tmp_path):
 
 @pytest.mark.slow
 def test_calculate_metrics_columns(da_wmask, rcor_extent_path, tmp_path):
-    """Output DataFrame exposes all expected metric columns."""
+    """Compatibility facade exposes retained v1.2 metrics only."""
     result = calculate_metrics(
         da_wmask,
         rcor_extent=rcor_extent_path,
         outdir=str(tmp_path),
         fill_nodata=True,
     )
-    expected_cols = {
-        "date", "section", "section_area_km2", "n_patches",
-        "wet_area_km2", "wet_length_km", "wet_perimeter_km",
-        "AWMSI", "AWRe", "AWMPA", "AWMPL", "AWMPW",
-        "PF", "PLF", "APSEC", "LPSEC", "pp_mean_%", "ra_area_km2",
-    }
-    assert expected_cols.issubset(set(result.columns))
+    assert _RETAINED_WIDE_COLS.issubset(set(result.columns))
+    assert _DROPPED_LEGACY_COLS.isdisjoint(set(result.columns))
 
 
 @pytest.mark.slow
@@ -97,14 +120,18 @@ def test_calculate_metrics_csv_written(da_wmask, rcor_extent_path, tmp_path):
 
 
 @pytest.mark.slow
-def test_calculate_metrics_regression(da_wmask, rcor_extent_path, expected_metrics, tmp_path):
-    """Numeric metrics are within 5 % of the reference output for matched rows.
+def test_calculate_metrics_section_area_matches_legacy_geometry_smoke(
+    da_wmask, rcor_extent_path, legacy_baseline_csv_path, tmp_path
+):
+    """Historical smoke check for one approved invariant kernel only (U7 quarantine).
 
-    A generous tolerance is used because the igraph BFS path-finding can
-    produce slightly different (but equally valid) longest-path solutions
-    compared to the MCP_Geometric approach used in the original codebase.
-    Regression checks are limited to area-based metrics which are
-    deterministic and independent of the skeleton algorithm.
+    ``section_area_km2`` is pure section-polygon geometry
+    (``feature.geometry.area / 1e6``): it never depends on the water mask, the
+    valid-observation denominator, or any of the naive-persistence defects that
+    disqualify this CSV as a v1.2 correctness oracle (see
+    ``docs/audit/evidence/regression_baseline.md``). This is the only comparison
+    against the legacy CSV that this suite performs; no occurrence, schema, or
+    ``pp_mean_%``/APSEC equivalence is asserted here.
     """
     result = calculate_metrics(
         da_wmask,
@@ -112,29 +139,14 @@ def test_calculate_metrics_regression(da_wmask, rcor_extent_path, expected_metri
         outdir=str(tmp_path),
         fill_nodata=True,
     )
+    legacy = pd.read_csv(legacy_baseline_csv_path)
 
-    # Normalise column names: reference CSV may use 'PFL' while code uses 'PLF'
-    ref = expected_metrics.rename(columns=_OLD_TO_NEW)
+    result_areas = result.groupby("section")["section_area_km2"].first()
+    legacy_areas = legacy.groupby("section")["section_area_km2"].first()
+    result_areas.index = result_areas.index.astype(str)
+    legacy_areas.index = legacy_areas.index.astype(str)
 
-    result["date"] = pd.to_datetime(result["date"]).dt.strftime("%Y-%m-%d")
-    ref["date"] = pd.to_datetime(ref["date"]).dt.strftime("%Y-%m-%d")
-    result["section"] = result["section"].astype(str)
-    ref["section"] = ref["section"].astype(str)
-
-    merged = result.merge(ref, on=["date", "section"], suffixes=("_new", "_ref"))
-    assert len(merged) > 0, "No matching (date, section) pairs between result and reference"
-
-    # Check area-based deterministic metrics only
-    for col in ["section_area_km2", "wet_area_km2", "APSEC", "pp_mean_%"]:
-        new_col = f"{col}_new"
-        ref_col = f"{col}_ref"
-        if new_col not in merged or ref_col not in merged:
-            continue
-        mask = merged[new_col].notna() & merged[ref_col].notna() & (merged[ref_col] != 0)
-        if not mask.any():
-            continue
-        rel_err = ((merged.loc[mask, new_col] - merged.loc[mask, ref_col]).abs()
-                   / merged.loc[mask, ref_col].abs())
-        assert rel_err.median() < 0.05, (
-            f"Column '{col}' median relative error {rel_err.median():.3f} exceeds 5 %"
-        )
+    common_sections = result_areas.index.intersection(legacy_areas.index)
+    assert len(common_sections) > 0, "No matching sections between result and legacy CSV"
+    for section in common_sections:
+        assert result_areas[section] == pytest.approx(legacy_areas[section], rel=1e-6)

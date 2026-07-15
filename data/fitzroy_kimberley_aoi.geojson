@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "name": "fitzroy_kimberley_aoi",
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "fitzroy_kimberley_aoi",
+        "source": "user-supplied KML polygon (2026-05-26)",
+        "notes": "Roughly 32x14 km AOI in the Kimberley region near Derby/Fitzroy. WGS84 lon/lat. Reproject to EPSG:3577 (GDA94 / Australian Albers) at load time to match WOFS pipeline contract."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [123.9078762770199, -18.04497141146331],
+            [123.9088048165457, -18.16809453503121],
+            [124.2170451872198, -18.16612482630913],
+            [124.2144404344805, -18.04020627169742],
+            [123.9078762770199, -18.04497141146331]
+          ]
+        ]
+      }
+    }
+  ]
+}

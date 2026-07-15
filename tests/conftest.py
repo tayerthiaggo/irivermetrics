@@ -1,6 +1,5 @@
 """Shared pytest fixtures for ecofragments test suite."""
 import pytest
-import pandas as pd
 import xarray as xr
 import geopandas as gpd
 from pathlib import Path
@@ -28,9 +27,12 @@ def rcor_extent_gdf(rcor_extent_path):
 
 
 @pytest.fixture(scope="session")
-def expected_metrics():
-    """Reference metrics CSV produced by the original codebase."""
-    return pd.read_csv(
-        TEST_DIR / "results_ecofragments" / "metrics" / "ecof_metrics.csv",
-        index_col=0,
-    )
+def legacy_baseline_csv_path():
+    """Path to the legacy iRiverMetrics regression CSV.
+
+    Quarantined (U7, approved 2026-07-11): this fixture may only back smoke
+    comparisons of approved, purely-geometric invariant columns (e.g.
+    ``section_area_km2``). It must never be treated as a v1.2 correctness oracle -
+    see ``tests/contracts/test_legacy_baseline_quarantine.py`` and ``docs/testing.md``.
+    """
+    return TEST_DIR / "results_iRiverMetrics" / "metrics" / "irm_metrics.csv"

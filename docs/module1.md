@@ -1,3 +1,7 @@
+> **Quarantined (historical):** `waterdetect_batch` is **not implemented** in
+> HydroFragments. This document describes the predecessor iRiverMetrics module
+> only. Use upstream Water Detect or WaterMask-TSFill products instead.
+
 # waterdetect_batch
 
 **waterdetect_batch** (_**input_img**, **r_lines**, **outdir**=None, **ini_file**=None, **buffer**=1000, **img_ext**='.tif', **reg**=None, **max_cluster**=None, **export_tif**=True, **return_da_array**=False_)
