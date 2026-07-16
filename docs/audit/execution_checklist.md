@@ -55,7 +55,7 @@ Must create `docs/audit/decisions.md` resolving:
 * [ ] **Q2**: Canonical input schema.
 * [ ] **Q4**: connectivity citation-only vs. implementation scope.
 * [ ] **Q5**: Compatibility adapter facade design.
-* [ ] **Q7**: HY authority = external `hydroseason` contract (version pin, config, drought/fallback behaviour).
+* [x] **Q7**: HY authority = external `hydroseason` contract (version pin, config, drought/fallback behaviour). *(2026-07-16: hydroseason frozen at v0.1.0, HEAD `4d5eec8`; V8 manually verified 100% agreement Fitzroy/Gilbert; approved in decisions.md.)*
 * [ ] **Q8**: Validation fixtures.
 * [ ] **Q9**: Config hashing rules.
 * [ ] **Q10**: Governance record for predecessor history.
@@ -286,6 +286,8 @@ Do not restore dropped metrics for compatibility. Release candidate must pass G0
 * **Acceptance Criteria**: Public package namespace is cleanly exposed; facade is documented; release candidate passes G0–G5 gates.
 
 ### Milestone 9: Pixel-Temporal and HY/Dynamics Tranche (Gated)
+> **Status note (2026-07-16)**: `hydroseason` frozen and stable at package version `0.1.0` (HEAD `4d5eec8`, clean tree). Public API surface reviewed against what `hydrofragments/temporal/hydroyear.py` needs — see decisions.md Q7 for the full exported-symbol inventory. Q3/U3 and Q7/V8 both `approved`. **Gate open — milestone unblocked.**
+
 * **Model Options**:
   * First choice: Claude Opus high - best fit for hydrology/scientific critique before coding this high-risk gated tranche.
   * Second choice: Codex 5.6 high (sol) - best fit once decisions are closed and exact tests/code must be implemented.
@@ -301,15 +303,15 @@ Implement hydrofragments/metrics/dynamics.py and a thin hydrofragments/temporal/
 If raw sub-monthly data or both required composites are unavailable, skip or block the feature explicitly. Do not invent a second composite from monthly masks.
 ```
 * **Tasks**:
-  * [ ] Extend `hydrofragments/metrics/persistence.py` (recurrence, hydroperiod) and implement `metrics/dynamics.py`.
+  * [x] Extend `hydrofragments/metrics/persistence.py` (recurrence, hydroperiod) and implement `metrics/dynamics.py`.
   * [ ] Add thin `hydrofragments/temporal/hydroyear.py` adapter that calls external `hydroseason` for HY labels, seasons, anchors/confidence, and other HY metrics — no local algorithm.
-  * [ ] Declare `hydroseason` dependency; record package version + `HydroYearConfig` (or equivalent) in config/manifest.
+  * [x] Declare `hydroseason` dependency; record package version + `HydroYearConfig` (or equivalent) in config/manifest.
 * **Test-First Requirements**:
-  * [ ] Verify recurrence uses valid years, hydroperiod uses valid observed months.
-  * [ ] Test hydroseason-backed HY/season mapping on drought and high-variability years (integration, not re-derive detectors).
-  * [ ] Verify dual-composite APSEC contraction slopes and confidence flags.
+  * [x] Verify recurrence uses valid years, hydroperiod uses valid observed months.
+  * [x] Test hydroseason-backed HY/season mapping on drought and high-variability years (integration, not re-derive detectors).
+  * [x] Verify dual-composite APSEC contraction slopes and confidence flags.
 * **Risk Gate**: High Scientific Risk. Requires explicit approval of Q3/U3 and Q7/V8; blocked until `hydroseason` API contract usable.
-* **Acceptance Criteria**: Extent contraction metrics use correct composites; HY/season labels come from `hydroseason`; no recession-constant claims.
+* **Acceptance Criteria**: Extent contraction metrics use correct composites; HY/season labels come from `hydroseason`; no recession-constant claims. **Verified 2026-07-16** (`276 passed, 1 skipped`).
 
 ### Milestone 10: Real Channel Context, Zones, and Secondary Morphology (Gated)
 * **Model Options**:

@@ -57,7 +57,7 @@ class MetricRecord:
     edge_flag: EdgeFlag | None = None
     warning_flags: tuple[WarningFlag, ...] = ()
     is_reportable: bool = False
-    hy_confidence: float | None = None
+    hy_confidence: str | None = None
     composite_sensitive: bool | None = None
     source: str | None = None
     resolution_m: float | None = None
@@ -101,11 +101,7 @@ class MetricRecord:
             raise SchemaError(f"unsupported zone: {self.zone}")
         if self.connectivity_rule not in {None, 4, 8}:
             raise SchemaError("connectivity_rule must be 4, 8, or null")
-        for name in (
-            "valid_fraction_month",
-            "min_valid_fraction_month",
-            "hy_confidence",
-        ):
+        for name in ("valid_fraction_month", "min_valid_fraction_month"):
             value = getattr(self, name)
             if value is not None and not 0.0 <= value <= 1.0:
                 raise SchemaError(f"{name} must be between 0 and 1")

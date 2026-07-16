@@ -88,14 +88,14 @@ _METRICS = (
     MetricSpec(
         "recurrence",
         MetricFamily.PERSISTENCE,
-        "count",
+        "percent",
         tier="pixel_temporal",
         dependencies=(MetricDependency.VALIDITY,),
     ),
     MetricSpec(
         "hydroperiod",
         MetricFamily.PERSISTENCE,
-        "month",
+        "fraction",
         tier="pixel_temporal",
         dependencies=(MetricDependency.VALIDITY,),
     ),
@@ -105,7 +105,7 @@ _METRICS = (
         "percent_per_month",
         value_type=ValueType.HY_SUMMARY,
         tier="dynamics",
-        dependencies=(MetricDependency.HY_ANCHOR,),
+        dependencies=(MetricDependency.HY_ANCHOR, MetricDependency.DUAL_COMPOSITE),
     ),
     MetricSpec(
         "reconnection_timing",
@@ -188,8 +188,6 @@ PROFILES = {
     "pixel_temporal": ("recurrence", "hydroperiod"),
     "dynamics": (
         "extent_contraction",
-        "reconnection_timing",
-        "refuge_spatial_stability",
     ),
     "channel": ("lpsec", "inter_pool_gap"),
     "secondary": ("mesh", "pool_width"),

@@ -43,6 +43,33 @@ class RefugeAreaResult:
 
 
 @dataclass(frozen=True)
+class RecurrenceResult:
+    """Inter-annual recurrence (spec §6.12) and its valid-year support count.
+
+    ``recurrence`` is the equal-weight mean of supported calendar-month wet
+    fractions across years, expressed as a percentage. A calendar year with
+    zero valid (observed) months is not a valid year and contributes to
+    ``valid_year_count``; unsupported calendar months contribute no term.
+    """
+
+    recurrence: xr.DataArray
+    valid_year_count: xr.DataArray
+
+
+@dataclass(frozen=True)
+class HydroperiodResult:
+    """Within-year hydroperiod (spec §6.12), one value per calendar year.
+
+    ``hydroperiod`` is ``valid wet months / valid observed months`` for each
+    pixel and year; unobserved months are excluded from the denominator, not
+    treated as dry. ``valid_observed_months`` is that denominator.
+    """
+
+    hydroperiod: xr.DataArray
+    valid_observed_months: xr.DataArray
+
+
+@dataclass(frozen=True)
 class OccurrenceResult:
     """Per-pixel occurrence raster and its supporting valid-observation count.
 
@@ -135,9 +162,58 @@ def compute_refuge_area(
     )
 
 
+def compute_recurrence(monthly: xr.Dataset, *, config: HydroConfig) -> RecurrenceResult:
+    """Compute pixel recurrence: inter-annual reliability of wetness (spec §6.12).
+
+    The locked U2/Q1 estimator equal-weights supported calendar months to
+    prevent seasonal missingness from reweighting the result toward months
+    with better observation. ``valid_year_count`` remains available support
+    diagnostics and excludes years with zero valid observations.
+    """
+    water = monthly["water"].astype(bool)
+    valid_obs = monthly["valid_obs"].astype(bool)
+
+    # U2/Q1: equal-weight supported calendar months so seasonal missingness
+    # cannot reweight the estimate toward months with better observation.
+    valid_months_per_year = valid_obs.astype(np.int64).groupby("time.year").sum(dim="time")
+    is_valid_year = valid_months_per_year > 0
+
+    valid_year_count = is_valid_year.sum(dim="year").astype(np.int64)
+
+    grouped_wet = (water & valid_obs).astype(np.float64).groupby("time.month").sum(dim="time")
+    grouped_valid = valid_obs.astype(np.float64).groupby("time.month").sum(dim="time")
+    monthly_recurrence = grouped_wet / grouped_valid.where(grouped_valid > 0)
+    recurrence = monthly_recurrence.mean(dim="month", skipna=True) * 100.0
+
+    return RecurrenceResult(recurrence=recurrence, valid_year_count=valid_year_count)
+
+
+def compute_hydroperiod(monthly: xr.Dataset, *, config: HydroConfig) -> HydroperiodResult:
+    """Compute within-year hydroperiod per pixel and calendar year (spec §6.12).
+
+    ``HP_{p,y} = valid wet months / valid observed months``. Unobserved months
+    are excluded from the denominator so they never count as dry.
+    """
+    water = monthly["water"].astype(bool)
+    valid_obs = monthly["valid_obs"].astype(bool)
+
+    valid_observed_months = valid_obs.astype(np.int64).groupby("time.year").sum(dim="time")
+    wet_months = (water & valid_obs).astype(np.int64).groupby("time.year").sum(dim="time")
+
+    hydroperiod = wet_months / valid_observed_months.where(valid_observed_months > 0)
+
+    return HydroperiodResult(
+        hydroperiod=hydroperiod, valid_observed_months=valid_observed_months
+    )
+
+
 __all__ = [
+    "HydroperiodResult",
     "OccurrenceResult",
+    "RecurrenceResult",
     "RefugeAreaResult",
+    "compute_hydroperiod",
     "compute_occurrence",
+    "compute_recurrence",
     "compute_refuge_area",
 ]

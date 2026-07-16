@@ -150,13 +150,13 @@
 
 | Field | Value |
 |---|---|
-| **Decision (proposed)** | **HY detection, season mapping, and related HY metrics not implemented in HydroFragments**; consume external sibling package **`hydroseason`** (`../hydroseason` / `D:\RLH\5.6\repos\hydroseason`) via thin adapter; pin version + config in manifest; no persistence-based HY novelty claim until differentiated from Tayer 2025/2026 (V8) |
-| **Status** | `pending` — `hydroseason` API contract + version pin + V8 comparison |
-| **Evidence artifact** | `docs/audit_implementation_plan.md` scope constraint (external HY package); `hydroseason` README/public API; `scientific_metrics_audit.md` R4/V8; `adversarial_synthesis.md` deferrals |
+| **Decision** | **HY detection, season mapping, and related HY metrics not implemented in HydroFragments**; consume external sibling package **`hydroseason`** (`../hydroseason` / `D:\RLH\5.6\repos\hydroseason`) via thin adapter; pin version + config in manifest; persistence-based HY differentiated from Tayer 2025/2026 rainfall-based HY per V8 |
+| **Status** | `approved` |
+| **Evidence artifact** | `hydroseason` repo frozen at package version `0.1.0` (`pyproject.toml`), HEAD `4d5eec8` "fix: deselect experimental promotion-gate tests in CI", clean working tree (verified 2026-07-16). Public API surface confirmed exported from `hydroseason/__init__.py`: `HydroYearConfig`, `detect_hydrological_years`, `label_hydrological_months`, `monthly_water_extent`, `suggest_hydro_year_config` (static engine); `DynamicHydroYearConfig`, `detect_dynamic_hydrological_years`, `suggest_dynamic_hydro_year_config`, `HydrologicalStateResult`, `SeasonalPatternResult`, `analyze_hydrological_state`, `classify_annual_surface_water_condition`, `classify_seasonal_pattern`, `compute_monthly_surface_water_condition` (dynamic/stress engine); `load_aoi`, `load_wofs_from_stac`, `load_monthly_masks`, `load_monthly_masks_zarr`, `load_extent_csv`, `complete_monthly_axis`, `generate_html_report` (I/O). Default detector `robust_extrema`; `semi_markov` retained as experimental/deselected-in-CI challenger, not the promoted path — HydroFragments adapter must default to `robust_extrema`. V8 comparison (persistence-based HY vs Tayer 2025/2026 rainfall-based HY) run manually by maintainer on Fitzroy and Gilbert extent series: **100% agreement** on HY boundary/season assignment, no artifact file generated for this pass — recorded here as direct maintainer attestation dated 2026-07-16. |
 | **Owner** | Thiaggo de Castro Tayer |
-| **Approval date** | — |
+| **Approval date** | 2026-07-16 — maintainer confirmed `hydroseason` finished/stable and manually verified V8 agreement (Fitzroy/Gilbert, 100% match) |
 | **Consequence if wrong** | Duplicate published HY method; unstable dry-down anchors; broken cross-repo coupling |
-| **Affected milestones** | M9 (blocked on `hydroseason` contract) |
+| **Affected milestones** | M9 — unblocked |
 
 ### Q8 — Validation fixtures
 
@@ -181,6 +181,18 @@
 | **Approval date** | — |
 | **Consequence if wrong** | Reproducibility claims fail across machines |
 | **Affected milestones** | M2, M7 |
+
+### Q11 — Extent-contraction slope method (`dynamics.contraction_method` / `dynamics.minimum_points`)
+
+| Field | Value |
+|---|---|
+| **Decision** | `dynamics.contraction_method = "linear"` (ordinary least-squares slope of APSEC vs month index between peak-wet and end-dry HY anchors); `dynamics.minimum_points = 3`. Fewer than 3 usable monthly points yields a suppressed (NaN) slope with a `low_df` diagnostic rather than a reported value. |
+| **Status** | `approved` |
+| **Evidence artifact** | `docs/audit/implementation_plan.md` §"Persistence, temporal, and dynamics" (flagged as needing to be locked); `docs/HydroFragments_v1.2_spec.md` §6.5 (linear or Theil-Sen both spec-sanctioned) |
+| **Owner** | Thiaggo de Castro Tayer |
+| **Approval date** | 2026-07-16 — maintainer selected `linear`/`minimum_points=3` over `theil_sen` when asked directly during M9 implementation |
+| **Consequence if wrong** | Contraction slope values change if method is revised later (Theil-Sen is more outlier-robust); minimum_points too low would let unreportable slopes (1-2 points, 0-1 residual df) through as if reliable |
+| **Affected milestones** | M9 |
 
 ### Q10 — Predecessor history / publication lineage
 
@@ -218,5 +230,7 @@
 | Real `water_cube.zarr` validity sensitivity archived | **Yes** — `docs/audit/evidence/validity_reliability_report.md` (2026-07-14) |
 | Drainage dataset supplied | **Yes** — `data/fitzroy_kimberley_drainage.gpkg`, approved (U4/Q6) |
 
-**Decision Gate 0: CLOSED.** U1, U2/Q1, U3/Q3, U4/Q6, U7, Q2, Q4, Q5, Q8, Q10 are `approved`.
-Q7 and Q9 are legitimately deferred to their respective milestones and do not block core work.
+**Decision Gate 0: CLOSED.** U1, U2/Q1, U3/Q3, U4/Q6, U7, Q2, Q4, Q5, Q7, Q8, Q10 are `approved`.
+Q9 is legitimately deferred to its milestone and does not block core work.
+
+**M9 gate (Q3/U3 and Q7/V8): OPEN.** Both required rows are `approved` as of 2026-07-16 — Milestone 9 (pixel-temporal and HY/dynamics tranche) may begin.

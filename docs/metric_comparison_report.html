@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HydroFragments Metric Comparison Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #5c6875;
+      --line: #d9e0e7;
+      --panel: #f6f8fa;
+      --old: #7d4a24;
+      --new: #0b6470;
+      --keep: #1f7a4c;
+      --drop: #a43d3d;
+      --defer: #6a5f24;
+      --warn: #8a5a00;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font: 15px/1.55 "Segoe UI", Roboto, Arial, sans-serif;
+      background: #ffffff;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 22px;
+      margin-bottom: 26px;
+    }
+
+    h1 {
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.05;
+      margin: 0 0 14px;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 23px;
+      margin: 34px 0 12px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin: 24px 0 10px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .lede {
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 18px 0 26px;
+    }
+
+    .summary article {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: var(--panel);
+    }
+
+    .summary h2 {
+      margin-top: 0;
+    }
+
+    .old {
+      border-top: 4px solid var(--old);
+    }
+
+    .new {
+      border-top: 4px solid var(--new);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 26px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      vertical-align: top;
+    }
+
+    th {
+      text-align: left;
+      background: #eef3f6;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+
+    .metric {
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+
+    .tag.keep {
+      color: var(--keep);
+      background: #eaf6ef;
+    }
+
+    .tag.drop {
+      color: var(--drop);
+      background: #faecec;
+    }
+
+    .tag.change {
+      color: var(--new);
+      background: #e8f5f7;
+    }
+
+    .tag.defer {
+      color: var(--defer);
+      background: #f6f2dc;
+    }
+
+    .tag.context {
+      color: var(--muted);
+      background: #edf0f3;
+    }
+
+    .note {
+      border-left: 4px solid var(--warn);
+      background: #fff8e6;
+      padding: 12px 14px;
+      margin: 14px 0 22px;
+    }
+
+    ul {
+      padding-left: 22px;
+      margin: 8px 0 22px;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      margin-top: 36px;
+      padding-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 780px) {
+      main {
+        width: min(100% - 24px, 1180px);
+        padding-top: 26px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: normal;
+      }
+
+      th,
+      td {
+        min-width: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Metric Suite Comparison: Tayer 2023 Legacy vs HydroFragments Refactor</h1>
+      <p class="lede">No code-level detail. This report compares which metrics the old iRiverMetrics/Tayer-style workflow considered, which metrics the refactored HydroFragments repository keeps, changes, drops, or defers, and why those choices matter scientifically.</p>
+      <div class="meta">
+        <span class="pill">Old suite: legacy wide CSV metrics</span>
+        <span class="pill">Updated suite: HydroFragments v1.2 contracts and registry</span>
+        <span class="pill">Prepared from local repository evidence</span>
+      </div>
+    </header>
+
+    <section class="summary">
+      <article class="old">
+        <h2>Old Metric Logic</h2>
+        <p>The legacy Tayer/iRiverMetrics workflow reports one wide row per date and section. It mixes context fields, raw wetted totals, patch-shape summaries, persistence summaries, and fragmentation ratios in the same table.</p>
+        <p>Main weakness: several ratios use the current wet surface itself as denominator. That makes metrics rise or fall partly because the denominator moved, not only because fragmentation changed.</p>
+      </article>
+      <article class="new">
+        <h2>Refactored Metric Logic</h2>
+        <p>HydroFragments v1.2 shifts toward fixed denominators, explicit validity, dependency-gated channel/connectivity metrics, and tidy long output with flags.</p>
+        <p>Main strength: each metric row can carry its denominator, validity support, threshold, CRS, composite rule, dependency, and warning flags. That makes comparison safer.</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Big Differences</h2>
+      <ul>
+        <li><strong>Fixed denominators replace moving wet denominators.</strong> APSEC, LPI, MESH, and LPSEC use AOI or channel references rather than the wet patches currently present.</li>
+        <li><strong>Pixel persistence becomes occurrence.</strong> The new occurrence metric uses valid observations as denominator, with a support floor, instead of treating every timestep equally.</li>
+        <li><strong>Raw totals become support context.</strong> Wet area, wet length, wet perimeter, section area, and section length still matter, but mainly as denominators, metadata, or diagnostic context.</li>
+        <li><strong>Dropped metrics are mostly dropped for circularity or weak independence.</strong> PF, PLF, AWMPA, AWMPL, and AWMPW no longer belong in canonical v1.2 output.</li>
+        <li><strong>Channel and connectivity metrics are dependency-gated.</strong> LPSEC, inter-pool gap, realised connectivity, and TCF need drainage, graph, or fixed-node context; they should be skipped rather than faked when inputs are missing.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Legacy Metrics and Refactor Decisions</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Legacy metric</th>
+            <th style="width: 26%;">What it measured</th>
+            <th style="width: 18%;">Refactor decision</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="metric">section_area_km2</td>
+            <td>AOI or river-section polygon area.</td>
+            <td><span class="tag context">Context</span></td>
+            <td>Still essential as fixed reference area for APSEC, LPI, and MESH. It is not an ecological response metric by itself.</td>
+          </tr>
+          <tr>
+            <td class="metric">section_length_km</td>
+            <td>User-supplied section or drainage length.</td>
+            <td><span class="tag change">Reworked</span></td>
+            <td>Needed for LPSEC and channel spacing metrics, but the refactor requires a real, recorded channel reference rather than an ambiguous scalar.</td>
+          </tr>
+          <tr>
+            <td class="metric">wet_area_km2</td>
+            <td>Total wetted area in the section at a timestep.</td>
+            <td><span class="tag context">Support value</span></td>
+            <td>Useful for audit and interpretation, but APSEC is safer for comparison because it normalises to fixed AOI area.</td>
+          </tr>
+          <tr>
+            <td class="metric">wet_length_km</td>
+            <td>Total skeleton or pool length across wet patches.</td>
+            <td><span class="tag context">Support value</span></td>
+            <td>Useful only when length extraction and channel reference are defensible. Refactor uses it through LPSEC or gap metrics, with caveats.</td>
+          </tr>
+          <tr>
+            <td class="metric">wet_perimeter_km</td>
+            <td>Total wet-patch perimeter.</td>
+            <td><span class="tag context">Support value</span></td>
+            <td>Perimeter feeds AWMSI. Alone it is sensitive to raster edge noise, so it should not drive interpretation without shape context.</td>
+          </tr>
+          <tr>
+            <td class="metric">npools / n_patches</td>
+            <td>Count of connected wet components.</td>
+            <td><span class="tag keep">Kept as number_of_pools</span></td>
+            <td>Basic fragmentation signal. More pools can mean disconnection, but it depends strongly on resolution, connectivity rule, and minimum patch size.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMSI</td>
+            <td>Area-weighted mean shape index.</td>
+            <td><span class="tag keep">Kept</span></td>
+            <td>Captures boundary complexity or crenulation. Matters because two reaches can have similar area but very different edge complexity and habitat geometry.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWRe</td>
+            <td>Area-weighted elongation ratio.</td>
+            <td><span class="tag keep">Kept</span></td>
+            <td>Captures whether wet patches are compact or elongated. Refactor records the length method because curved pools and major-axis pools can tell different stories.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPA</td>
+            <td>Area-weighted mean patch area.</td>
+            <td><span class="tag drop">Dropped</span></td>
+            <td>Weak independent signal. Patch-size dominance is better handled with fixed-denominator LPI and, if validated, MESH.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPL</td>
+            <td>Area-weighted mean pool length.</td>
+            <td><span class="tag drop">Dropped</span></td>
+            <td>Less useful than separating longitudinal extent and spacing. LPSEC tells how much channel is wet; inter-pool gap tells how isolated pools are.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPW</td>
+            <td>Area-weighted mean pool width.</td>
+            <td><span class="tag drop">Dropped / reworked</span></td>
+            <td>Original area-weighting over-emphasises large pools. Refactor prefers an unweighted width distribution with resolution-floor flags, not one headline weighted mean.</td>
+          </tr>
+          <tr>
+            <td class="metric">APSEC</td>
+            <td>Wetted area as percent of section area.</td>
+            <td><span class="tag keep">Kept as apsec</span></td>
+            <td>Core extent metric. It answers: how much of the reference area is wet this month?</td>
+          </tr>
+          <tr>
+            <td class="metric">LPSEC</td>
+            <td>Wetted length as percent of section length.</td>
+            <td><span class="tag defer">Channel gated</span></td>
+            <td>Useful longitudinal extent metric, but only defensible with a real L_ref and visible length-CRS caveat. Excluded from core no-channel output.</td>
+          </tr>
+          <tr>
+            <td class="metric">PF</td>
+            <td>Pool count divided by current wetted area.</td>
+            <td><span class="tag drop">Dropped</span></td>
+            <td>Circular denominator. When wet area shrinks, PF can rise even if the ecological fragmentation process is not independently changing.</td>
+          </tr>
+          <tr>
+            <td class="metric">PLF / PFL</td>
+            <td>Pool count divided by current wetted length.</td>
+            <td><span class="tag drop">Dropped</span></td>
+            <td>Same circularity problem as PF, now along length. Use fixed-reference LPSEC, LPI, and inter-pool gap instead.</td>
+          </tr>
+          <tr>
+            <td class="metric">pp_mean_%</td>
+            <td>Mean pixel persistence above a legacy threshold.</td>
+            <td><span class="tag change">Replaced by occurrence</span></td>
+            <td>Persistence is still important, but denominator must be valid observations, not total timesteps. This prevents clouds or missing wet-season observations from biasing persistence downward.</td>
+          </tr>
+          <tr>
+            <td class="metric">ra_area_km2</td>
+            <td>Area of highly persistent water pixels.</td>
+            <td><span class="tag keep">Kept as refuge_area</span></td>
+            <td>Direct refuge magnitude. Matters for identifying persistent aquatic habitat through dry periods, but threshold and valid-observation support must travel with the value.</td>
+          </tr>
+          <tr>
+            <td class="metric">Pixel Persistence raster</td>
+            <td>Per-pixel wet frequency over the full record.</td>
+            <td><span class="tag change">Replaced by occurrence raster</span></td>
+            <td>Still foundational for refuge mapping and zones. Refactor makes the denominator explicit and supports source-agnostic masks.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Updated HydroFragments Metrics</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 18%;">Metric</th>
+            <th style="width: 18%;">Current status</th>
+            <th style="width: 24%;">What it measures</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="metric">occurrence</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Per-pixel wet frequency using valid observations.</td>
+            <td>Foundation for persistence, refuges, and zones. More defensible than old PP because missing observations do not count as dry.</td>
+          </tr>
+          <tr>
+            <td class="metric">refuge_area</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Area above the configured occurrence threshold.</td>
+            <td>Measures persistent wet habitat magnitude, useful for dry-season refuge risk and prioritisation.</td>
+          </tr>
+          <tr>
+            <td class="metric">apsec</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Monthly wetted area divided by fixed reference area.</td>
+            <td>Clean surface-water extent measure. Comparable through time within the same AOI because denominator stays fixed.</td>
+          </tr>
+          <tr>
+            <td class="metric">number_of_pools</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Count of connected wet patches after patch filtering.</td>
+            <td>Simple fragmentation signal. Needs connectivity rule and minimum patch size metadata to be interpretable.</td>
+          </tr>
+          <tr>
+            <td class="metric">lpi</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Largest wet patch area as percent of fixed landscape area.</td>
+            <td>Shows whether wet habitat is dominated by one large connected patch or split into smaller pieces.</td>
+          </tr>
+          <tr>
+            <td class="metric">awre</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Area-weighted elongation of wet patches.</td>
+            <td>Shape axis for compact versus elongated pools. Matters for describing drying geometry, but interpretation should remain cautious until validated.</td>
+          </tr>
+          <tr>
+            <td class="metric">awmsi</td>
+            <td><span class="tag keep">Core implemented</span></td>
+            <td>Area-weighted boundary complexity.</td>
+            <td>Captures edge complexity separately from elongation. Useful, but sensitive to raster resolution and edge noise.</td>
+          </tr>
+          <tr>
+            <td class="metric">recurrence</td>
+            <td><span class="tag defer">Registered / deferred</span></td>
+            <td>How often water returns after absence.</td>
+            <td>Useful for distinguishing permanent pools, seasonal returns, and episodic reconnection patterns.</td>
+          </tr>
+          <tr>
+            <td class="metric">hydroperiod</td>
+            <td><span class="tag defer">Registered / deferred</span></td>
+            <td>Seasonal duration or timing of wet presence.</td>
+            <td>Connects remote-sensed water presence to ecological exposure time and habitat availability.</td>
+          </tr>
+          <tr>
+            <td class="metric">extent_contraction</td>
+            <td><span class="tag defer">Dynamics deferred</span></td>
+            <td>Hydrological-year extent decline rate.</td>
+            <td>Potential headline dry-down signal, but it needs HY anchors and composite-sensitivity checks before strong interpretation.</td>
+          </tr>
+          <tr>
+            <td class="metric">reconnection_timing</td>
+            <td><span class="tag defer">Dynamics deferred</span></td>
+            <td>Month or HY point when disconnected wet habitat reconnects.</td>
+            <td>Important for fish movement, refuge escape, and environmental-flow timing. Needs a defensible connectivity metric.</td>
+          </tr>
+          <tr>
+            <td class="metric">refuge_spatial_stability</td>
+            <td><span class="tag defer">Dynamics deferred</span></td>
+            <td>Persistence of refuge locations between years.</td>
+            <td>Separates stable refuge networks from shifting or unreliable wet patches.</td>
+          </tr>
+          <tr>
+            <td class="metric">lpsec</td>
+            <td><span class="tag defer">Channel gated</span></td>
+            <td>Wetted length divided by fixed channel length.</td>
+            <td>Strong longitudinal extent measure, but depends on drainage context and length distortion caveats.</td>
+          </tr>
+          <tr>
+            <td class="metric">inter_pool_gap</td>
+            <td><span class="tag defer">Channel gated</span></td>
+            <td>Distance between pools along a channel reference.</td>
+            <td>Better river-specific clustering metric than 2D nearest-neighbour distance because rivers are quasi-linear systems.</td>
+          </tr>
+          <tr>
+            <td class="metric">mesh</td>
+            <td><span class="tag defer">Secondary</span></td>
+            <td>Effective mesh size from patch-size distribution.</td>
+            <td>Complements LPI if not redundant. Should be kept only if validation shows it adds information beyond largest patch dominance.</td>
+          </tr>
+          <tr>
+            <td class="metric">pool_width</td>
+            <td><span class="tag defer">Secondary</span></td>
+            <td>Distribution of planform pool widths.</td>
+            <td>Potential morphology signal. Needs resolution-floor flags because 30 m masks can make narrow widths look more precise than they are.</td>
+          </tr>
+          <tr>
+            <td class="metric">realised_connectivity</td>
+            <td><span class="tag defer">Connectivity gated</span></td>
+            <td>Snapshot connection among wet nodes or reaches.</td>
+            <td>Measures network function, not just patch size. Must state relationship to DCI, PC, and IIC literature.</td>
+          </tr>
+          <tr>
+            <td class="metric">tcf</td>
+            <td><span class="tag defer">Connectivity gated</span></td>
+            <td>Temporal connectivity frequency.</td>
+            <td>Shows how often a reach is connected through time. Renamed from PCF to avoid confusion with Probability of Connectivity.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Dropped or Excluded Metrics</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 22%;">Metric</th>
+            <th style="width: 24%;">Reason</th>
+            <th>Better replacement or handling</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="metric">PF</td>
+            <td>Circular denominator: pool count over current wetted area.</td>
+            <td>Use number_of_pools plus LPI/APSEC context.</td>
+          </tr>
+          <tr>
+            <td class="metric">PLF / PFL</td>
+            <td>Circular denominator: pool count over current wetted length.</td>
+            <td>Use LPSEC with real channel context, plus inter_pool_gap where available.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPA</td>
+            <td>Weak independent value beside fixed-denominator patch-size metrics.</td>
+            <td>Use LPI and, if validated, MESH.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPL</td>
+            <td>Less informative than separate longitudinal extent and spacing.</td>
+            <td>Use LPSEC and inter_pool_gap.</td>
+          </tr>
+          <tr>
+            <td class="metric">AWMPW</td>
+            <td>Area-weighted mean hides width distribution and overweights large pools.</td>
+            <td>Use unweighted pool_width distribution with mean, median, max, CV, and resolution warnings.</td>
+          </tr>
+          <tr>
+            <td class="metric">NNI</td>
+            <td>2D nearest-neighbour null is weak for a river corridor.</td>
+            <td>Prefer inter_pool_gap along the channel. NNI is cut from canonical v1.2 IDs.</td>
+          </tr>
+          <tr>
+            <td class="metric">degree / betweenness centrality</td>
+            <td>Too much graph machinery for little signal in linear reaches.</td>
+            <td>Use realised_connectivity, TCF, or DCI-positioned metrics if a network analysis is needed.</td>
+          </tr>
+          <tr>
+            <td class="metric">PCF</td>
+            <td>Name collides with Probability of Connectivity language.</td>
+            <td>Use TCF for temporal connectivity frequency.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Why the Refactor Matters</h2>
+      <div class="note">
+        <p><strong>Scientific punchline:</strong> HydroFragments is not just renaming columns. It changes the metric logic from broad legacy summaries toward a defensible register: fixed denominators, valid-observation denominators, explicit dependencies, and warning flags.</p>
+      </div>
+      <ul>
+        <li><strong>More trustworthy time comparisons:</strong> a changing wet area no longer silently changes the denominator for fragmentation metrics.</li>
+        <li><strong>Better missing-data handling:</strong> occurrence and refuge calculations can distinguish dry pixels from unobserved pixels.</li>
+        <li><strong>Clearer publication story:</strong> the strongest novelty is the metric-register reformulation and circularity critique, not simply another Gilbert-style case study.</li>
+        <li><strong>Better manager interpretation:</strong> APSEC, refuge_area, number_of_pools, LPI, and dry-down metrics map more cleanly to questions about extent, refuges, fragmentation, and reconnection timing.</li>
+        <li><strong>Less false precision:</strong> channel, width, connectivity, and HY metrics carry dependency gates and caveats instead of being emitted as if every input supports them.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>Sources in this repository: docs/module2.md, docs/migration_v1_2.md, docs/architecture.md, docs/HydroFragments_v1.2_spec.md, docs/audit/scientific_metrics_audit.md, hydrofragments/metrics/registry.py, hydrofragments/schema.py, and legacy metric headers in tests/results_iRiverMetrics/metrics/irm_metrics.csv.</p>
+    </footer>
+  </main>
+</body>
+</html>

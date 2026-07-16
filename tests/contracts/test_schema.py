@@ -85,7 +85,7 @@ EXPECTED_DTYPES = {
     "edge_flag": "string",
     "warning_flags": "list[string]",
     "is_reportable": "boolean",
-    "hy_confidence": "Float64",
+    "hy_confidence": "string",
     "composite_sensitive": "boolean",
     "source": "string",
     "resolution_m": "Float64",
@@ -207,6 +207,7 @@ def test_output_enums_are_exact() -> None:
         "requires_HY_anchor",
         "requires_graph",
         "proxy_allowed",
+        "requires_dual_composite",
     }
 
 
@@ -282,4 +283,3 @@ def test_n0_patch_record_is_present_with_nan_semantics() -> None:
     assert record.value is None
     assert record.edge_flag is EdgeFlag.N0
     assert record.state is HydrologicalState.DRY
-

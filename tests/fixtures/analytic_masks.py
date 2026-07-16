@@ -9,6 +9,7 @@ See tests/fixtures/README.md for tier definitions and how each mask is used.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
 
 def empty_mask(shape: tuple[int, int] = (6, 6)) -> np.ndarray:
@@ -96,3 +97,28 @@ def chunk_crossing_mask(n_chunks: int, chunk_size: int = 4) -> np.ndarray:
     mask = np.zeros((chunk_size, width), dtype=bool)
     mask[chunk_size // 2, :] = True
     return mask
+
+
+def recurrence_temporal_fixture() -> tuple[np.ndarray, np.ndarray, pd.DatetimeIndex]:
+    """Three-year 1x1 temporal fixture for season-stratified recurrence.
+
+    Ground truth: January wet fraction is 2/3; February has one observed dry
+    year, so equal supported-month weighting gives recurrence 1/3 (33.33%).
+    """
+    times = pd.to_datetime(
+        [
+            "2001-01-01", "2001-02-01",
+            "2002-01-01", "2002-02-01",
+            "2003-01-01", "2003-02-01",
+        ]
+    )
+    water = np.array([[[1]], [[0]], [[1]], [[0]], [[0]], [[0]]])
+    valid = np.array([[[1]], [[0]], [[1]], [[0]], [[1]], [[1]]])
+    return water, valid, times
+
+
+def refuge_stability_fixture() -> tuple[np.ndarray, np.ndarray]:
+    """Two consecutive end-dry footprints with Jaccard overlap 3/5 = 0.6."""
+    previous = np.array([[1, 1, 0], [1, 1, 0]], dtype=bool)
+    current = np.array([[1, 1, 0], [1, 0, 1]], dtype=bool)
+    return current, previous

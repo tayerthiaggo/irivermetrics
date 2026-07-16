@@ -79,14 +79,26 @@ class TemporalConfig:
 @dataclass(frozen=True)
 class DynamicsConfig:
     composite_sensitivity_tolerance_pp: float = 10.0
-    contraction_method: str | None = None
-    minimum_points: int | None = None
+    contraction_method: str = "linear"
+    minimum_points: int = 3
 
 
 @dataclass(frozen=True)
 class HydroYearConfig:
     algorithm: str | None = None
     parameters: tuple[tuple[str, Any], ...] = ()
+
+
+_HYDROSEASON_DEFAULT_PARAMETERS: dict[str, Any] = {
+    "wet_start_month": 11,
+    "wet_end_month": 4,
+    "dry_start_month": 7,
+    "dry_end_month": 12,
+    "min_wet_months": 2,
+    "min_dry_months": 2,
+    "low_confidence_ratio": 0.25,
+    "medium_confidence_ratio": 0.5,
+}
 
 
 @dataclass(frozen=True)
@@ -439,21 +451,45 @@ class HydroConfig:
             composite_sensitivity_tolerance_pp=float(
                 dynamics_raw.get("composite_sensitivity_tolerance_pp", 10.0)
             ),
-            contraction_method=dynamics_raw.get("contraction_method"),
-            minimum_points=(
-                None
-                if dynamics_raw.get("minimum_points") is None
-                else int(dynamics_raw["minimum_points"])
+            contraction_method=str(
+                dynamics_raw.get("contraction_method") or "linear"
+            ),
+            minimum_points=int(
+                dynamics_raw.get("minimum_points")
+                if dynamics_raw.get("minimum_points") is not None
+                else 3
             ),
         )
+        if dynamics.contraction_method not in {"linear", "theil_sen"}:
+            raise ConfigError(
+                "dynamics.contraction_method must be 'linear' or 'theil_sen'"
+            )
+        if dynamics.minimum_points < 3:
+            raise ConfigError("dynamics.minimum_points must be at least 3")
 
         hydroyear_raw = _section(source, "hydroyear", {"algorithm", "parameters"})
         hydroyear_parameters = _mapping(
             hydroyear_raw.get("parameters", {}), "hydroyear.parameters"
         )
+        unknown_hydroseason = sorted(
+            set(hydroyear_parameters) - set(_HYDROSEASON_DEFAULT_PARAMETERS)
+        )
+        if unknown_hydroseason:
+            raise ConfigError(
+                "unknown hydroseason config key: hydroyear.parameters."
+                + unknown_hydroseason[0]
+            )
+        resolved_hydroyear_parameters = {
+            **_HYDROSEASON_DEFAULT_PARAMETERS,
+            **hydroyear_parameters,
+        }
         hydroyear = HydroYearConfig(
-            algorithm=hydroyear_raw.get("algorithm"),
-            parameters=tuple(sorted(hydroyear_parameters.items())),
+            algorithm=(
+                str(hydroyear_raw.get("algorithm"))
+                if hydroyear_raw.get("algorithm")
+                else "hydroseason.detect_hydrological_years"
+            ),
+            parameters=tuple(sorted(resolved_hydroyear_parameters.items())),
         )
 
         channel_raw = _section(source, "channel", {"source", "node_source"})

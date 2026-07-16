@@ -90,6 +90,15 @@ def test_approved_validity_contract_is_the_resolved_default() -> None:
     assert config.validity.low_support_behavior == "suppress_value"
 
 
+def test_extent_contraction_defaults_are_locked() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config())
+
+    assert config.dynamics.contraction_method == "linear"
+    assert config.dynamics.minimum_points == 3
+
+
 def test_config_is_immutable() -> None:
     from hydrofragments.config import HydroConfig
 
@@ -97,4 +106,3 @@ def test_config_is_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         config.run_label = "changed"  # type: ignore[misc]
-

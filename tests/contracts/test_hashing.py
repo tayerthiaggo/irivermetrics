@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 GOLDEN_MINIMAL_CONFIG_HASH = (
-    "13eb1af8ce6fce36de8c8350143253e121b784388540eb039cb690dc3e82f7e0"
+    "2fe5e339d844611e34063ea08dddf7d40acea2aa77c569a900c069444b3e6fc1"
 )
 
 
@@ -83,4 +83,3 @@ def test_metric_profile_order_is_canonicalized_as_a_set() -> None:
     )
 
     assert left.config_hash == right.config_hash
-

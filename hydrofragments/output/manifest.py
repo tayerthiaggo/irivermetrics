@@ -86,8 +86,15 @@ def build_run_manifest(
     comparison_context: Mapping[str, object] | None = None,
     artifacts: Mapping[str, str | Path] | None = None,
     created_at: datetime | None = None,
+    dependency_versions: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
-    """Build complete machine-readable provenance for one immutable run."""
+    """Build complete machine-readable provenance for one immutable run.
+
+    ``dependency_versions`` records pinned external packages whose version
+    affects scientific output but that are not HydroFragments itself -- e.g.
+    ``{"hydroseason": "0.1.0"}`` for any run using HY-dependent metrics
+    (spec M9: "record hydroseason version ... in run config/manifest").
+    """
 
     for name, value in {
         "run_id": run_id,
@@ -104,6 +111,22 @@ def build_run_manifest(
         "package_version": package_version,
         "git_sha": git_sha,
     }
+    # HY settings are resolved into HydroConfig, so every manifest can record
+    # the pinned provider version without relying on callers to remember it.
+    try:
+        import hydroseason
+
+        hydroseason_version = hydroseason.__version__
+        versions["hydroseason"] = hydroseason_version
+    except ImportError as error:  # pragma: no cover - dependency is mandatory
+        raise ManifestError("hydroseason is required for manifest provenance") from error
+    supplied_dependencies = dict(dependency_versions or {})
+    supplied_hydroseason = supplied_dependencies.pop("hydroseason", None)
+    if supplied_hydroseason is not None and supplied_hydroseason != hydroseason_version:
+        raise ManifestError(
+            "dependency_versions.hydroseason does not match installed hydroseason"
+        )
+    versions.update(supplied_dependencies)
 
     comparison = dict(comparison_context or {})
     comparison.update(

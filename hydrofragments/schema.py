@@ -73,6 +73,7 @@ class MetricDependency(str, Enum):
     HY_ANCHOR = "requires_HY_anchor"
     GRAPH = "requires_graph"
     PROXY_ALLOWED = "proxy_allowed"
+    DUAL_COMPOSITE = "requires_dual_composite"
 
 
 OUTPUT_COLUMNS = (
@@ -155,7 +156,7 @@ OUTPUT_DTYPES = {
     "edge_flag": "string",
     "warning_flags": "list[string]",
     "is_reportable": "boolean",
-    "hy_confidence": "Float64",
+    "hy_confidence": "string",
     "composite_sensitive": "boolean",
     "source": "string",
     "resolution_m": "Float64",
