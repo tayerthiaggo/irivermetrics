@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import math
 
 import numpy as np
@@ -96,6 +97,34 @@ def test_awre_major_axis_fallback_matches_bent_pool_truth() -> None:
     assert result.awre_length_method == "major_axis"
 
 
+def test_awre_uses_skeleton_length_when_every_patch_has_real_channel_length() -> None:
+    crop = ComponentCrop(1, (0, 0, 1, 4), np.pad(np.ones((1, 4), dtype=bool), 1))
+    (measured,) = measure_components((crop,), pixel_size_m=10.0)
+    skeleton = replace(
+        measured,
+        skeleton_length_m=50.0,
+        length_method="skeleton",
+    )
+
+    result = compute_patch_metrics((skeleton,), a_total_m2=400.0)
+
+    expected = 2.0 * math.sqrt(400.0 / math.pi) / 50.0
+    assert result.awre == pytest.approx(expected)
+    assert result.awre_length_method == "skeleton"
+
+
+def test_awre_never_silently_mixes_skeleton_and_major_axis_lengths() -> None:
+    crops = (
+        ComponentCrop(1, (0, 0, 1, 4), np.pad(np.ones((1, 4), dtype=bool), 1)),
+        ComponentCrop(2, (2, 0, 3, 4), np.pad(np.ones((1, 4), dtype=bool), 1)),
+    )
+    first, second = measure_components(crops, pixel_size_m=10.0)
+    first = replace(first, skeleton_length_m=50.0, length_method="skeleton")
+
+    with pytest.raises(ValueError, match="mix|length_method"):
+        compute_patch_metrics((first, second), a_total_m2=800.0)
+
+
 def test_awmsi_matches_exact_pixel_edge_shape_indices() -> None:
     square = np.ones((2, 2), dtype=bool)  # area 4, perimeter 8, SI 1
     bar = np.ones((1, 4), dtype=bool)  # area 4, perimeter 10, SI 1.25
@@ -173,19 +202,21 @@ def test_fixed_area_denominator_must_be_positive(a_total_m2: float) -> None:
         )
 
 
-def test_result_contains_no_mesh_width_or_lineage_fields() -> None:
+def test_result_contains_milestone_10_mesh_but_no_width_or_lineage_fields() -> None:
     result = analyze_patch_metrics(
         np.ones((2, 2), dtype=bool),
         pixel_size_m=1.0,
         a_total_m2=4.0,
     )
 
+    assert result.mesh_m2 is None
     assert set(result.__dataclass_fields__) == {
         "number_of_pools",
         "n_water_pixels",
         "lpi",
         "awre",
         "awmsi",
+        "mesh_m2",
         "edge_flag",
         "awre_length_method",
     }

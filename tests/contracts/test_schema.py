@@ -208,6 +208,8 @@ def test_output_enums_are_exact() -> None:
         "requires_graph",
         "proxy_allowed",
         "requires_dual_composite",
+        "requires_mesh_validation",
+        "requires_width_floor",
     }
 
 

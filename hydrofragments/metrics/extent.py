@@ -1,4 +1,4 @@
-"""Extent metrics: APSEC (fixed-denominator surface-water extent).
+"""Fixed-denominator APSEC and real-channel LPSEC extent metrics.
 
 Spec §6.17: ``APSEC_t = WA_t / A_ref * 100`` with
 ``WA_t = cell_area * count(W_t = 1)``.
@@ -9,8 +9,8 @@ month. Extent that exceeds ``A_ref`` (e.g. a clipped AOI, or braided high-flow
 extent) yields APSEC above 100% rather than a silently renormalised value —
 the denominator is never redefined as the wetted extent.
 
-LPSEC and any wet-derived length reference are explicitly out of scope for the
-minimal core (Decision Gate 0; ``adversarial_synthesis_2.md`` §7).
+LPSEC is optional and accepts only a :class:`SpatialContext` backed by real
+drainage. Wet-derived length references remain prohibited.
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ import pandas as pd
 import xarray as xr
 
 from hydrofragments.config import HydroConfig
+from hydrofragments.spatial.context import SpatialContext
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,34 @@ class ApsecRecord:
     n_water_pixels: int
     a_ref_m2: float
     cell_area_m2: float
+
+
+@dataclass(frozen=True)
+class LpsecResult:
+    """Fixed-reference longitudinal extent from a real channel context."""
+
+    value: float
+    wetted_length_m: float
+    l_ref_m: float
+    exceeds_reference: bool
+    length_crs_caveat: bool = True
+
+
+def compute_lpsec(
+    wetted_length_m: float, *, context: SpatialContext
+) -> LpsecResult:
+    """Compute LPSEC without capping braided values above 100 percent."""
+    if not np.isfinite(wetted_length_m) or wetted_length_m < 0:
+        raise ValueError("wetted_length_m must be non-negative and finite")
+    if not context.has_real_channel or context.l_ref_m is None:
+        raise ValueError("LPSEC requires a real channel context with fixed L_ref")
+    value = float(wetted_length_m / context.l_ref_m * 100.0)
+    return LpsecResult(
+        value=value,
+        wetted_length_m=float(wetted_length_m),
+        l_ref_m=float(context.l_ref_m),
+        exceeds_reference=value > 100.0,
+    )
 
 
 def compute_apsec(
@@ -78,4 +107,4 @@ def compute_apsec(
     return records
 
 
-__all__ = ["ApsecRecord", "compute_apsec"]
+__all__ = ["ApsecRecord", "LpsecResult", "compute_apsec", "compute_lpsec"]

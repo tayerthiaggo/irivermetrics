@@ -7,6 +7,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 from datetime import datetime
+import geopandas as gpd
+from shapely.geometry import LineString, box
 
 import hydrofragments
 from hydrofragments import (
@@ -21,6 +23,7 @@ from hydrofragments import (
 )
 from hydrofragments.schema import SCHEMA_VERSION
 from hydrofragments.metrics.extent import ApsecRecord
+from hydrofragments.spatial.context import create_channel_context
 
 
 def test_package_version_exposed() -> None:
@@ -82,6 +85,51 @@ def test_validate_inputs_reports_capabilities(tmp_path) -> None:
     assert "contracts_core" in report.resolved_profiles
 
 
+def test_validate_inputs_activates_channel_only_for_real_spatial_context() -> None:
+    times = pd.to_datetime(["2020-01-01", "2020-02-01"])
+    water = xr.DataArray(
+        np.ones((2, 1, 2), dtype=bool),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    cube = open_water_cube(water, input_kind="generic_binary")
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "metric_profiles": ["channel"],
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+        }
+    )
+    aoi = gpd.GeoDataFrame(geometry=[box(0, -1, 10, 1)], crs="EPSG:3577")
+    drainage = gpd.GeoDataFrame(
+        {
+            "HydroID": [1],
+            "From_Node": [10],
+            "To_Node": [11],
+            "NextDownID": [-1],
+        },
+        geometry=[LineString([(0, 0), (10, 0)])],
+        crs="EPSG:3577",
+    )
+    context = create_channel_context(
+        "demo", aoi, drainage, drainage_id="synthetic-v1", target_crs="EPSG:3577"
+    )
+
+    missing = validate_inputs(cube, aoi_id="demo", config=config)
+    available = validate_inputs(cube, aoi_id="demo", config=config, drainage=context)
+
+    assert {metric for metric, _ in missing.skipped_metrics} == {
+        "lpsec",
+        "inter_pool_gap",
+    }
+    assert available.skipped_metrics == ()
+
+
 def test_analyze_returns_tidy_core_metrics_without_forbidden_ids(tmp_path) -> None:
     times = pd.to_datetime(["2020-01-01", "2020-02-01"])
     water = xr.DataArray(
@@ -116,6 +164,101 @@ def test_analyze_returns_tidy_core_metrics_without_forbidden_ids(tmp_path) -> No
         {"pf", "plf", "awmpa", "awmpl", "awmpw", "nni"}
     )
     assert (tmp_path / "run_manifest.json").exists()
+
+
+def test_analyze_emits_lpsec_and_ordered_gaps_only_with_real_channel(tmp_path) -> None:
+    times = pd.to_datetime(["2020-01-01", "2020-02-01"])
+    water = xr.DataArray(
+        np.ones((2, 1, 5), dtype=bool),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    cube = open_water_cube(water, input_kind="generic_binary")
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "metric_profiles": ["channel"],
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "output": {"output_dir": str(tmp_path)},
+        }
+    )
+    aoi = gpd.GeoDataFrame(geometry=[box(0, -1, 50, 1)], crs="EPSG:3577")
+    drainage = gpd.GeoDataFrame(
+        {
+            "HydroID": [1],
+            "From_Node": [10],
+            "To_Node": [11],
+            "NextDownID": [-1],
+        },
+        geometry=[LineString([(0, 0), (50, 0)])],
+        crs="EPSG:3577",
+    )
+    context = create_channel_context(
+        "demo", aoi, drainage, drainage_id="synthetic-v1", target_crs="EPSG:3577"
+    )
+
+    result = analyze(
+        cube,
+        aoi_id="demo",
+        config=config,
+        drainage=context,
+        channel_wet_profiles=np.array(
+            [[True, False, True, False, True], [True, True, True, True, True]]
+        ),
+        channel_segment_lengths_m=[10.0] * 5,
+    )
+
+    assert set(result.metrics_table["metric"]) == {"lpsec", "inter_pool_gap"}
+    lpsec = result.metrics_table[result.metrics_table["metric"] == "lpsec"]
+    assert lpsec["value"].tolist() == pytest.approx([60.0, 100.0])
+    gaps = result.metrics_table[
+        (result.metrics_table["metric"] == "inter_pool_gap")
+        & (result.metrics_table["statistic"] == "mean")
+    ]
+    assert gaps["value"].tolist() == pytest.approx([0.01])
+
+
+def test_analyze_emits_guarded_width_but_keeps_mesh_disabled(tmp_path) -> None:
+    times = pd.to_datetime(["2020-01-01"])
+    mask = np.zeros((1, 5, 9), dtype=bool)
+    mask[0, 0, 0:4] = True
+    mask[0, 2:5, 6:9] = True
+    cube = open_water_cube(
+        xr.DataArray(mask, dims=("time", "y", "x"), coords={"time": times}),
+        input_kind="generic_binary",
+    )
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "metric_profiles": ["secondary"],
+            "input": {"kind": "generic_binary"},
+            "patches": {
+                "connectivity_rule": 4,
+                "min_patch_pixels": 3,
+                "width_resolution_floor_pixels": 2.0,
+            },
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "output": {"output_dir": str(tmp_path)},
+        }
+    )
+
+    result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=10.0)
+
+    assert set(result.metrics_table["metric"]) == {"pool_width"}
+    assert "mesh" not in set(result.metrics_table["metric"])
+    assert set(result.metrics_table["statistic"]) == {"mean", "median", "max"}
+    assert set(result.metrics_table["value"]) == {40.0}
+    manifest = __import__("json").loads((tmp_path / "run_manifest.json").read_text())
+    assert {item["metric_id"] for item in manifest["skipped_metrics"]} == {"mesh"}
 
 
 def test_analyze_emits_pixel_temporal_profile_rows(tmp_path) -> None:

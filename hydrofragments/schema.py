@@ -74,6 +74,8 @@ class MetricDependency(str, Enum):
     GRAPH = "requires_graph"
     PROXY_ALLOWED = "proxy_allowed"
     DUAL_COMPOSITE = "requires_dual_composite"
+    MESH_VALIDATION = "requires_mesh_validation"
+    WIDTH_FLOOR = "requires_width_floor"
 
 
 OUTPUT_COLUMNS = (

@@ -59,6 +59,32 @@ def test_only_metrics_with_missing_dependencies_are_skipped() -> None:
     )
 
 
+def test_mesh_stays_disabled_until_correlation_gate_is_approved() -> None:
+    from hydrofragments.metrics.registry import resolve_metrics
+
+    blocked = resolve_metrics(
+        ("secondary",), available_dependencies={"requires_patches"}
+    )
+    approved = resolve_metrics(
+        ("secondary",),
+        available_dependencies={
+            "requires_patches",
+            "requires_mesh_validation",
+            "requires_width_floor",
+        },
+    )
+
+    assert blocked.selected == ()
+    assert {(skip.metric_id, skip.reason) for skip in blocked.skipped} == {
+        ("mesh", "missing dependencies: requires_mesh_validation"),
+        ("pool_width", "missing dependencies: requires_width_floor"),
+    }
+    assert tuple(spec.metric_id for spec in approved.selected) == (
+        "mesh",
+        "pool_width",
+    )
+
+
 @pytest.mark.parametrize(
     "metric_id",
     [
@@ -91,4 +117,3 @@ def test_unknown_profile_is_rejected() -> None:
 
     with pytest.raises(RegistryError, match="unknown metric profile"):
         resolve_metrics(("everything",), available_dependencies=set())
-

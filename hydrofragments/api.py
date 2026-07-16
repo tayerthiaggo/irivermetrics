@@ -20,7 +20,9 @@ from hydrofragments.io.alignment import validate_alignment
 from hydrofragments.metrics.registry import MetricPlan, resolve_metrics
 from hydrofragments.metrics.persistence import compute_hydroperiod, compute_recurrence
 from hydrofragments.metrics.dynamics import compute_extent_contraction
-from hydrofragments.metrics.extent import ApsecRecord
+from hydrofragments.metrics.clustering import compute_inter_pool_gaps
+from hydrofragments.metrics.extent import ApsecRecord, compute_lpsec
+from hydrofragments.metrics.patches import analyze_pool_width_distribution
 from hydrofragments.models import HydroResult, MetricRecord, ValidationReport, WaterCube
 from hydrofragments.output.manifest import write_run_metadata
 from hydrofragments.output.tables import records_to_frame
@@ -28,9 +30,11 @@ from hydrofragments.schema import (
     MetricDependency,
     MetricFamily,
     SCHEMA_VERSION,
+    Statistic,
     ValueType,
     WarningFlag,
 )
+from hydrofragments.spatial.context import SpatialContext
 from hydrofragments.temporal.cadence import detect_cadence
 from hydrofragments.temporal.hydroyear import detect_hy_anchors
 
@@ -106,7 +110,6 @@ def validate_inputs(
     dual_composites_available: bool = False,
 ) -> ValidationReport:
     """Validate contracts without computing metrics."""
-    del drainage
     errors: list[str] = []
     warnings: list[str] = []
     if cube.water.sizes != cube.valid_obs.sizes:
@@ -121,6 +124,10 @@ def validate_inputs(
     available = {MetricDependency.VALIDITY}
     if config.patches.min_patch_pixels > 0:
         available.add(MetricDependency.PATCHES)
+    if isinstance(drainage, SpatialContext) and drainage.has_real_channel:
+        available.add(MetricDependency.CHANNEL)
+    if config.patches.width_resolution_floor_pixels is not None:
+        available.add(MetricDependency.WIDTH_FLOOR)
     if hydroyear_available:
         available.add(MetricDependency.HY_ANCHOR)
     if dual_composites_available:
@@ -155,6 +162,10 @@ def _metric_record(
     resolution_m: float,
     crs: str,
     n_pools: int | None = None,
+    zone: str = "AOI",
+    statistic: Statistic | None = None,
+    metric_dependency: MetricDependency = MetricDependency.NONE,
+    warning_flags: tuple[WarningFlag, ...] = (WarningFlag.LENGTH_CRS_CAVEAT,),
 ) -> MetricRecord:
     return MetricRecord(
         run_id=run_id,
@@ -163,15 +174,16 @@ def _metric_record(
         git_sha="unknown",
         catchment_id=catchment_id,
         aoi_id=aoi_id,
-        zone="AOI",
+        zone=zone,
         date=timestamp,
         metric=metric,
         metric_family=metric_family,
+        statistic=statistic,
         value=value,
         unit=unit,
         value_type=value_type,
         n_pools=n_pools,
-        warning_flags=(WarningFlag.LENGTH_CRS_CAVEAT,),
+        warning_flags=warning_flags,
         is_reportable=value is not None and np.isfinite(value),
         source=source,
         resolution_m=resolution_m,
@@ -182,7 +194,148 @@ def _metric_record(
         min_patch_pixels=config.patches.min_patch_pixels,
         min_patch_area_m2=float(resolution_m) ** 2 * config.patches.min_patch_pixels,
         connectivity_rule=config.patches.connectivity_rule,
+        metric_dependency=metric_dependency,
     )
+
+
+def _channel_profile_records(
+    *,
+    cube: WaterCube,
+    context: SpatialContext,
+    wet_profiles: Sequence[Sequence[bool]],
+    segment_lengths_m: Sequence[float],
+    run_id: str,
+    config: HydroConfig,
+    catchment_id: str,
+    aoi_id: str,
+    resolution_m: float,
+    crs: str,
+    source: str,
+) -> list[MetricRecord]:
+    wet = np.asarray(wet_profiles, dtype=bool)
+    lengths = np.asarray(segment_lengths_m, dtype=float)
+    if wet.ndim != 2:
+        raise ValueError("channel_wet_profiles must have shape (time, segment)")
+    if lengths.ndim != 1 or wet.shape[1] != lengths.size:
+        raise ValueError("channel profile and segment lengths must align")
+    if wet.shape[0] != cube.water.sizes.get("time", 0):
+        raise ValueError("channel profile time axis must align with water cube")
+    if np.any(~np.isfinite(lengths)) or np.any(lengths <= 0):
+        raise ValueError("channel_segment_lengths_m must be positive and finite")
+
+    records: list[MetricRecord] = []
+    times = pd.to_datetime(cube.water["time"].values)
+    for timestamp, states in zip(times, wet):
+        wetted_length_m = float(lengths[states].sum())
+        lpsec = compute_lpsec(wetted_length_m, context=context)
+        records.append(
+            _metric_record(
+                run_id=run_id,
+                config=config,
+                catchment_id=catchment_id,
+                aoi_id=aoi_id,
+                metric="lpsec",
+                metric_family=MetricFamily.EXTENT,
+                value=lpsec.value,
+                unit="percent",
+                value_type=ValueType.MONTHLY,
+                source=source,
+                timestamp=timestamp.to_pydatetime(),
+                resolution_m=resolution_m,
+                crs=crs,
+                zone="1",
+                metric_dependency=MetricDependency.CHANNEL,
+            )
+        )
+        gaps = compute_inter_pool_gaps(states, segment_lengths_m=lengths)
+        for statistic, value_m in (
+            (Statistic.MEAN, gaps.mean_m),
+            (Statistic.MEDIAN, gaps.median_m),
+            (Statistic.MAX, gaps.max_m),
+            (Statistic.CV, gaps.cv),
+        ):
+            if not np.isfinite(value_m):
+                continue
+            value = float(value_m if statistic is Statistic.CV else value_m / 1000.0)
+            records.append(
+                _metric_record(
+                    run_id=run_id,
+                    config=config,
+                    catchment_id=catchment_id,
+                    aoi_id=aoi_id,
+                    metric="inter_pool_gap",
+                    metric_family=MetricFamily.CLUSTERING,
+                    statistic=statistic,
+                    value=value,
+                    unit="dimensionless" if statistic is Statistic.CV else "km",
+                    value_type=ValueType.MONTHLY,
+                    source=source,
+                    timestamp=timestamp.to_pydatetime(),
+                    resolution_m=resolution_m,
+                    crs=crs,
+                    zone="1",
+                    metric_dependency=MetricDependency.CHANNEL,
+                )
+            )
+    return records
+
+
+def _pool_width_records(
+    *,
+    monthly: xr.Dataset,
+    run_id: str,
+    config: HydroConfig,
+    catchment_id: str,
+    aoi_id: str,
+    resolution_m: float,
+    crs: str,
+    source: str,
+) -> list[MetricRecord]:
+    floor = config.patches.width_resolution_floor_pixels
+    if floor is None:
+        raise ValueError("pool_width requires width_resolution_floor_pixels")
+    records: list[MetricRecord] = []
+    for index, timestamp in enumerate(pd.to_datetime(monthly["time"].values)):
+        mask = np.asarray(
+            (monthly["water"].isel(time=index) & monthly["valid_obs"].isel(time=index)).values,
+            dtype=bool,
+        )
+        result = analyze_pool_width_distribution(
+            mask,
+            pixel_size_m=resolution_m,
+            resolution_floor_pixels=floor,
+            connectivity=config.patches.connectivity_rule,
+            min_patch_pixels=config.patches.min_patch_pixels,
+        )
+        for statistic, value in (
+            (Statistic.MEAN, result.mean_m),
+            (Statistic.MEDIAN, result.median_m),
+            (Statistic.MAX, result.max_m),
+            (Statistic.CV, result.cv),
+        ):
+            if not np.isfinite(value):
+                continue
+            records.append(
+                _metric_record(
+                    run_id=run_id,
+                    config=config,
+                    catchment_id=catchment_id,
+                    aoi_id=aoi_id,
+                    metric="pool_width",
+                    metric_family=MetricFamily.MORPHOLOGY,
+                    statistic=statistic,
+                    value=float(value),
+                    unit="dimensionless" if statistic is Statistic.CV else "m",
+                    value_type=ValueType.MONTHLY,
+                    source=source,
+                    timestamp=timestamp.to_pydatetime(),
+                    resolution_m=resolution_m,
+                    crs=crs,
+                    metric_dependency=MetricDependency.WIDTH_FLOOR,
+                    warning_flags=result.warning_flags,
+                )
+            )
+    return records
 
 
 def _records_from_compat_rows(
@@ -384,6 +537,8 @@ def analyze(
     hydroyear_extent: pd.Series | None = None,
     max_water_apsec: Sequence[ApsecRecord] | None = None,
     median_apsec: Sequence[ApsecRecord] | None = None,
+    channel_wet_profiles: Sequence[Sequence[bool]] | None = None,
+    channel_segment_lengths_m: Sequence[float] | None = None,
 ) -> HydroResult:
     """Execute configured metric profiles for one AOI.
 
@@ -392,12 +547,11 @@ def analyze(
     ``max_water_apsec`` and ``median_apsec``; absent either composite, the
     registry reports an explicit dependency skip.
     """
-    del drainage
-
     report = validate_inputs(
         cube,
         aoi_id,
         config=config,
+        drainage=drainage,
         hydroyear_available=hydroyear_extent is not None,
         dual_composites_available=(
             max_water_apsec is not None and median_apsec is not None
@@ -409,8 +563,15 @@ def analyze(
     run_id = uuid4().hex
     catchment = catchment_id or aoi_id
     crs = cube.crs or config.spatial.target_crs
-    section_area_km2 = float(cube.water.isel(time=0).size) * pixel_size_m**2 / 1_000_000.0
-    monthly = xr.Dataset({"water": cube.water.astype(bool), "valid_obs": cube.valid_obs.astype(bool)})
+    section_area_km2 = (
+        float(cube.water.isel(time=0).size) * pixel_size_m**2 / 1_000_000.0
+    )
+    monthly = xr.Dataset(
+        {
+            "water": cube.water.astype(bool),
+            "valid_obs": cube.valid_obs.astype(bool),
+        }
+    )
     rows = section_compat_rows(
         monthly["water"],
         section=aoi_id,
@@ -441,6 +602,17 @@ def analyze(
                 MetricDependency.VALIDITY,
                 MetricDependency.PATCHES,
                 *(
+                    (MetricDependency.CHANNEL,)
+                    if isinstance(drainage, SpatialContext)
+                    and drainage.has_real_channel
+                    else ()
+                ),
+                *(
+                    (MetricDependency.WIDTH_FLOOR,)
+                    if config.patches.width_resolution_floor_pixels is not None
+                    else ()
+                ),
+                *(
                     (MetricDependency.HY_ANCHOR,)
                     if hydroyear_result is not None
                     else ()
@@ -453,6 +625,43 @@ def analyze(
             ),
         ).selected
     }
+    records = [record for record in records if record.metric in selected_ids]
+    if {"lpsec", "inter_pool_gap"} & selected_ids:
+        if not isinstance(drainage, SpatialContext) or not drainage.has_real_channel:
+            raise ValueError("channel profile requires a real SpatialContext")
+        if channel_wet_profiles is None or channel_segment_lengths_m is None:
+            raise ValueError(
+                "channel profile requires channel_wet_profiles and "
+                "channel_segment_lengths_m"
+            )
+        records.extend(
+            _channel_profile_records(
+                cube=cube,
+                context=drainage,
+                wet_profiles=channel_wet_profiles,
+                segment_lengths_m=channel_segment_lengths_m,
+                run_id=run_id,
+                config=config,
+                catchment_id=catchment,
+                aoi_id=aoi_id,
+                resolution_m=pixel_size_m,
+                crs=crs,
+                source=cube.source,
+            )
+        )
+    if "pool_width" in selected_ids:
+        records.extend(
+            _pool_width_records(
+                monthly=monthly,
+                run_id=run_id,
+                config=config,
+                catchment_id=catchment,
+                aoi_id=aoi_id,
+                resolution_m=pixel_size_m,
+                crs=crs,
+                source=cube.source,
+            )
+        )
     if {"recurrence", "hydroperiod"} & selected_ids:
         records.extend(
             _temporal_profile_records(

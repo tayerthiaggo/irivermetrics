@@ -79,6 +79,16 @@ def test_cuda_strict_requires_cuda_accelerator() -> None:
         )
 
 
+@pytest.mark.parametrize("floor", [0, -1, float("nan")])
+def test_width_resolution_floor_must_be_positive_and_finite(floor: float) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match="width_resolution_floor_pixels"):
+        HydroConfig.from_mapping(
+            minimal_config(patches={"width_resolution_floor_pixels": floor})
+        )
+
+
 def test_approved_validity_contract_is_the_resolved_default() -> None:
     from hydrofragments.config import HydroConfig
 

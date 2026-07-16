@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import hashlib
 import json
+import math
 from typing import Any, Mapping
 
 
@@ -388,6 +389,13 @@ class HydroConfig:
             raise ConfigError("patches.min_patch_pixels must be at least 1")
         if patches.connectivity_rule not in {4, 8}:
             raise ConfigError("patches.connectivity_rule must be 4 or 8")
+        if patches.width_resolution_floor_pixels is not None and (
+            not math.isfinite(patches.width_resolution_floor_pixels)
+            or patches.width_resolution_floor_pixels <= 0
+        ):
+            raise ConfigError(
+                "patches.width_resolution_floor_pixels must be positive and finite"
+            )
 
         persistence_raw = _section(
             source, "persistence", {"refuge_threshold"}

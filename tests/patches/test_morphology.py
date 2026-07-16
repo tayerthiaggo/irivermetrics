@@ -56,3 +56,12 @@ def test_pixel_size_must_be_positive() -> None:
     with pytest.raises(ValueError, match="pixel_size_m"):
         measure_components(crops, pixel_size_m=0)
 
+
+def test_core_morphology_does_not_compute_optional_width() -> None:
+    labels = label_components(long_bar_mask(length=3), min_patch_pixels=1).labels
+    crops = extract_component_crops(labels)
+
+    (patch,) = measure_components(crops, pixel_size_m=30.0)
+
+    assert np.isnan(patch.width_m)
+    assert np.isnan(patch.width_pixels)

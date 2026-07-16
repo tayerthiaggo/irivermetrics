@@ -143,7 +143,10 @@ _METRICS = (
         MetricFamily.FRAGMENTATION,
         "km2",
         tier="secondary",
-        dependencies=(MetricDependency.PATCHES,),
+        dependencies=(
+            MetricDependency.PATCHES,
+            MetricDependency.MESH_VALIDATION,
+        ),
     ),
     MetricSpec(
         "pool_width",
@@ -151,7 +154,7 @@ _METRICS = (
         "m",
         statistic=Statistic.MEAN,
         tier="secondary",
-        dependencies=(MetricDependency.PATCHES,),
+        dependencies=(MetricDependency.PATCHES, MetricDependency.WIDTH_FLOOR),
     ),
     MetricSpec(
         "realised_connectivity",
