@@ -14,6 +14,7 @@ import xarray as xr
 from hydrofragments._version import __version__
 from hydrofragments.compat import section_compat_rows
 from hydrofragments.config import HydroConfig
+from hydrofragments.compute.capabilities import resolve_execution_plan
 from hydrofragments.guards.comparison import ComparisonGuardError, guard_comparison
 from hydrofragments.io.adapters import parse_watermask_tsfill
 from hydrofragments.io.alignment import validate_alignment
@@ -556,6 +557,10 @@ def analyze(
     ``max_water_apsec`` and ``median_apsec``; absent either composite, the
     registry reports an explicit dependency skip.
     """
+    execution_plan = resolve_execution_plan(
+        accelerator=config.compute.accelerator,
+        cuda_strict=config.compute.cuda_strict,
+    )
     report = validate_inputs(
         cube,
         aoi_id,
@@ -708,6 +713,14 @@ def analyze(
 
     output_dir = Path(config.output.output_dir or ".")
     output_dir.mkdir(parents=True, exist_ok=True)
+    backend_warnings = list(report.warnings)
+    if (
+        config.compute.accelerator == "auto"
+        and execution_plan.fallback_reason is not None
+    ):
+        backend_warnings.append(
+            f"accelerator_fallback: {execution_plan.fallback_reason}"
+        )
     manifest = write_run_metadata(
         output_dir,
         config,
@@ -719,13 +732,17 @@ def analyze(
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
         },
-        planned_backend="cpu",
-        actual_backend_by_stage={"analyze": "cpu"},
+        planned_backend=execution_plan.planned_backend,
+        actual_backend_by_stage={
+            "analyze": "cpu",
+            **execution_plan.actual_backend_by_stage,
+        },
+        backend_capabilities=execution_plan.capabilities.to_mapping(),
         skipped_metrics=[
             {"metric_id": metric_id, "reason": reason}
             for metric_id, reason in report.skipped_metrics
         ],
-        warnings=list(report.warnings),
+        warnings=backend_warnings,
         comparison_context={
             "aoi_id": aoi_id,
             "source": cube.source,

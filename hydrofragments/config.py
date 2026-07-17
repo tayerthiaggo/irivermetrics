@@ -122,7 +122,7 @@ class ConnectivityConfig:
 
 @dataclass(frozen=True)
 class ComputeConfig:
-    accelerator: str = "none"
+    accelerator: str = "auto"
     cuda_strict: bool = False
     target_chunk_bytes: int | None = None
     worker_memory_fraction: float | None = None
@@ -556,7 +556,7 @@ class HydroConfig:
             },
         )
         compute = ComputeConfig(
-            accelerator=str(compute_raw.get("accelerator", "none")),
+            accelerator=str(compute_raw.get("accelerator", "auto")),
             cuda_strict=bool(compute_raw.get("cuda_strict", False)),
             target_chunk_bytes=(
                 None

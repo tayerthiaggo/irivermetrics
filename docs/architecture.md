@@ -49,7 +49,8 @@ Dropped metrics are never recomputed: `PF`, `PLF`, `AWMPA`, `AWMPL`, `AWMPW`, `L
 
 - Temporal reductions and occurrence stay lazy until the monthly checkpoint.
 - Patch morphology runs on bounded CPU component crops (exact reference).
-- CUDA is optional and not part of the v1.2.0rc1 release candidate.
+- Accelerator planning defaults to `auto`: CUDA is probed when available, but
+  stages run on GPU only after parity and transfer-cost evidence enables them.
 
 ## Deferred tranches
 

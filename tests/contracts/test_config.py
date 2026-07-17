@@ -79,6 +79,14 @@ def test_cuda_strict_requires_cuda_accelerator() -> None:
         )
 
 
+def test_compute_accelerator_defaults_to_auto_detection() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config())
+
+    assert config.compute.accelerator == "auto"
+
+
 @pytest.mark.parametrize("floor", [0, -1, float("nan")])
 def test_width_resolution_floor_must_be_positive_and_finite(floor: float) -> None:
     from hydrofragments.config import ConfigError, HydroConfig

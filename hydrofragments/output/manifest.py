@@ -87,6 +87,7 @@ def build_run_manifest(
     artifacts: Mapping[str, str | Path] | None = None,
     created_at: datetime | None = None,
     dependency_versions: Mapping[str, str] | None = None,
+    backend_capabilities: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Build complete machine-readable provenance for one immutable run.
 
@@ -136,6 +137,13 @@ def build_run_manifest(
         }
     )
 
+    backend: dict[str, object] = {
+        "planned": planned_backend,
+        "actual_by_stage": dict(actual_backend_by_stage),
+    }
+    if backend_capabilities is not None:
+        backend["capabilities"] = dict(backend_capabilities)
+
     return {
         "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
         "output_schema_version": SCHEMA_VERSION,
@@ -149,10 +157,7 @@ def build_run_manifest(
         "execution_config": config.execution_config(),
         "input_fingerprint": dict(input_fingerprint),
         "versions": versions,
-        "backend": {
-            "planned": planned_backend,
-            "actual_by_stage": dict(actual_backend_by_stage),
-        },
+        "backend": backend,
         "skipped_metrics": [dict(item) for item in skipped_metrics],
         "warnings": list(warnings),
         "timings_seconds": dict(timings_seconds or {}),
