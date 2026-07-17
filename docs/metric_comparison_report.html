@@ -114,6 +114,7 @@ function filterRecords(records, query, status, family){
   return records.filter(r => (!status || r.status === status) && (!family || r.family === family) && (!needle || [r.id,r.label,r.family,r.status,r.equation,r.meaning,r.dependencies,r.citation,r.source,r.caveat].join(" ").toLowerCase().includes(needle)));
 }
 function edgeClass(record, target){
+  if(target && record.status !== target.status && record.links && record.links.length > 1) return "decomposed";
   if(record.links && record.links.length > 1 && !["kept","reworked","replaced"].includes(record.status)) return "decomposed";
   if(record.status === "kept") return "kept";
   if(record.status === "reworked") return "reworked";
