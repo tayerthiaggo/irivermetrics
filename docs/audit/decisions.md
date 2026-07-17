@@ -194,6 +194,18 @@
 | **Consequence if wrong** | RC/TCF results depend on this graph structure; wrong node source mixes DCI reach-length weighting with pool-identity semantics; wrong edge default changes RC/TCF values for every month/AOI |
 | **Affected milestones** | M11 only |
 
+### U9 — Reach/water-mask wet-intersection method for RC/TCF pipeline wiring
+
+| Field | Value |
+|---|---|
+| **Decision** | **Seeded-skeleton method, not raw buffer-stamp.** For a given month: (1) skeletonize that month's full water mask via `skimage.morphology.medial_axis` (already used per-component in `hydrofragments/patches/morphology.py`; here applied once to the whole-AOI mask); (2) buffer each drainage reach line (from the U4/Q6 dataset, clipped per-AOI as in `spatial/context.create_channel_context`) by `connectivity.reach_buffer_m`, default **2 pixel widths** (e.g. ~60m at 30m resolution) — wide enough to absorb AHGF-centreline-vs-imagery registration drift, narrow enough that parallel/braided channels do not merge; (3) a reach is **wet that month** iff the monthly skeleton has `>=1` pixel inside the buffer **and** that pixel belongs to a skeleton connected-component that itself intersects the buffer corridor (not a same-buffer-clipping but topologically separate skeleton fragment from an unrelated nearby channel). Reach-level `wet_any_month` (U8's `build_fixed_graph` input) is the OR of this monthly flag across the whole series. This is a *selection* mechanism (which wet-mask skeleton pixels "belong" to a given fixed reach) — it does **not** redefine reach length or replace the fixed drainage-derived `L_ref` used by LPSEC (`spatial/context.py`'s existing ban on wet-derived skeleton length for `L_ref` is unaffected; that guard is about the *length reference*, this decision is about *reach activity detection* for a different metric family, RC/TCF). |
+| **Status** | `approved` |
+| **Evidence artifact** | `hydrofragments/patches/morphology.py` (existing `medial_axis` usage pattern); this row is the closing decision for Task 4 of `docs/superpowers/plans/2026-07-17-post-m11-cleanup.md` |
+| **Owner** | Thiaggo de Castro Tayer |
+| **Approval date** | 2026-07-17 — maintainer raised the core risk directly (drainage/imagery resolution mismatch: too conservative loses real connections, too permissive merges segments) and selected the connectivity-filtered seeded-skeleton approach over a plain fixed-radius buffer stamp specifically to avoid both failure modes |
+| **Consequence if wrong** | Too-narrow effective tolerance (buffer or connectivity filter) undercounts connectivity by falsely excluding real but offset channels from the node/edge graph; too-wide tolerance overstates connectivity by merging topologically distinct reaches or crediting an unrelated nearby channel's water to the wrong reach |
+| **Affected milestones** | M11 (pipeline wiring only; does not affect the already-approved U8 graph/edge-rule contract or any core non-connectivity metric) |
+
 ### Q11 — Extent-contraction slope method (`dynamics.contraction_method` / `dynamics.minimum_points`)
 
 | Field | Value |
