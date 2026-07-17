@@ -182,11 +182,13 @@ def compute_extent_contraction(
 class ReconnectionTimingResult:
     """Reconnection lag after end-dry (spec §6.15), with proxy provenance.
 
-    RC and DCI (the preferred metrics) are not implemented yet (Milestone
-    11/10). Until then this always uses the documented `LPI_t >= t_LPI`
-    fallback and must say so explicitly via ``reconnection_metric_used`` and
-    ``proxy_reconnection_flag`` -- never silently substitute the proxy as if
-    it were the preferred metric.
+    Preference order (spec §6.15): **RC** (fixed connectivity graph
+    available, Milestone 11) > **LPSEC** (real channel, no graph) > **LPI**
+    (coarse proxy, last resort). ``reconnection_metric_used`` records which
+    metric actually decided ``t_reconnect_months``; ``proxy_reconnection_flag``
+    is ``False`` only for RC -- LPSEC and LPI are both proxies relative to
+    the preferred network metric and must say so explicitly, never silently
+    presenting a proxy as if it were RC.
     """
 
     reconnection_metric_used: str
@@ -194,30 +196,70 @@ class ReconnectionTimingResult:
     t_reconnect_months: int | None
 
 
+def _first_crossing(
+    series: Sequence[tuple["datetime | date", float]],
+    *,
+    end_dry_month: "datetime | date",
+    threshold: float,
+) -> int | None:
+    for month, value in series:
+        if month <= end_dry_month:
+            continue
+        if value >= threshold:
+            return (month.year - end_dry_month.year) * 12 + (
+                month.month - end_dry_month.month
+            )
+    return None
+
+
 def compute_reconnection_timing(
     *,
     lpi_series: Sequence[tuple["datetime | date", float]],
     end_dry_month: "datetime | date",
     lpi_threshold: float,
+    rc_series: Sequence[tuple["datetime | date", float]] | None = None,
+    rc_threshold: float | None = None,
+    lpsec_series: Sequence[tuple["datetime | date", float]] | None = None,
+    lpsec_threshold: float | None = None,
 ) -> ReconnectionTimingResult:
-    """Compute reconnection lag using the LPI proxy (spec §6.15 fallback).
+    """Compute reconnection lag, preferring RC over LPSEC over LPI (spec §6.15).
 
-    ``lpi_series`` is the monthly LPI series after (and including) end-dry,
-    ordered by date. Returns the first month where ``LPI_t >= lpi_threshold``,
-    expressed as whole months after ``end_dry_month``; ``None`` if no such
-    month exists in the supplied series.
+    Each ``*_series`` is a monthly series after (and including) end-dry,
+    ordered by date. The first metric that was actually supplied (RC, then
+    LPSEC, then LPI) decides ``t_reconnect_months`` -- an unsupplied
+    preferred metric falls through to the next one, but a *supplied*
+    preferred metric that never crosses its threshold reports ``None``
+    directly rather than silently falling back to a lower-preference proxy.
     """
-    t_reconnect: int | None = None
-    for month, lpi_value in lpi_series:
-        if month <= end_dry_month:
-            continue
-        if lpi_value >= lpi_threshold:
-            delta = (month.year - end_dry_month.year) * 12 + (
-                month.month - end_dry_month.month
-            )
-            t_reconnect = delta
-            break
+    if rc_series is not None:
+        if rc_threshold is None:
+            raise ValueError("rc_threshold is required when rc_series is supplied")
+        t_reconnect = _first_crossing(
+            rc_series, end_dry_month=end_dry_month, threshold=rc_threshold
+        )
+        return ReconnectionTimingResult(
+            reconnection_metric_used="RC",
+            proxy_reconnection_flag=False,
+            t_reconnect_months=t_reconnect,
+        )
 
+    if lpsec_series is not None:
+        if lpsec_threshold is None:
+            raise ValueError(
+                "lpsec_threshold is required when lpsec_series is supplied"
+            )
+        t_reconnect = _first_crossing(
+            lpsec_series, end_dry_month=end_dry_month, threshold=lpsec_threshold
+        )
+        return ReconnectionTimingResult(
+            reconnection_metric_used="LPSEC",
+            proxy_reconnection_flag=True,
+            t_reconnect_months=t_reconnect,
+        )
+
+    t_reconnect = _first_crossing(
+        lpi_series, end_dry_month=end_dry_month, threshold=lpi_threshold
+    )
     return ReconnectionTimingResult(
         reconnection_metric_used="LPI",
         proxy_reconnection_flag=True,

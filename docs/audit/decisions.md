@@ -182,6 +182,18 @@
 | **Consequence if wrong** | Reproducibility claims fail across machines |
 | **Affected milestones** | M2, M7 |
 
+### U8 — RC/TCF fixed node source and edge activation rule (M11 gate)
+
+| Field | Value |
+|---|---|
+| **Decision** | **Node source = `external_network`**: build fixed graph `V` from `data/fitzroy_kimberley_drainage.gpkg` reaches (291 `MultiLineString`, `From_Node`/`To_Node`/`NextDownID` topology, EPSG:3577, approved U4/Q6). Reaches that never intersect the wet mask in any month of the series are pre-filtered out of `V` before RC/TCF computation, so denominators (`|V|`, `|E_max|`, `choose(|V|,2)`) are not diluted by structurally-dry reaches. Reach length (post-filter) is retained as node weight for DCI (§6.11a) if DCI is later implemented. **Edge rule = configurable dry-gap threshold, default `0`** (`dynamics.connectivity_gap_threshold`, pixels): edge `(i,j)` active at month `t` iff the water mask shows a direct wet connection between adjacent reach nodes, or the dry gap between them is `≤ connectivity_gap_threshold`; default `0` is equivalent to direct-wet-touch-only. Threshold is exposed for later sensitivity analysis (spec §6.13 requires the choice be "recorded and justified"), not swept in v1.2. |
+| **Status** | `approved` |
+| **Evidence artifact** | `docs/audit/evidence/drainage_inventory.md` (U4/Q6 dataset); this row is the closing decision for the M11 gate ("only if fixed node/edge definitions are approved in decisions.md") |
+| **Owner** | Thiaggo de Castro Tayer |
+| **Approval date** | 2026-07-17 — maintainer selected `external_network` over `fixed_refuge_nodes`/`skeleton_segments` and `configurable dry-gap threshold (default 0)` over direct-touch-only, during M11 pre-implementation gate check |
+| **Consequence if wrong** | RC/TCF results depend on this graph structure; wrong node source mixes DCI reach-length weighting with pool-identity semantics; wrong edge default changes RC/TCF values for every month/AOI |
+| **Affected milestones** | M11 only |
+
 ### Q11 — Extent-contraction slope method (`dynamics.contraction_method` / `dynamics.minimum_points`)
 
 | Field | Value |
