@@ -1,7 +1,7 @@
 dask==2024.5.1
 dask_image==2024.5.0
 dask_regionprops==0.3.1
-geopandas==0.14.4
+geopandas==1.1.4
 numpy==2.2.4
 odc_algo==0.2.3
 odc_geo==0.4.5
