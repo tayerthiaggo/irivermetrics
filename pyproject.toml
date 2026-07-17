@@ -42,7 +42,27 @@ test = [
   "pytest>=8.0",
   "pytest-timeout>=2.3"
 ]
-cuda = []
+cuda = [
+  "cupy-cuda12x>=13.0"
+]
+cuda11 = [
+  "cupy-cuda11x>=13.0"
+]
+# V6 DCI reference benchmark (validation/run_dci_benchmark.py) requires the
+# `riverconn` R package (Baldan et al. 2022, CRAN; verified with v0.3.31),
+# NOT a Python distribution -- there is no pip-installable `riverconn`. It is
+# therefore an external, developer/CI-only prerequisite invoked via Rscript,
+# not a Python optional-dependency. Install with R:
+#   Rscript -e 'install.packages("riverconn", repos="https://cloud.r-project.org")'
+# The benchmark is a manual validation script, never part of the pytest suite,
+# so no importable Python package is added here.
+benchmark-dci = [
+  # Python-side deps needed to *orchestrate* the R benchmark (R itself and
+  # riverconn are external, see comment above).
+  "geopandas>=0.14",
+  "rasterio>=1.3",
+  "scikit-image>=0.22"
+]
 
 [project.urls]
 Homepage = "https://github.com/tayerthiaggo/HydroFragments"

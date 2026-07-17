@@ -179,6 +179,51 @@ def compute_realised_connectivity(
     )
 
 
+def compute_length_weighted_rc_pair(
+    graph: FixedGraph,
+    *,
+    wet_gap_by_edge: Mapping[tuple[str, str], "int | float | None"],
+    gap_threshold: "int | float" = 0,
+    length_by_node: Mapping[str, float],
+) -> float:
+    """Reach-length-weighted RC_pair -- the DCI form (Cote et al. 2009, spec 6.17).
+
+    ``DCI_t = 100 * sum_{i,j}(len_i * len_j * c_ij,t) / (sum(len_i))^2`` where
+    ``c_ij,t = 1`` if fragments i,j are connected under the active-edge
+    subgraph (and ``c_ii = 1`` always -- a fragment is connected to itself),
+    else 0. Because the sum runs over *all* ordered index pairs including the
+    diagonal, this reduces to ``100 * sum_k(L_k)^2 / (sum_k L_k)^2`` where
+    ``L_k`` is the total length of connected component ``k`` -- exactly the
+    Cote et al. 2009 DCI: a single fully-connected network scores 100, and a
+    network split into fragments of length 10 and 30 (of 40 total) scores
+    ``100 * (10^2 + 30^2) / 40^2 = 62.5``.
+
+    Positioned as citation-only validation support (Q4) -- this function
+    existing does not make DCI a shipped runtime metric.
+    """
+    active_edges = [
+        edge
+        for edge in graph.edges
+        if (gap := wet_gap_by_edge.get(edge)) is not None
+        and gap <= gap_threshold
+    ]
+    parent = {node: node for node in graph.nodes}
+    for node_a, node_b in active_edges:
+        _union(parent, node_a, node_b)
+
+    total_length = sum(length_by_node[node] for node in graph.nodes)
+    if total_length == 0:
+        return float("nan")
+
+    component_length: dict[str, float] = {}
+    for node in graph.nodes:
+        root = _find(parent, node)
+        component_length[root] = component_length.get(root, 0.0) + length_by_node[node]
+
+    numerator = sum(length ** 2 for length in component_length.values())
+    return 100.0 * numerator / (total_length ** 2)
+
+
 @dataclass(frozen=True)
 class TcfResult:
     """One fixed node's temporal connectivity frequency (spec section 6.11).
@@ -243,6 +288,7 @@ __all__ = [
     "RealisedConnectivityResult",
     "TcfResult",
     "build_fixed_graph",
+    "compute_length_weighted_rc_pair",
     "compute_realised_connectivity",
     "compute_tcf",
 ]

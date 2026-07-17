@@ -1,0 +1,2 @@
+benchmark,aoi_id,representative_month_index,n_nodes,n_structural_edges,n_active_edges,riverconn_version,n_components,python_rc_pair_dci_pct,riverconn_dci_pct,abs_diff_pct_points,rel_pct_diff,agreement_pct
+V6_RC_pair_vs_riverconn_DCI,fitzroy_kimberley,178,282,31,3,0.3.31,251,0.6235076050913415,0.623507605091342,4.440892098500626e-16,7.12243453365745e-14,99.99999999999993
