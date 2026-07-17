@@ -81,12 +81,12 @@ Write or specify test-first fixture inspection that reports dimensions, CRS, cad
 Stop if any decision lacks evidence or owner. Do not edit production code.
 ```
 * **Tasks**:
-  * [ ] Ingest all audit logs in `docs/audit/`.
-  * [ ] Create `docs/audit/intake_manifest.md` with SHA-256 digests and timestamped approvals.
-  * [ ] Create `docs/audit/decisions.md` containing closed decisions for U1–U4, U7, Q1–Q10.
+  * [x] Ingest all audit logs in `docs/audit/`.
+  * [x] Create `docs/audit/intake_manifest.md` with SHA-256 digests and timestamped approvals.
+  * [x] Create `docs/audit/decisions.md` containing closed decisions for U1–U4, U7, Q1–Q10.
 * **Test-First Requirements**:
-  * [ ] Write automated fixture inspector verifying dimensions, sentinel presence, and cadence of test datasets.
-  * [ ] Compare occurrence under native vs. filled validity policies on test Zarr.
+  * [x] Write automated fixture inspector verifying dimensions, sentinel presence, and cadence of test datasets.
+  * [x] Compare occurrence under native vs. filled validity policies on test Zarr.
 * **Risk Gate**: Low. Plan halts immediately if any decision is left "unresolved" or missing ownership.
 * **Acceptance Criteria**: Manifest and decisions file exist and are approved; release scope restricts subsequent milestones based on closed decisions.
 
@@ -106,12 +106,12 @@ Add an explicit canonical test proving legacy CSV loading fails or is rejected f
 Run focused pytest collection. Do not implement new v1.2 numerical kernels.
 ```
 * **Tasks**:
-  * [ ] Quarantine legacy CSV metrics from canonical validation suite.
-  * [ ] Retain legacy comparisons solely for smoke testing low-level kernels.
-  * [ ] Add unit testing directory structure under `tests/legacy` and `tests/contracts`.
+  * [x] Quarantine legacy CSV metrics from canonical validation suite.
+  * [x] Retain legacy comparisons solely for smoke testing low-level kernels.
+  * [x] Add unit testing directory structure under `tests/legacy` and `tests/contracts`.
 * **Test-First Requirements**:
-  * [ ] Assert legacy baseline loader fails on canonical v1.2 run pipeline.
-  * [ ] Create analytic test fixtures: diagonal connectivity, 1-pixel noise, empty masks, chunk-crossing components.
+  * [x] Assert legacy baseline loader fails on canonical v1.2 run pipeline.
+  * [x] Create analytic test fixtures: diagonal connectivity, 1-pixel noise, empty masks, chunk-crossing components.
 * **Risk Gate**: Low-Medium. Legacy regressions must not sneak into validation expectations.
 * **Acceptance Criteria**: Fast and slow test collection succeeds; legacy metrics are excluded from canonical runs.
 
@@ -131,12 +131,12 @@ Forbidden v1.2 metric IDs include PF, PLF, AWMPA, AWMPL, original AWMPW, NNI, de
 Do not expand numerical kernels. Stop for review if any schema field needs a new scientific decision.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/config.py`, `schema.py`, `models.py`, `metrics/registry.py`.
-  * [ ] Define `config_hash` rules (SHA-256 on scientific settings; exclude paths/accelerator/workers).
+  * [x] Implement `hydrofragments/config.py`, `schema.py`, `models.py`, `metrics/registry.py`.
+  * [x] Define `config_hash` rules (SHA-256 on scientific settings; exclude paths/accelerator/workers).
 * **Test-First Requirements**:
-  * [ ] Test config parser rejects unknown keys and enforces conditional dependencies.
-  * [ ] Golden tests for cross-platform stability of `config_hash`.
-  * [ ] Reject forbidden metric IDs on schema initialization.
+  * [x] Test config parser rejects unknown keys and enforces conditional dependencies.
+  * [x] Golden tests for cross-platform stability of `config_hash`.
+  * [x] Reject forbidden metric IDs on schema initialization.
 * **Risk Gate**: High. Changes to schema after this point cause cascading failures. Tag commit and enforce strict review.
 * **Acceptance Criteria**: Schema holds all target metrics and flags; minimal profile resolves to core-only.
 
@@ -155,12 +155,12 @@ Implement hydrofragments/io/adapters.py, hydrofragments/io/validity.py, hydrofra
 Never treat 254 or 255 as dry or water. Do not silently resample or reproject. Stop if validity policy is unresolved.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/io/adapters.py`, `io/validity.py`, `io/alignment.py`.
-  * [ ] Implement `hydrofragments/spatial/crs.py`, `spatial/context.py`, `temporal/cadence.py`.
+  * [x] Implement `hydrofragments/io/adapters.py`, `io/validity.py`, `io/alignment.py`.
+  * [x] Implement `hydrofragments/spatial/crs.py`, `spatial/context.py`, `temporal/cadence.py`.
 * **Test-First Requirements**:
-  * [ ] Verify decoding of `254` and `255` sentinels before signed cast.
-  * [ ] Test grid, transform, and CRS mismatch raises explicit errors.
-  * [ ] Check geographic CRS input fails without reprojection or explicit per-pixel-area configurations.
+  * [x] Verify decoding of `254` and `255` sentinels before signed cast.
+  * [x] Test grid, transform, and CRS mismatch raises explicit errors.
+  * [x] Check geographic CRS input fails without reprojection or explicit per-pixel-area configurations.
 * **Risk Gate**: High. Misaligned inputs silently corrupt metric arithmetic.
 * **Acceptance Criteria**: Upstream test Zarr parses; validity policy matches decisions.md; arrays remain Dask-backed.
 
@@ -179,12 +179,12 @@ Implement hydrofragments/compute/policy.py, hydrofragments/compute/chunks.py, hy
 Materialization may occur only in orchestration/checkpoint code and must be visible in diagnostics. CPU-only execution must work.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/compute/policy.py`, `compute/chunks.py`.
-  * [ ] Implement `hydrofragments/temporal/composites.py`, `hydrofragments/pipeline.py`.
+  * [x] Implement `hydrofragments/compute/policy.py`, `compute/chunks.py`.
+  * [x] Implement `hydrofragments/temporal/composites.py`, `hydrofragments/pipeline.py`.
 * **Test-First Requirements**:
-  * [ ] Test chunk byte budget rejects unsafe chunk sizes.
-  * [ ] Assert pipeline operations remain lazy up to the designated monthly checkpoint.
-  * [ ] Test that reusing a checkpoint does not trigger upstream recomputations.
+  * [x] Test chunk byte budget rejects unsafe chunk sizes.
+  * [x] Assert pipeline operations remain lazy up to the designated monthly checkpoint.
+  * [x] Test that reusing a checkpoint does not trigger upstream recomputations.
 * **Risk Gate**: Medium. Avoidable spills or eager computations degrade memory/performance.
 * **Acceptance Criteria**: Reductions are lazy; chunk diagnostics are populated in manifest; runs successfully on CPU-only.
 
@@ -203,12 +203,12 @@ Implement hydrofragments/metrics/persistence.py, hydrofragments/metrics/extent.p
 Do not implement LPSEC, wet-derived lengths, HY metrics, channel metrics, or unresolved RA behavior. Stop if denominator policy is not closed.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/metrics/persistence.py`, `metrics/extent.py`.
-  * [ ] Implement `hydrofragments/guards/scientific.py`, `output/rasters.py`.
+  * [x] Implement `hydrofragments/metrics/persistence.py`, `metrics/extent.py`.
+  * [x] Implement `hydrofragments/guards/scientific.py`, `output/rasters.py`.
 * **Test-First Requirements**:
-  * [ ] Assert occurrence uses valid-observation denominator, never total steps.
-  * [ ] Verify APSEC against fixed AOI area, testing empty/all-wet/clipped boundaries.
-  * [ ] Verify comparison API rejects runs with mismatched AOIs.
+  * [x] Assert occurrence uses valid-observation denominator, never total steps.
+  * [x] Verify APSEC against fixed AOI area, testing empty/all-wet/clipped boundaries.
+  * [x] Verify comparison API rejects runs with mismatched AOIs.
 * **Risk Gate**: High. Incorrect validity masks alter all occurrence outputs.
 * **Acceptance Criteria**: Core persistence and extent tables are tidy and correct; LPSEC/wet-derived lengths are absent.
 
@@ -227,12 +227,12 @@ Implement hydrofragments/patches/labels.py, hydrofragments/patches/components.py
 Keep CPU as reference. Do not implement MESH, width distributions, CUDA morphology, transient patch lineage, or survival models.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/patches/labels.py`, `patches/components.py`, `patches/morphology.py`.
-  * [ ] Implement `hydrofragments/metrics/patches.py` (N, LPI, AWRe, AWMSI).
+  * [x] Implement `hydrofragments/patches/labels.py`, `patches/components.py`, `patches/morphology.py`.
+  * [x] Implement `hydrofragments/metrics/patches.py` (N, LPI, AWRe, AWMSI).
 * **Test-First Requirements**:
-  * [ ] Assert label ID normalization across chunk boundaries (4- vs 8-neighbor connectivity).
-  * [ ] Test patch minimum mapping unit (3 pixels) applies globally.
-  * [ ] Verify AWRe major-axis fallback matches analytic math.
+  * [x] Assert label ID normalization across chunk boundaries (4- vs 8-neighbor connectivity).
+  * [x] Test patch minimum mapping unit (3 pixels) applies globally.
+  * [x] Verify AWRe major-axis fallback matches analytic math.
 * **Risk Gate**: High. Component morphology math must be invariant to chunk layouts.
 * **Acceptance Criteria**: Component properties match analytical truth; MESH and width distributions remain disabled.
 
@@ -251,12 +251,12 @@ Implement hydrofragments/output/tables.py, hydrofragments/output/manifest.py, an
 Output must be self-contained and must not include dropped legacy metrics. Vector export must be isolated and must not recompute metrics.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/output/tables.py`, `output/manifest.py`.
-  * [ ] Implement `hydrofragments/guards/comparison.py`.
+  * [x] Implement `hydrofragments/output/tables.py`, `output/manifest.py`.
+  * [x] Implement `hydrofragments/guards/comparison.py`.
 * **Test-First Requirements**:
-  * [ ] Verify output schema types, nullability, and Parquet partition paths.
-  * [ ] Test comparison guard rejects mismatched inputs by default.
-  * [ ] Confirm memory does not accumulate patch geometries when vector export is disabled.
+  * [x] Verify output schema types, nullability, and Parquet partition paths.
+  * [x] Test comparison guard rejects mismatched inputs by default.
+  * [x] Confirm memory does not accumulate patch geometries when vector export is disabled.
 * **Risk Gate**: Medium. Output formats are user-visible. Version changes must support backward-compatible reads.
 * **Acceptance Criteria**: End-to-end core runs output self-contained Parquet, config JSON, manifest, and rasters.
 
@@ -275,13 +275,13 @@ Rebrand public package namespace to hydrofragments, implement the ecofragments f
 Do not restore dropped metrics for compatibility. Release candidate must pass G0-G5 gates.
 ```
 * **Tasks**:
-  * [ ] Rebrand package namespace to `hydrofragments`.
-  * [ ] Implement `ecofragments` compatibility facade with deprecation warnings.
-  * [ ] Update `pyproject.toml`, `README.md`, and API documentation.
+  * [x] Rebrand package namespace to `hydrofragments`.
+  * [x] Implement `ecofragments` compatibility facade with deprecation warnings.
+  * [x] Update `pyproject.toml`, `README.md`, and API documentation.
 * **Test-First Requirements**:
-  * [ ] Test `ecofragments` adapter correctly routes config to `hydrofragments`.
-  * [ ] Test requests for legacy metrics in legacy facade raise explicit migration errors.
-  * [ ] Verify package installs and runs in clean, GPU-free environments.
+  * [x] Test `ecofragments` adapter correctly routes config to `hydrofragments`.
+  * [x] Test requests for legacy metrics in legacy facade raise explicit migration errors.
+  * [x] Verify package installs and runs in clean, GPU-free environments.
 * **Risk Gate**: High. Breaking imports impacts user base. Complete migration guide first.
 * **Acceptance Criteria**: Public package namespace is cleanly exposed; facade is documented; release candidate passes G0–G5 gates.
 
