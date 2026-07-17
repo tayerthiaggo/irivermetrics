@@ -1,6 +1,6 @@
 # Task 2 report: equation and citation metric inventories
 
-**Date:** 2026-07-17  
+**Date:** 2026-07-17
 **Artifact:** `docs/metric_comparison_report.html`
 
 ## Implementation
