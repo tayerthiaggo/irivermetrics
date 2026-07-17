@@ -338,6 +338,8 @@ Do not use wet-derived skeletons as core L_ref. Do not implement morphology-prox
 * **Acceptance Criteria**: U4/Q6 closed; LPSEC and inter-pool gaps activate only with valid channel reference.
 
 ### Milestone 11: Connectivity Tranche (Gated)
+**Status (2026-07-17):** Gate closed. Node source and edge rule fixed via decisions.md U8 (external_network drainage reaches, configurable dry-gap threshold default 0). RC/TCF implemented and tested. Pipeline wiring into `analyze()` and V6 DCI benchmark remain open -- see `docs/superpowers/plans/2026-07-17-post-m11-cleanup.md` Tasks 4-5.
+
 * **Model Options**:
   * First choice: Claude Opus high - best fit for conceptual graph/connectivity critique before implementation.
   * Second choice: Codex 5.6 high (sol) - best fit for RC/TCF tests, graph contracts, and optional-profile implementation.
@@ -352,11 +354,11 @@ Implement hydrofragments/metrics/connectivity.py for approved RC/TCF only. Add D
 Keep DCI citation-only unless riverconn/Conefor or equivalent parity passes. Connectivity profile must be optional and must not affect core results.
 ```
 * **Tasks**:
-  * [ ] Implement `hydrofragments/metrics/connectivity.py`.
-  * [ ] Implement `tests/connectivity/test_rc.py`, `test_tcf.py`, `test_dci_reference.py`.
+  * [x] Implement `hydrofragments/metrics/connectivity.py`.
+  * [x] Implement `tests/connectivity/test_rc.py`, `test_tcf.py`, `test_fixed_graph.py`, `test_reconnection_preference.py`. test_dci_reference.py intentionally not created -- DCI stays citation-only per Q4 until V6 passes (see Task 5 of docs/superpowers/plans/2026-07-17-post-m11-cleanup.md).
 * **Test-First Requirements**:
-  * [ ] Verify stable node sources and edge rules across temporal sequences.
-  * [ ] Validate RC edge fractions and reachability on simple linear graphs.
+  * [x] Verify stable node sources and edge rules across temporal sequences.
+  * [x] Validate RC edge fractions and reachability on simple linear graphs.
   * [ ] Verify DCI parity against `riverconn`/Conefor references if DCI is approved.
 * **Risk Gate**: High Conceptual Risk. DCI must remain citation-only unless V6/reference parity is validated.
 * **Acceptance Criteria**: RC/TCF runs optionally and does not affect core metrics; parameters documented in manifest.
