@@ -108,6 +108,7 @@ def validate_inputs(
     drainage: Any | None = None,
     hydroyear_available: bool = False,
     dual_composites_available: bool = False,
+    wet_any_month: Mapping[str, bool] | None = None,
 ) -> ValidationReport:
     """Validate contracts without computing metrics."""
     errors: list[str] = []
@@ -132,6 +133,14 @@ def validate_inputs(
         available.add(MetricDependency.HY_ANCHOR)
     if dual_composites_available:
         available.add(MetricDependency.DUAL_COMPOSITE)
+    if (
+        isinstance(drainage, SpatialContext)
+        and drainage.has_real_channel
+        and wet_any_month is not None
+        and any(wet_any_month.values())
+    ):
+        available.add(MetricDependency.FIXED_NODES)
+        available.add(MetricDependency.GRAPH)
     plan = resolve_metrics(config.metric_profiles, available_dependencies=available)
     skipped = tuple((item.metric_id, item.reason) for item in plan.skipped)
     if plan.skipped:
