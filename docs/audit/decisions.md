@@ -175,7 +175,7 @@
 | Field | Value |
 |---|---|
 | **Decision (proposed)** | `config_hash` = SHA-256 of canonical JSON of **scientific** fields only; exclude paths, scheduler, worker counts, accelerator; separate `execution_hash` and `input_fingerprint` |
-| **Status** | `pending` golden cross-platform tests |
+| **Status** | `pending` -- golden hash test exists and passes locally (tests/contracts/test_hashing.py::test_minimal_scientific_config_has_stable_golden_hash), but has only been run on one OS/machine. Not CI-enforced across platforms. Downgraded from silent-pending to explicitly non-blocking for M2/M7 core work per this row's own "Affected milestones" -- reproducibility claims involving cross-OS config_hash stability must not be made until this is closed for real. |
 | **Evidence artifact** | `docs/audit/implementation_plan.md` §4 “Hashing rules”; `spec_compliance.md` Q9 |
 | **Owner** | Thiaggo de Castro Tayer |
 | **Approval date** | — |
