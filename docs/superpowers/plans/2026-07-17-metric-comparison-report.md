@@ -67,13 +67,6 @@ def test_all_metric_ids_and_required_fields_are_present():
     assert text.count("citation:") >= len(REQUIRED_IDS)
     assert text.count("source:") >= len(REQUIRED_IDS)
 
-def test_lineage_svg_and_filter_hooks_exist():
-    text = _report()
-    assert '<svg id="lineageGraph"' in text
-    assert 'id="metricSearch"' in text
-    assert 'id="statusFilter"' in text
-    assert 'id="familyFilter"' in text
-    assert "aria-label" in text
 ```
 
 - [ ] **Step 2: Run the new tests to verify they fail**
@@ -136,7 +129,7 @@ Add equation cards or table columns for equation, denominator/reference, meaning
 
 Run: `python -m pytest tests/docs/test_metric_comparison_report.py -q`
 
-Expected: PASS for record ids, required fields, and offline hooks except the SVG hooks pending Task 3; if tests are split, run the data-model subset and expect PASS.
+Expected: PASS for record ids and required fields. SVG/filter assertions are added in Task 3.
 
 ```powershell
 git add docs/metric_comparison_report.html tests/docs/test_metric_comparison_report.py
@@ -166,7 +159,11 @@ Use a fixed `viewBox` with left/right columns. Create one `<g class="lineage-nod
 
 Keep tables horizontally scrollable below 780px, stack summary panels, allow SVG horizontal scrolling, preserve status colors in print, and keep equation cards readable with monospace or system fallback.
 
-- [ ] **Step 4: Run complete report tests and commit**
+- [ ] **Step 4: Extend tests for SVG and filters**
+
+Add `test_lineage_svg_and_filter_hooks_exist()` to assert `<svg id="lineageGraph"`, `metricSearch`, `statusFilter`, `familyFilter`, and `aria-label` are present. This test belongs here because the hooks do not exist until this task.
+
+- [ ] **Step 5: Run complete report tests and commit**
 
 Run: `python -m pytest tests/docs/test_metric_comparison_report.py -q`
 
