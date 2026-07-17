@@ -146,6 +146,18 @@ def test_report_is_self_contained_and_has_metric_records() -> None:
     assert "fetch(" not in text
 
 
+def test_lineage_svg_and_filter_hooks_exist() -> None:
+    text = _report()
+
+    assert '<svg id="lineageGraph"' in text
+    assert 'id="metricSearch"' in text
+    assert 'id="statusFilter"' in text
+    assert 'id="familyFilter"' in text
+    assert 'aria-label="Legacy to current metric lineage map"' in text
+    assert "function renderLineage" in text
+    assert "function applyFilters" in text
+
+
 def test_all_metric_ids_and_required_fields_are_present() -> None:
     text = _report()
     records = _metric_record_spans(text)
