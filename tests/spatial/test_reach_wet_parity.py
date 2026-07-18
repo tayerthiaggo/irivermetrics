@@ -34,3 +34,27 @@ def test_reach_wet_output_stable():
     drainage, da = _fixture()
     got = reach_wet_any_month(drainage, da, buffer_m=60.0)
     assert got == {"R1": True, "R2": False}
+
+
+def test_reach_wet_overlap_zone_credits_both_reaches():
+    """Positive-case proof for the coord -> list[reach_index] overlap fallback.
+
+    Reuses the ``_fixture()`` geometry (R1 and R2's 60m buffers around
+    parallel lines 120m apart), but places the single wet pixel at
+    row 7 (y=90), inside the buffers' real overlap band (row 7,
+    columns 2-7 -- confirmed by directly inspecting
+    ``_build_reach_label_raster``'s output for this fixture). Unlike
+    ``test_reach_wet_output_stable``, whose wet channel (rows 4:6) never
+    touches the overlap band, this test puts the only wet pixel exactly
+    in the shared zone, so a naive last-writer-wins raster would mark
+    only one reach wet while the ``overlap_pixels`` fallback must mark
+    both.
+    """
+    drainage, da = _fixture()
+    water = np.zeros_like(da.values)
+    water[0, 7, 4] = True  # single wet pixel inside the R1/R2 overlap band
+    da_overlap = xr.DataArray(water, dims=da.dims, coords=da.coords)
+
+    got = reach_wet_any_month(drainage, da_overlap, buffer_m=60.0)
+
+    assert got == {"R1": True, "R2": True}
