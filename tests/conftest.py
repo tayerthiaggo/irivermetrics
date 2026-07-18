@@ -83,3 +83,43 @@ def synthetic_cube():
         valid_obs=valid_da,
         input_kind="generic_binary",
     )
+
+
+@pytest.fixture
+def tmp_zarr_path(tmp_path):
+    """A small on-disk zarr store readable by ``open_water_cube(path)``.
+
+    Writes a ``water_mask`` variable using the raw watermask_tsfill encoding
+    (0/1 = valid dry/wet, 254/255 = invalid) that
+    :func:`hydrofragments.io.adapters.parse_watermask_tsfill` expects, so the
+    zarr-path branch of ``open_water_cube`` in ``hydrofragments/api.py`` can
+    be exercised end-to-end (used by ``tests/api/test_open_cube_chunks.py``
+    to verify the ``chunks`` kwarg is actually honored, m10).
+    """
+    rng = np.random.default_rng(2024)
+    t, y, x = 6, 12, 12
+    raw = np.zeros((t, y, x), dtype=np.uint8)
+    raw[:, 2:5, 2:5] = 1  # stable wet patch
+    raw[::2, 5:7, 5:7] = 1  # intermittent wet patch (even months)
+    invalid_mask = rng.random((t, y, x)) > 0.97
+    raw[invalid_mask] = 255  # sparse unobserved pixels
+
+    times = np.array(
+        ["2015-01", "2015-02", "2015-03", "2015-04", "2015-05", "2015-06"],
+        dtype="datetime64[M]",
+    ).astype("datetime64[ns]")
+    ys = np.arange(y, dtype=float) * -30.0 + 8_000_000.0
+    xs = np.arange(x, dtype=float) * 30.0 + 500_000.0
+
+    dataset = xr.Dataset(
+        {
+            "water_mask": (
+                ("time", "y", "x"),
+                raw,
+            ),
+        },
+        coords={"time": times, "y": ys, "x": xs},
+    )
+    path = tmp_path / "cube.zarr"
+    dataset.to_zarr(path, mode="w")
+    return path

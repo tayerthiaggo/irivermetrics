@@ -49,6 +49,22 @@ from hydrofragments.spatial import SpatialContext
 from hydrofragments.temporal import detect_cadence, detect_hy_anchors
 
 
+def _describe_chunks(array: xr.DataArray) -> str:
+    """Serializable description of an array's actual Dask chunk sizes.
+
+    Returns ``"none"`` for a non-Dask-backed (eager numpy) array, otherwise
+    a compact ``"dim=size,dim=size,..."`` string using each dimension's
+    first block size -- enough to verify what chunking was actually applied
+    without embedding full nested chunk tuples in provenance/manifest text.
+    """
+    chunks = array.chunks
+    if chunks is None:
+        return "none"
+    return ",".join(
+        f"{dim}={sizes[0]}" for dim, sizes in zip(array.dims, chunks)
+    )
+
+
 def _coerce_dataarray(source: xr.DataArray | xr.Dataset) -> xr.DataArray:
     if isinstance(source, xr.Dataset):
         if "water" in source:
@@ -68,12 +84,12 @@ def open_water_cube(
     input_kind: str = "generic_binary",
 ) -> WaterCube:
     """Open a canonical aligned water/valid cube from supported sources."""
-    del variable_map, chunks  # reserved for later adapter expansion
+    del variable_map  # reserved for later adapter expansion
 
     if isinstance(source, (str, Path)):
         path = Path(source)
         if path.suffix == ".zarr" or path.name.endswith(".zarr"):
-            dataset = xr.open_zarr(path)
+            dataset = xr.open_zarr(path, chunks=chunks if chunks is not None else "auto")
             raw = dataset["water_mask"] if "water_mask" in dataset else dataset["water"]
             water, valid = parse_watermask_tsfill(raw)
             cadence = detect_cadence(water)
@@ -84,11 +100,16 @@ def open_water_cube(
                 source=str(path),
                 cadence=cadence,
                 crs=crs,
-                provenance=(("adapter", "watermask_tsfill"),),
+                provenance=(
+                    ("adapter", "watermask_tsfill"),
+                    ("chunks", _describe_chunks(water)),
+                ),
             )
         raise ValueError(f"unsupported source path: {path}")
 
     array = _coerce_dataarray(source)
+    if chunks is not None:
+        array = array.chunk(chunks)
     if input_kind == "watermask_tsfill":
         water, valid = parse_watermask_tsfill(array)
     else:
@@ -97,6 +118,8 @@ def open_water_cube(
             valid = xr.ones_like(water, dtype=bool)
         else:
             valid = valid_obs.astype(bool)
+            if chunks is not None:
+                valid = valid.chunk(chunks)
             validate_alignment(water, valid)
     cadence = detect_cadence(water)
     crs = water.rio.crs.to_string() if hasattr(water, "rio") and water.rio.crs else None
@@ -106,7 +129,10 @@ def open_water_cube(
         source=input_kind,
         cadence=cadence,
         crs=crs,
-        provenance=(("input_kind", input_kind),),
+        provenance=(
+            ("input_kind", input_kind),
+            ("chunks", _describe_chunks(water)),
+        ),
     )
 
 
@@ -782,6 +808,7 @@ def analyze(
             "source": cube.source,
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
+            "chunks": _describe_chunks(cube.water),
         },
         planned_backend=execution_plan.planned_backend,
         actual_backend_by_stage={
