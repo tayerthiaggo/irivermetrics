@@ -34,6 +34,7 @@ class ApsecRecord:
     n_water_pixels: int
     a_ref_m2: float
     cell_area_m2: float
+    low_coverage_flag: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,19 +71,30 @@ def compute_apsec(
     a_ref_m2: float,
     cell_area_m2: float,
     config: HydroConfig,
+    valid_obs: xr.DataArray | None = None,
+    min_valid_fraction: float | None = None,
 ) -> list[ApsecRecord]:
     """Compute per-month APSEC against a fixed AOI reference area.
 
     ``monthly`` is the M4 monthly product with boolean ``water`` and
     ``valid_obs`` on ``(time, y, x)``. Water is counted only where the month is
     observed (``water & valid_obs``) so unobserved pixels never inflate extent.
+
+    ``valid_obs`` / ``min_valid_fraction`` are optional additive metadata
+    (m7): when both are supplied, the per-month fraction of valid pixels
+    (mean of ``valid_obs`` over the spatial dims) is compared against
+    ``min_valid_fraction`` and ``ApsecRecord.low_coverage_flag`` is set
+    ``True`` for months below that floor. This never changes ``value`` --
+    it purely annotates sparse months that were already being computed
+    (mirrors the coverage floor occurrence already applies, but expressed
+    as a per-month spatial fraction rather than a temporal support count).
     """
     if a_ref_m2 <= 0:
         raise ValueError("a_ref_m2 must be positive")
 
     water = monthly["water"].astype(bool)
-    valid_obs = monthly["valid_obs"].astype(bool)
-    observed_water = water & valid_obs
+    monthly_valid_obs = monthly["valid_obs"].astype(bool)
+    observed_water = water & monthly_valid_obs
 
     spatial_dims = [dim for dim in observed_water.dims if dim != "time"]
     water_pixels = observed_water.sum(dim=spatial_dims).astype(np.int64)
@@ -90,8 +102,16 @@ def compute_apsec(
     times = pd.to_datetime(monthly["time"].values)
     counts = np.asarray(water_pixels.values)
 
+    low_coverage = np.zeros(len(times), dtype=bool)
+    if valid_obs is not None and min_valid_fraction is not None:
+        coverage_dims = [dim for dim in valid_obs.dims if dim != "time"]
+        valid_fraction = valid_obs.astype(bool).mean(dim=coverage_dims)
+        low_coverage = np.asarray(
+            (valid_fraction < min_valid_fraction).values
+        )
+
     records: list[ApsecRecord] = []
-    for timestamp, n_water in zip(times, counts):
+    for timestamp, n_water, flagged in zip(times, counts, low_coverage):
         n_water_int = int(n_water)
         wetted_area = n_water_int * cell_area_m2
         value = wetted_area / a_ref_m2 * 100.0
@@ -102,6 +122,7 @@ def compute_apsec(
                 n_water_pixels=n_water_int,
                 a_ref_m2=a_ref_m2,
                 cell_area_m2=cell_area_m2,
+                low_coverage_flag=bool(flagged),
             )
         )
     return records
