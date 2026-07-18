@@ -450,7 +450,23 @@ def _temporal_profile_records(
     """Emit AOI summaries for pixel-temporal kernels through canonical schema."""
     records: list[MetricRecord] = []
     recurrence = compute_recurrence(monthly, config=config)
-    recurrence_value = recurrence.recurrence.mean(skipna=True).item()
+    hydroperiod = compute_hydroperiod(monthly, config=config).hydroperiod
+    years = [int(year) for year in hydroperiod.coords["year"].values]
+
+    # Batch the AOI-mean recurrence scalar and every per-year AOI-mean
+    # hydroperiod scalar into a single Dataset so they share one Dask graph
+    # execution instead of one independent `.item()` materialization each
+    # (m8: materialization count must not scale with the number of years).
+    summary_vars: dict[str, xr.DataArray] = {
+        "recurrence": recurrence.recurrence.mean(skipna=True),
+    }
+    for year in years:
+        summary_vars[f"hydroperiod_{year}"] = (
+            hydroperiod.sel(year=year).mean(skipna=True).drop_vars("year")
+        )
+    summary_ds = xr.Dataset(summary_vars).compute()
+
+    recurrence_value = summary_ds["recurrence"].item()
     if recurrence_value is not None and np.isfinite(recurrence_value):
         records.append(
             _metric_record(
@@ -469,9 +485,8 @@ def _temporal_profile_records(
             )
         )
 
-    hydroperiod = compute_hydroperiod(monthly, config=config).hydroperiod
-    for year in hydroperiod.coords["year"].values:
-        value = hydroperiod.sel(year=year).mean(skipna=True).item()
+    for year in years:
+        value = summary_ds[f"hydroperiod_{year}"].item()
         if value is None or not np.isfinite(value):
             continue
         records.append(
