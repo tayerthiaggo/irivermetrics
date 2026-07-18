@@ -166,6 +166,17 @@ def section_compat_rows(
         if np.isnan(pp_mean):
             pp_mean = float("nan")
 
+    apsec_records = None
+    if want_apsec:
+        # compute_apsec already reduces over the spatial dims across the
+        # WHOLE time axis in one xarray call and returns one ApsecRecord
+        # per timestamp, in time order matching monthly["time"] -- the
+        # same order the loop below iterates. Call it once here rather
+        # than once per month inside the loop (m2).
+        apsec_records = compute_apsec(
+            monthly, a_ref_m2=a_ref_m2, cell_area_m2=cell_area_m2, config=config
+        )
+
     rows: list[dict[str, object]] = []
     for time_index, timestamp in enumerate(pd.to_datetime(monthly["time"].values)):
         n_patches: object = None
@@ -190,12 +201,7 @@ def section_compat_rows(
 
         apsec_value = float("nan")
         if want_apsec:
-            apsec_value = compute_apsec(
-                monthly.isel(time=[time_index]),
-                a_ref_m2=a_ref_m2,
-                cell_area_m2=cell_area_m2,
-                config=config,
-            )[0].value
+            apsec_value = apsec_records[time_index].value
 
         rows.append(
             {
