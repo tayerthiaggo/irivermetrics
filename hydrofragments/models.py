@@ -178,6 +178,26 @@ class ValidationReport:
 
 
 @dataclass(frozen=True)
+class AnalysisInputs:
+    """Optional advanced inputs for :func:`hydrofragments.api.analyze`.
+
+    Every field is independently optional; the metric registry skips any
+    metric whose required dependency is absent rather than raising. Grouped
+    here (instead of nine separate ``analyze`` keyword arguments) so the
+    dependency relationships between fields -- e.g. ``max_water_apsec`` and
+    ``median_apsec`` must both be supplied together for dynamics metrics --
+    live in one place rather than being implicit across a flat call site.
+    """
+
+    drainage: Any | None = None
+    hydroyear_extent: pd.Series | None = None
+    max_water_apsec: Sequence[Any] | None = None
+    median_apsec: Sequence[Any] | None = None
+    channel_wet_profiles: Sequence[Sequence[bool]] | None = None
+    channel_segment_lengths_m: Sequence[float] | None = None
+
+
+@dataclass(frozen=True)
 class HydroResult:
     """Materialised tidy metrics plus manifest paths for one analysis run."""
 
@@ -195,4 +215,4 @@ class HydroResult:
         return target
 
 
-__all__ = ["HydroResult", "MetricRecord", "ValidationReport", "WaterCube"]
+__all__ = ["AnalysisInputs", "HydroResult", "MetricRecord", "ValidationReport", "WaterCube"]

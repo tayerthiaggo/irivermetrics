@@ -16,12 +16,13 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 
-from hydrofragments.patches.components import (
+from hydrofragments.patches import (
+    PatchProperties,
     bucket_component_crops,
     iter_component_crops,
+    label_components,
+    measure_components,
 )
-from hydrofragments.patches.labels import label_components
-from hydrofragments.patches.morphology import PatchProperties, measure_components
 from hydrofragments.schema import EdgeFlag, WarningFlag
 
 

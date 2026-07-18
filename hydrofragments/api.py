@@ -14,19 +14,29 @@ import xarray as xr
 from hydrofragments._version import __version__
 from hydrofragments.compat import section_compat_rows
 from hydrofragments.config import HydroConfig
-from hydrofragments.compute.capabilities import resolve_execution_plan
-from hydrofragments.guards.comparison import ComparisonGuardError, guard_comparison
+from hydrofragments.compute import resolve_execution_plan
+from hydrofragments.guards import ComparisonGuardError, guard_comparison
 from hydrofragments.io.adapters import parse_watermask_tsfill
 from hydrofragments.io.alignment import validate_alignment
-from hydrofragments.metrics.registry import MetricPlan, resolve_metrics
-from hydrofragments.metrics.persistence import compute_hydroperiod, compute_recurrence
-from hydrofragments.metrics.dynamics import compute_extent_contraction
-from hydrofragments.metrics.clustering import compute_inter_pool_gaps
-from hydrofragments.metrics.extent import ApsecRecord, compute_lpsec
-from hydrofragments.metrics.patches import analyze_pool_width_distribution
-from hydrofragments.models import HydroResult, MetricRecord, ValidationReport, WaterCube
-from hydrofragments.output.manifest import write_run_metadata
-from hydrofragments.output.tables import records_to_frame
+from hydrofragments.metrics import (
+    ApsecRecord,
+    MetricPlan,
+    analyze_pool_width_distribution,
+    compute_extent_contraction,
+    compute_hydroperiod,
+    compute_inter_pool_gaps,
+    compute_lpsec,
+    compute_recurrence,
+    resolve_metrics,
+)
+from hydrofragments.models import (
+    AnalysisInputs,
+    HydroResult,
+    MetricRecord,
+    ValidationReport,
+    WaterCube,
+)
+from hydrofragments.output import records_to_frame, write_run_metadata
 from hydrofragments.schema import (
     MetricDependency,
     MetricFamily,
@@ -35,9 +45,8 @@ from hydrofragments.schema import (
     ValueType,
     WarningFlag,
 )
-from hydrofragments.spatial.context import SpatialContext
-from hydrofragments.temporal.cadence import detect_cadence
-from hydrofragments.temporal.hydroyear import detect_hy_anchors
+from hydrofragments.spatial import SpatialContext
+from hydrofragments.temporal import detect_cadence, detect_hy_anchors
 
 
 def _coerce_dataarray(source: xr.DataArray | xr.Dataset) -> xr.DataArray:
@@ -541,22 +550,27 @@ def analyze(
     aoi_id: str,
     *,
     config: HydroConfig,
-    drainage: Any | None = None,
+    inputs: AnalysisInputs | None = None,
     pixel_size_m: float = 30.0,
     catchment_id: str | None = None,
-    hydroyear_extent: pd.Series | None = None,
-    max_water_apsec: Sequence[ApsecRecord] | None = None,
-    median_apsec: Sequence[ApsecRecord] | None = None,
-    channel_wet_profiles: Sequence[Sequence[bool]] | None = None,
-    channel_segment_lengths_m: Sequence[float] | None = None,
 ) -> HydroResult:
     """Execute configured metric profiles for one AOI.
 
-    ``hydroyear_extent`` enables the external hydroseason adapter. Dynamics
-    additionally requires caller-supplied APSEC records for both
-    ``max_water_apsec`` and ``median_apsec``; absent either composite, the
-    registry reports an explicit dependency skip.
+    ``inputs`` bundles optional advanced inputs (drainage context, hydroyear
+    extent, dual-composite APSEC, channel profiles) -- see
+    :class:`hydrofragments.models.AnalysisInputs`. ``inputs.hydroyear_extent``
+    enables the external hydroseason adapter. Dynamics additionally requires
+    both ``inputs.max_water_apsec`` and ``inputs.median_apsec``; absent
+    either composite, the registry reports an explicit dependency skip.
     """
+    inputs = inputs or AnalysisInputs()
+    drainage = inputs.drainage
+    hydroyear_extent = inputs.hydroyear_extent
+    max_water_apsec = inputs.max_water_apsec
+    median_apsec = inputs.median_apsec
+    channel_wet_profiles = inputs.channel_wet_profiles
+    channel_segment_lengths_m = inputs.channel_segment_lengths_m
+
     execution_plan = resolve_execution_plan(
         accelerator=config.compute.accelerator,
         cuda_strict=config.compute.cuda_strict,
@@ -773,6 +787,7 @@ def compare_results(
 
 
 __all__ = [
+    "AnalysisInputs",
     "ComparisonGuardError",
     "HydroConfig",
     "HydroResult",

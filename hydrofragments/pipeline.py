@@ -9,9 +9,8 @@ from typing import Any
 
 import xarray as xr
 
-from hydrofragments.compute.chunks import ChunkDiagnostics, validate_chunk_budget
-from hydrofragments.compute.policy import ComputePolicy
-from hydrofragments.temporal.composites import build_monthly_products
+from hydrofragments.compute import ChunkDiagnostics, ComputePolicy, validate_chunk_budget
+from hydrofragments.temporal import build_monthly_products
 
 
 class CheckpointError(RuntimeError):

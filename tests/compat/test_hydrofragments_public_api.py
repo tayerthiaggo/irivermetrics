@@ -22,8 +22,9 @@ from hydrofragments import (
     validate_inputs,
 )
 from hydrofragments.schema import SCHEMA_VERSION
-from hydrofragments.metrics.extent import ApsecRecord
-from hydrofragments.spatial.context import create_channel_context
+from hydrofragments.metrics import ApsecRecord
+from hydrofragments.models import AnalysisInputs
+from hydrofragments.spatial import create_channel_context
 
 
 def test_package_version_exposed() -> None:
@@ -206,11 +207,13 @@ def test_analyze_emits_lpsec_and_ordered_gaps_only_with_real_channel(tmp_path) -
         cube,
         aoi_id="demo",
         config=config,
-        drainage=context,
-        channel_wet_profiles=np.array(
-            [[True, False, True, False, True], [True, True, True, True, True]]
+        inputs=AnalysisInputs(
+            drainage=context,
+            channel_wet_profiles=np.array(
+                [[True, False, True, False, True], [True, True, True, True, True]]
+            ),
+            channel_segment_lengths_m=[10.0] * 5,
         ),
-        channel_segment_lengths_m=[10.0] * 5,
     )
 
     assert set(result.metrics_table["metric"]) == {"lpsec", "inter_pool_gap"}
@@ -322,7 +325,7 @@ def test_analyze_calls_hydroseason_when_hydroyear_extent_is_supplied(tmp_path) -
     )
     extent = pd.Series(np.tile([70, 90, 80, 60, 40, 25, 15, 10, 8, 5, 30, 55], 3), index=times)
 
-    analyze(cube, aoi_id="demo", config=config, hydroyear_extent=extent)
+    analyze(cube, aoi_id="demo", config=config, inputs=AnalysisInputs(hydroyear_extent=extent))
 
     manifest = __import__("json").loads((tmp_path / "run_manifest.json").read_text())
     assert manifest["comparison"]["hydroseason_hy_count"] > 0
@@ -364,9 +367,11 @@ def test_analyze_emits_dual_composite_contraction_rows(tmp_path) -> None:
         cube,
         aoi_id="demo",
         config=config,
-        hydroyear_extent=extent,
-        max_water_apsec=max_records,
-        median_apsec=median_records,
+        inputs=AnalysisInputs(
+            hydroyear_extent=extent,
+            max_water_apsec=max_records,
+            median_apsec=median_records,
+        ),
     )
 
     rows = result.metrics_table[result.metrics_table["metric"] == "extent_contraction"]

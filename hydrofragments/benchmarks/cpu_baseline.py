@@ -26,10 +26,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from hydrofragments.compute.policy import ComputePolicy
+from hydrofragments.compute import ComputePolicy
 from hydrofragments.config import HydroConfig
-from hydrofragments.metrics.extent import compute_apsec
-from hydrofragments.metrics.persistence import compute_occurrence
+from hydrofragments.metrics import compute_apsec, compute_occurrence
 from hydrofragments.pipeline import assemble_monthly_pipeline
 
 

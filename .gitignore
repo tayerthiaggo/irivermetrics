@@ -185,3 +185,4 @@ data/wofs_monthly_masks_1986_2026.zarr
 .github/
 .superpowers/
 ecofragments/
+hydrofragments_out/
