@@ -357,6 +357,16 @@ def _pool_width_records(
     return records
 
 
+# Metric ids that can ever originate from section_compat_rows() /
+# _records_from_compat_rows() below (the legacy wide-row bridge). Kept in
+# sync with the "mapping" table inside _records_from_compat_rows -- used to
+# skip the whole compat-row compute path when a narrow profile selects none
+# of these (B1).
+_COMPAT_ROW_METRIC_IDS = frozenset(
+    {"apsec", "number_of_pools", "lpi", "awre", "awmsi", "occurrence", "refuge_area"}
+)
+
+
 def _records_from_compat_rows(
     rows: list[dict[str, object]],
     *,
@@ -416,7 +426,11 @@ def _records_from_compat_rows(
                     resolution_m=resolution_m,
                     crs=crs,
                     source=source,
-                    n_pools=int(row["n_patches"]) if metric_id == "number_of_pools" else None,
+                    n_pools=(
+                        int(row["n_patches"])
+                        if metric_id == "number_of_pools" and row.get("n_patches") is not None
+                        else None
+                    ),
                 )
             )
     return records
@@ -600,29 +614,16 @@ def analyze(
             "valid_obs": cube.valid_obs.astype(bool),
         }
     )
-    rows = section_compat_rows(
-        monthly["water"],
-        section=aoi_id,
-        section_area_km2=section_area_km2,
-        pixel_size_m=pixel_size_m,
-        config=config,
-    )
-    records = _records_from_compat_rows(
-        rows,
-        run_id=run_id,
-        config=config,
-        catchment_id=catchment,
-        aoi_id=aoi_id,
-        resolution_m=pixel_size_m,
-        crs=crs,
-        source=cube.source,
-    )
     hydroyear_result = None
     if hydroyear_extent is not None:
         hydroyear_result = detect_hy_anchors(
             hydroyear_extent, hydrofragments_config=config
         )
 
+    # Resolve which metrics are selected BEFORE computing anything (B1): the
+    # compat row bridge below only computes families whose metric ids are in
+    # selected_ids, so an expensive family (e.g. patch morphology) that a
+    # narrow profile never asked for is never run.
     selected_ids = {
         spec.metric_id for spec in resolve_metrics(
             config.metric_profiles,
@@ -653,6 +654,27 @@ def analyze(
             ),
         ).selected
     }
+
+    records: list[MetricRecord] = []
+    if selected_ids & _COMPAT_ROW_METRIC_IDS:
+        rows = section_compat_rows(
+            monthly["water"],
+            section=aoi_id,
+            section_area_km2=section_area_km2,
+            pixel_size_m=pixel_size_m,
+            config=config,
+            selected_ids=selected_ids,
+        )
+        records = _records_from_compat_rows(
+            rows,
+            run_id=run_id,
+            config=config,
+            catchment_id=catchment,
+            aoi_id=aoi_id,
+            resolution_m=pixel_size_m,
+            crs=crs,
+            source=cube.source,
+        )
     records = [record for record in records if record.metric in selected_ids]
     if {"lpsec", "inter_pool_gap"} & selected_ids:
         if not isinstance(drainage, SpatialContext) or not drainage.has_real_channel:

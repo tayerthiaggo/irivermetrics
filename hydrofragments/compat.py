@@ -121,6 +121,10 @@ def _monthly_dataset(da_feature: xr.DataArray) -> xr.Dataset:
     return xr.Dataset({"water": water, "valid_obs": valid_obs})
 
 
+_PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
+_PERSISTENCE_METRIC_IDS = frozenset({"occurrence", "refuge_area"})
+
+
 def section_compat_rows(
     da_feature: xr.DataArray,
     *,
@@ -128,48 +132,83 @@ def section_compat_rows(
     section_area_km2: float,
     pixel_size_m: float,
     config: HydroConfig,
+    selected_ids: set[str] | None = None,
 ) -> list[dict[str, object]]:
-    """Compute retained v1.2 metrics in a legacy-compatible wide row shape."""
+    """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
+
+    ``selected_ids`` is an optional B1 optimisation: when provided (only the
+    canonical ``analyze()`` path does this), families whose metric ids are
+    absent from ``selected_ids`` are skipped entirely rather than computed
+    and discarded. When ``None`` (the default -- used by the legacy
+    ``calculate_metrics_compat`` shim, which has no concept of "selected
+    metrics" and always wants the full fixed wide-row export), every family
+    is computed exactly as before. Skipped families still populate their row
+    keys with ``None``/``nan`` placeholders so ``compat_dataframe()`` and
+    ``_records_from_compat_rows`` (which filters by metric id after
+    construction) never see a missing key.
+    """
+    want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
+    want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
+    want_apsec = selected_ids is None or "apsec" in selected_ids
+
     monthly = _monthly_dataset(da_feature)
     cell_area_m2 = float(pixel_size_m) ** 2
     a_ref_m2 = float(section_area_km2) * 1_000_000.0
 
-    occurrence = compute_occurrence(monthly, config=config)
-    refuge = compute_refuge_area(
-        occurrence, cell_area_m2=cell_area_m2, config=config
-    )
-    pp_mean = float(occurrence.occurrence.mean(skipna=True).item())
-    if np.isnan(pp_mean):
-        pp_mean = float("nan")
+    pp_mean = float("nan")
+    refuge = None
+    if want_persistence:
+        occurrence = compute_occurrence(monthly, config=config)
+        refuge = compute_refuge_area(
+            occurrence, cell_area_m2=cell_area_m2, config=config
+        )
+        pp_mean = float(occurrence.occurrence.mean(skipna=True).item())
+        if np.isnan(pp_mean):
+            pp_mean = float("nan")
 
     rows: list[dict[str, object]] = []
     for time_index, timestamp in enumerate(pd.to_datetime(monthly["time"].values)):
-        mask = np.asarray(monthly["water"].isel(time=time_index).values, dtype=bool)
-        patch_metrics = analyze_patch_metrics(
-            mask,
-            pixel_size_m=pixel_size_m,
-            a_total_m2=a_ref_m2,
-            connectivity=config.patches.connectivity_rule,
-            min_patch_pixels=config.patches.min_patch_pixels,
-        )
-        apsec = compute_apsec(
-            monthly.isel(time=[time_index]),
-            a_ref_m2=a_ref_m2,
-            cell_area_m2=cell_area_m2,
-            config=config,
-        )[0]
+        n_patches: object = None
+        awmsi = float("nan")
+        awre = float("nan")
+        lpi = float("nan")
+        if want_patches:
+            mask = np.asarray(
+                monthly["water"].isel(time=time_index).values, dtype=bool
+            )
+            patch_metrics = analyze_patch_metrics(
+                mask,
+                pixel_size_m=pixel_size_m,
+                a_total_m2=a_ref_m2,
+                connectivity=config.patches.connectivity_rule,
+                min_patch_pixels=config.patches.min_patch_pixels,
+            )
+            n_patches = patch_metrics.number_of_pools
+            awmsi = patch_metrics.awmsi
+            awre = patch_metrics.awre
+            lpi = patch_metrics.lpi
+
+        apsec_value = float("nan")
+        if want_apsec:
+            apsec_value = compute_apsec(
+                monthly.isel(time=[time_index]),
+                a_ref_m2=a_ref_m2,
+                cell_area_m2=cell_area_m2,
+                config=config,
+            )[0].value
+
         rows.append(
             {
                 "date": pd.Timestamp(timestamp),
                 "section": section,
                 "section_area_km2": section_area_km2,
-                "n_patches": patch_metrics.number_of_pools,
-                "APSEC": apsec.value,
-                "AWMSI": patch_metrics.awmsi,
-                "AWRe": patch_metrics.awre,
-                "LPI": patch_metrics.lpi,
+                "n_patches": n_patches,
+                "APSEC": apsec_value,
+                "AWMSI": awmsi,
+                "AWRe": awre,
+                "LPI": lpi,
                 "pp_mean_%": pp_mean,
-                "ra_area_km2": refuge.value,
+                "ra_area_km2": refuge.value if refuge is not None else float("nan"),
             }
         )
     return rows
