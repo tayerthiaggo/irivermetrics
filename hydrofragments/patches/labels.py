@@ -59,16 +59,18 @@ def _filter_and_normalize(
     max_raw_id = int(flat.max()) if flat.size else 0
     counts = np.bincount(flat, minlength=max_raw_id + 1)
 
-    # First-occurrence index per raw ID, O(P): fancy-assign in *reverse*
-    # flat order so the surviving write for each ID is its smallest (i.e.
-    # first, since flat is row-major) index. Raw IDs need not be monotonic
+    # First-occurrence index per raw ID, O(P): np.minimum.at accumulates the
+    # smallest (i.e. first, since flat is row-major) position per raw ID with
+    # well-defined, order-independent ufunc.at semantics -- unlike basic
+    # fancy-index assignment, whose behavior on repeated indices is
+    # explicitly documented as unspecified. Raw IDs need not be monotonic
     # with row-major occurrence order after dask-image's cross-chunk
     # reconciliation, so this cannot be assumed for free -- it must be
     # computed explicitly, same as the np.unique(return_index=True) it
     # replaces.
     first = np.full(max_raw_id + 1, flat.size, dtype=np.intp)
     positions = np.arange(flat.size, dtype=np.intp)
-    first[flat[::-1]] = positions[::-1]
+    np.minimum.at(first, flat, positions)
 
     raw_ids = np.arange(max_raw_id + 1)
     foreground = raw_ids != 0
