@@ -188,6 +188,7 @@ def compute_patch_metrics(
 
     lpi = float(areas.max() / a_total_m2 * 100.0)
     awmsi = float(np.sum((0.25 * perimeters / np.sqrt(areas)) * weights))
+    # MESH value is in m² by contract; registry unit label must match.
     mesh_m2 = float(np.sum(areas**2) / a_total_m2) if include_mesh else None
     if np.all(np.isfinite(lengths) & (lengths > 0)):
         elongation = 2.0 * np.sqrt(areas / np.pi) / lengths
