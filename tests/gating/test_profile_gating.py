@@ -49,9 +49,16 @@ def _pixel_temporal_config(tmp_path):
 
 
 def test_narrow_profile_skips_patch_morphology(synthetic_cube, tmp_path):
-    """A profile with no patch-dependent metrics must not call analyze_patch_metrics."""
+    """A profile with no patch-dependent metrics must not call analyze_patch_bundle.
+
+    Was ``analyze_patch_metrics`` before the Task 1 follow-up wired
+    ``analyze_patch_bundle()`` directly into ``section_compat_rows()`` (M2's
+    bundle helper, replacing the separate analyze_patch_metrics +
+    analyze_pool_width_distribution calls) -- same guarantee, updated spy
+    target.
+    """
     config = _pixel_temporal_config(tmp_path)
-    with mock.patch("hydrofragments.compat.analyze_patch_metrics") as patch_spy:
+    with mock.patch("hydrofragments.compat.analyze_patch_bundle") as patch_spy:
         analyze(synthetic_cube, aoi_id="demo", config=config, pixel_size_m=30.0)
     patch_spy.assert_not_called()
 

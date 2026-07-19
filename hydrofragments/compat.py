@@ -11,7 +11,10 @@ import xarray as xr
 
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import compute_apsec
-from hydrofragments.metrics.patches import analyze_patch_metrics
+from hydrofragments.metrics.patches import (
+    PoolWidthDistribution,
+    analyze_patch_bundle,
+)
 from hydrofragments.metrics.persistence import compute_occurrence, compute_refuge_area
 from hydrofragments.metrics.registry import resolve_metrics
 from hydrofragments.schema import MetricDependency
@@ -113,12 +116,27 @@ def legacy_hydro_config(
     )
 
 
-def _monthly_dataset(da_feature: xr.DataArray) -> xr.Dataset:
+def _monthly_dataset(
+    da_feature: xr.DataArray, valid_obs: xr.DataArray | None = None
+) -> xr.Dataset:
+    """Build the (water, valid_obs) monthly dataset patch/persistence kernels share.
+
+    ``valid_obs`` is the cube's real observed-pixel mask (option (b), Task 1
+    follow-up: mask semantics are unified onto ``water & valid_obs``
+    everywhere -- see .superpowers/sdd/task-1-brief.md). When the caller has
+    no real ``valid_obs`` to offer (the legacy ``calculate_metrics_compat()``
+    shim only ever had a single water-mask array, with no separate validity
+    concept), default to all-True so its behavior is unchanged: mask ==
+    water, exactly as before this task.
+    """
     # Section clips are bounded; materialise once at the compat orchestration boundary.
     da_feature = da_feature.load()
     water = (da_feature == 1).astype(bool)
-    valid_obs = xr.ones_like(water, dtype=bool)
-    return xr.Dataset({"water": water, "valid_obs": valid_obs})
+    if valid_obs is None:
+        valid = xr.ones_like(water, dtype=bool)
+    else:
+        valid = valid_obs.load().astype(bool)
+    return xr.Dataset({"water": water, "valid_obs": valid})
 
 
 _PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
@@ -133,6 +151,9 @@ def section_compat_rows(
     pixel_size_m: float,
     config: HydroConfig,
     selected_ids: set[str] | None = None,
+    valid_obs: xr.DataArray | None = None,
+    width_resolution_floor_pixels: float | None = None,
+    width_sink: list[PoolWidthDistribution | None] | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -146,12 +167,30 @@ def section_compat_rows(
     keys with ``None``/``nan`` placeholders so ``compat_dataframe()`` and
     ``_records_from_compat_rows`` (which filters by metric id after
     construction) never see a missing key.
+
+    ``valid_obs`` threads the cube's real observed-pixel mask through to the
+    ``water & valid_obs`` mask fed to every patch/persistence kernel (option
+    (b), Task 1 follow-up -- see .superpowers/sdd/task-1-brief.md). When
+    omitted (the legacy ``calculate_metrics_compat()`` shim, which has no
+    separate validity input), the mask is ``water`` alone, unchanged from
+    before this task.
+
+    ``width_resolution_floor_pixels`` and ``width_sink`` let a caller that
+    also needs ``pool_width`` (today only ``api.py``'s canonical ``analyze()``)
+    piggyback on the same per-month ``analyze_patch_bundle()`` call this
+    function already makes for core patch metrics, instead of a second
+    independent label/crop/measure pass (M2). When
+    ``width_resolution_floor_pixels`` is given, ``width_sink`` must be a list
+    that this function appends one ``PoolWidthDistribution | None`` to per
+    month (``None`` for months where patch metrics were skipped), in the same
+    time order as the returned rows.
     """
     want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
     want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
     want_apsec = selected_ids is None or "apsec" in selected_ids
+    want_width = width_resolution_floor_pixels is not None
 
-    monthly = _monthly_dataset(da_feature)
+    monthly = _monthly_dataset(da_feature, valid_obs)
     cell_area_m2 = float(pixel_size_m) ** 2
     a_ref_m2 = float(section_area_km2) * 1_000_000.0
 
@@ -185,19 +224,29 @@ def section_compat_rows(
         lpi = float("nan")
         if want_patches:
             mask = np.asarray(
-                monthly["water"].isel(time=time_index).values, dtype=bool
+                (
+                    monthly["water"].isel(time=time_index)
+                    & monthly["valid_obs"].isel(time=time_index)
+                ).values,
+                dtype=bool,
             )
-            patch_metrics = analyze_patch_metrics(
+            patch_metrics, width_result = analyze_patch_bundle(
                 mask,
                 pixel_size_m=pixel_size_m,
                 a_total_m2=a_ref_m2,
                 connectivity=config.patches.connectivity_rule,
                 min_patch_pixels=config.patches.min_patch_pixels,
+                include_width=want_width,
+                resolution_floor_pixels=width_resolution_floor_pixels,
             )
             n_patches = patch_metrics.number_of_pools
             awmsi = patch_metrics.awmsi
             awre = patch_metrics.awre
             lpi = patch_metrics.lpi
+            if width_sink is not None:
+                width_sink.append(width_result)
+        elif width_sink is not None:
+            width_sink.append(None)
 
         apsec_value = float("nan")
         if want_apsec:

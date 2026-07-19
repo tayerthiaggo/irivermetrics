@@ -325,9 +325,10 @@ def _channel_profile_records(
     return records
 
 
-def _pool_width_records(
+def _pool_width_records_from_results(
     *,
-    monthly: xr.Dataset,
+    results: Sequence[Any | None],
+    timestamps: Sequence[pd.Timestamp],
     run_id: str,
     config: HydroConfig,
     catchment_id: str,
@@ -336,22 +337,19 @@ def _pool_width_records(
     crs: str,
     source: str,
 ) -> list[MetricRecord]:
-    floor = config.patches.width_resolution_floor_pixels
-    if floor is None:
-        raise ValueError("pool_width requires width_resolution_floor_pixels")
+    """Build pool_width MetricRecords from already-computed PoolWidthDistributions.
+
+    Shared by both the bundled path (``section_compat_rows()``'s
+    ``width_sink``, one ``analyze_patch_bundle()`` call per month reused for
+    both patch-family metrics and pool_width -- M2 follow-up) and the
+    standalone path (``_pool_width_records()`` below, used when pool_width is
+    selected without any patch-family metric, so there is no shared bundle
+    call to piggyback on).
+    """
     records: list[MetricRecord] = []
-    for index, timestamp in enumerate(pd.to_datetime(monthly["time"].values)):
-        mask = np.asarray(
-            (monthly["water"].isel(time=index) & monthly["valid_obs"].isel(time=index)).values,
-            dtype=bool,
-        )
-        result = analyze_pool_width_distribution(
-            mask,
-            pixel_size_m=resolution_m,
-            resolution_floor_pixels=floor,
-            connectivity=config.patches.connectivity_rule,
-            min_patch_pixels=config.patches.min_patch_pixels,
-        )
+    for result, timestamp in zip(results, timestamps):
+        if result is None:
+            continue
         for statistic, value in (
             (Statistic.MEAN, result.mean_m),
             (Statistic.MEDIAN, result.median_m),
@@ -383,6 +381,57 @@ def _pool_width_records(
     return records
 
 
+def _pool_width_records(
+    *,
+    monthly: xr.Dataset,
+    run_id: str,
+    config: HydroConfig,
+    catchment_id: str,
+    aoi_id: str,
+    resolution_m: float,
+    crs: str,
+    source: str,
+) -> list[MetricRecord]:
+    """Standalone pool_width computation: no shared patch-family bundle to reuse.
+
+    Used only when ``pool_width`` is selected but no patch-family metric
+    (``number_of_pools``/``lpi``/``awre``/``awmsi``) is, so
+    ``section_compat_rows()`` never runs its per-month
+    ``analyze_patch_bundle()`` loop for this call and there is nothing to
+    piggyback pool_width onto.
+    """
+    floor = config.patches.width_resolution_floor_pixels
+    if floor is None:
+        raise ValueError("pool_width requires width_resolution_floor_pixels")
+    timestamps = list(pd.to_datetime(monthly["time"].values))
+    results = []
+    for index in range(len(timestamps)):
+        mask = np.asarray(
+            (monthly["water"].isel(time=index) & monthly["valid_obs"].isel(time=index)).values,
+            dtype=bool,
+        )
+        results.append(
+            analyze_pool_width_distribution(
+                mask,
+                pixel_size_m=resolution_m,
+                resolution_floor_pixels=floor,
+                connectivity=config.patches.connectivity_rule,
+                min_patch_pixels=config.patches.min_patch_pixels,
+            )
+        )
+    return _pool_width_records_from_results(
+        results=results,
+        timestamps=timestamps,
+        run_id=run_id,
+        config=config,
+        catchment_id=catchment_id,
+        aoi_id=aoi_id,
+        resolution_m=resolution_m,
+        crs=crs,
+        source=source,
+    )
+
+
 # Metric ids that can ever originate from section_compat_rows() /
 # _records_from_compat_rows() below (the legacy wide-row bridge). Kept in
 # sync with the "mapping" table inside _records_from_compat_rows -- used to
@@ -391,6 +440,14 @@ def _pool_width_records(
 _COMPAT_ROW_METRIC_IDS = frozenset(
     {"apsec", "number_of_pools", "lpi", "awre", "awmsi", "occurrence", "refuge_area"}
 )
+
+# Patch-family metric ids: when any of these is selected, section_compat_rows()
+# runs analyze_patch_bundle() once per month. If pool_width is *also*
+# selected, that same bundle call can be asked to compute width too (via
+# width_sink) instead of a second independent label/crop/measure pass -- see
+# the bundle_width_floor / width_sink wiring in analyze() below (Task 1
+# follow-up to M2's analyze_patch_bundle).
+_PATCH_FAMILY_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
 
 
 def _records_from_compat_rows(
@@ -696,6 +753,21 @@ def analyze(
         ).selected
     }
 
+    # When both a patch-family metric (number_of_pools/lpi/awre/awmsi) and
+    # pool_width are selected, section_compat_rows() already runs
+    # analyze_patch_bundle() once per month for the patch-family row values;
+    # ask it to also compute pool_width in that same bundle call via
+    # width_sink, instead of _pool_width_records() relabeling every month a
+    # second time (Task 1 follow-up to M2's analyze_patch_bundle).
+    want_patch_family = bool(selected_ids & _PATCH_FAMILY_METRIC_IDS)
+    want_pool_width = "pool_width" in selected_ids
+    bundle_width_floor = (
+        config.patches.width_resolution_floor_pixels
+        if want_patch_family and want_pool_width
+        else None
+    )
+    width_sink: list[Any] | None = [] if bundle_width_floor is not None else None
+
     records: list[MetricRecord] = []
     if selected_ids & _COMPAT_ROW_METRIC_IDS:
         rows = section_compat_rows(
@@ -705,6 +777,9 @@ def analyze(
             pixel_size_m=pixel_size_m,
             config=config,
             selected_ids=selected_ids,
+            valid_obs=monthly["valid_obs"],
+            width_resolution_floor_pixels=bundle_width_floor,
+            width_sink=width_sink,
         )
         records = _records_from_compat_rows(
             rows,
@@ -740,19 +815,37 @@ def analyze(
                 source=cube.source,
             )
         )
-    if "pool_width" in selected_ids:
-        records.extend(
-            _pool_width_records(
-                monthly=monthly,
-                run_id=run_id,
-                config=config,
-                catchment_id=catchment,
-                aoi_id=aoi_id,
-                resolution_m=pixel_size_m,
-                crs=crs,
-                source=cube.source,
+    if want_pool_width:
+        if width_sink is not None:
+            # section_compat_rows() already computed one PoolWidthDistribution
+            # per month in the same analyze_patch_bundle() call it used for
+            # the patch-family rows above -- reuse those instead of relabeling.
+            records.extend(
+                _pool_width_records_from_results(
+                    results=width_sink,
+                    timestamps=list(pd.to_datetime(monthly["time"].values)),
+                    run_id=run_id,
+                    config=config,
+                    catchment_id=catchment,
+                    aoi_id=aoi_id,
+                    resolution_m=pixel_size_m,
+                    crs=crs,
+                    source=cube.source,
+                )
             )
-        )
+        else:
+            records.extend(
+                _pool_width_records(
+                    monthly=monthly,
+                    run_id=run_id,
+                    config=config,
+                    catchment_id=catchment,
+                    aoi_id=aoi_id,
+                    resolution_m=pixel_size_m,
+                    crs=crs,
+                    source=cube.source,
+                )
+            )
     if {"recurrence", "hydroperiod"} & selected_ids:
         records.extend(
             _temporal_profile_records(
