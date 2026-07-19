@@ -49,6 +49,22 @@ from hydrofragments.spatial import SpatialContext
 from hydrofragments.temporal import detect_cadence, detect_hy_anchors
 
 
+def _describe_chunks(array: xr.DataArray) -> str:
+    """Serializable description of an array's actual Dask chunk sizes.
+
+    Returns ``"none"`` for a non-Dask-backed (eager numpy) array, otherwise
+    a compact ``"dim=size,dim=size,..."`` string using each dimension's
+    first block size -- enough to verify what chunking was actually applied
+    without embedding full nested chunk tuples in provenance/manifest text.
+    """
+    chunks = array.chunks
+    if chunks is None:
+        return "none"
+    return ",".join(
+        f"{dim}={sizes[0]}" for dim, sizes in zip(array.dims, chunks)
+    )
+
+
 def _coerce_dataarray(source: xr.DataArray | xr.Dataset) -> xr.DataArray:
     if isinstance(source, xr.Dataset):
         if "water" in source:
@@ -68,12 +84,12 @@ def open_water_cube(
     input_kind: str = "generic_binary",
 ) -> WaterCube:
     """Open a canonical aligned water/valid cube from supported sources."""
-    del variable_map, chunks  # reserved for later adapter expansion
+    del variable_map  # reserved for later adapter expansion
 
     if isinstance(source, (str, Path)):
         path = Path(source)
         if path.suffix == ".zarr" or path.name.endswith(".zarr"):
-            dataset = xr.open_zarr(path)
+            dataset = xr.open_zarr(path, chunks=chunks if chunks is not None else "auto")
             raw = dataset["water_mask"] if "water_mask" in dataset else dataset["water"]
             water, valid = parse_watermask_tsfill(raw)
             cadence = detect_cadence(water)
@@ -84,11 +100,16 @@ def open_water_cube(
                 source=str(path),
                 cadence=cadence,
                 crs=crs,
-                provenance=(("adapter", "watermask_tsfill"),),
+                provenance=(
+                    ("adapter", "watermask_tsfill"),
+                    ("chunks", _describe_chunks(water)),
+                ),
             )
         raise ValueError(f"unsupported source path: {path}")
 
     array = _coerce_dataarray(source)
+    if chunks is not None:
+        array = array.chunk(chunks)
     if input_kind == "watermask_tsfill":
         water, valid = parse_watermask_tsfill(array)
     else:
@@ -97,6 +118,8 @@ def open_water_cube(
             valid = xr.ones_like(water, dtype=bool)
         else:
             valid = valid_obs.astype(bool)
+            if chunks is not None:
+                valid = valid.chunk(chunks)
             validate_alignment(water, valid)
     cadence = detect_cadence(water)
     crs = water.rio.crs.to_string() if hasattr(water, "rio") and water.rio.crs else None
@@ -106,7 +129,10 @@ def open_water_cube(
         source=input_kind,
         cadence=cadence,
         crs=crs,
-        provenance=(("input_kind", input_kind),),
+        provenance=(
+            ("input_kind", input_kind),
+            ("chunks", _describe_chunks(water)),
+        ),
     )
 
 
@@ -357,6 +383,16 @@ def _pool_width_records(
     return records
 
 
+# Metric ids that can ever originate from section_compat_rows() /
+# _records_from_compat_rows() below (the legacy wide-row bridge). Kept in
+# sync with the "mapping" table inside _records_from_compat_rows -- used to
+# skip the whole compat-row compute path when a narrow profile selects none
+# of these (B1).
+_COMPAT_ROW_METRIC_IDS = frozenset(
+    {"apsec", "number_of_pools", "lpi", "awre", "awmsi", "occurrence", "refuge_area"}
+)
+
+
 def _records_from_compat_rows(
     rows: list[dict[str, object]],
     *,
@@ -416,7 +452,11 @@ def _records_from_compat_rows(
                     resolution_m=resolution_m,
                     crs=crs,
                     source=source,
-                    n_pools=int(row["n_patches"]) if metric_id == "number_of_pools" else None,
+                    n_pools=(
+                        int(row["n_patches"])
+                        if metric_id == "number_of_pools" and row.get("n_patches") is not None
+                        else None
+                    ),
                 )
             )
     return records
@@ -436,7 +476,23 @@ def _temporal_profile_records(
     """Emit AOI summaries for pixel-temporal kernels through canonical schema."""
     records: list[MetricRecord] = []
     recurrence = compute_recurrence(monthly, config=config)
-    recurrence_value = recurrence.recurrence.mean(skipna=True).item()
+    hydroperiod = compute_hydroperiod(monthly, config=config).hydroperiod
+    years = [int(year) for year in hydroperiod.coords["year"].values]
+
+    # Batch the AOI-mean recurrence scalar and every per-year AOI-mean
+    # hydroperiod scalar into a single Dataset so they share one Dask graph
+    # execution instead of one independent `.item()` materialization each
+    # (m8: materialization count must not scale with the number of years).
+    summary_vars: dict[str, xr.DataArray] = {
+        "recurrence": recurrence.recurrence.mean(skipna=True),
+    }
+    for year in years:
+        summary_vars[f"hydroperiod_{year}"] = (
+            hydroperiod.sel(year=year).mean(skipna=True).drop_vars("year")
+        )
+    summary_ds = xr.Dataset(summary_vars).compute()
+
+    recurrence_value = summary_ds["recurrence"].item()
     if recurrence_value is not None and np.isfinite(recurrence_value):
         records.append(
             _metric_record(
@@ -455,9 +511,8 @@ def _temporal_profile_records(
             )
         )
 
-    hydroperiod = compute_hydroperiod(monthly, config=config).hydroperiod
-    for year in hydroperiod.coords["year"].values:
-        value = hydroperiod.sel(year=year).mean(skipna=True).item()
+    for year in years:
+        value = summary_ds[f"hydroperiod_{year}"].item()
         if value is None or not np.isfinite(value):
             continue
         records.append(
@@ -600,29 +655,16 @@ def analyze(
             "valid_obs": cube.valid_obs.astype(bool),
         }
     )
-    rows = section_compat_rows(
-        monthly["water"],
-        section=aoi_id,
-        section_area_km2=section_area_km2,
-        pixel_size_m=pixel_size_m,
-        config=config,
-    )
-    records = _records_from_compat_rows(
-        rows,
-        run_id=run_id,
-        config=config,
-        catchment_id=catchment,
-        aoi_id=aoi_id,
-        resolution_m=pixel_size_m,
-        crs=crs,
-        source=cube.source,
-    )
     hydroyear_result = None
     if hydroyear_extent is not None:
         hydroyear_result = detect_hy_anchors(
             hydroyear_extent, hydrofragments_config=config
         )
 
+    # Resolve which metrics are selected BEFORE computing anything (B1): the
+    # compat row bridge below only computes families whose metric ids are in
+    # selected_ids, so an expensive family (e.g. patch morphology) that a
+    # narrow profile never asked for is never run.
     selected_ids = {
         spec.metric_id for spec in resolve_metrics(
             config.metric_profiles,
@@ -653,6 +695,27 @@ def analyze(
             ),
         ).selected
     }
+
+    records: list[MetricRecord] = []
+    if selected_ids & _COMPAT_ROW_METRIC_IDS:
+        rows = section_compat_rows(
+            monthly["water"],
+            section=aoi_id,
+            section_area_km2=section_area_km2,
+            pixel_size_m=pixel_size_m,
+            config=config,
+            selected_ids=selected_ids,
+        )
+        records = _records_from_compat_rows(
+            rows,
+            run_id=run_id,
+            config=config,
+            catchment_id=catchment,
+            aoi_id=aoi_id,
+            resolution_m=pixel_size_m,
+            crs=crs,
+            source=cube.source,
+        )
     records = [record for record in records if record.metric in selected_ids]
     if {"lpsec", "inter_pool_gap"} & selected_ids:
         if not isinstance(drainage, SpatialContext) or not drainage.has_real_channel:
@@ -745,6 +808,7 @@ def analyze(
             "source": cube.source,
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
+            "chunks": _describe_chunks(cube.water),
         },
         planned_backend=execution_plan.planned_backend,
         actual_backend_by_stage={

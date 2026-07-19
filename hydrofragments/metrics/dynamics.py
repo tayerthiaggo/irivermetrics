@@ -102,7 +102,7 @@ def _end_dry_value(records: Sequence[ApsecRecord], end: "datetime | date") -> fl
             and np.isfinite(record.value)
         ):
             return float(record.value)
-    raise ValueError("end_dry_month has no matching APSEC record")
+    return float("nan")
 
 
 def _fit_slope(
@@ -202,6 +202,8 @@ def _first_crossing(
     end_dry_month: "datetime | date",
     threshold: float,
 ) -> int | None:
+    months = [m for m, _ in series]
+    assert months == sorted(months), "reconnection series must be month-sorted"
     for month, value in series:
         if month <= end_dry_month:
             continue

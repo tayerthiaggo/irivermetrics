@@ -25,6 +25,7 @@ Decision Gate contract for this module (U8, approved 2026-07-17; spec section
 """
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from math import comb
 from typing import Mapping, Sequence
@@ -76,13 +77,20 @@ def build_fixed_graph(
         for record in topology
     }
 
-    edges: list[tuple[str, str]] = []
-    for i, node_a in enumerate(nodes):
+    from_index: dict[object, list[str]] = {}
+    for node in nodes:
+        fn, _ = from_to_node[node]
+        from_index.setdefault(fn, []).append(node)
+
+    node_order = {node: i for i, node in enumerate(nodes)}
+    edges = []
+    for node_a in nodes:
         _, to_node_a = from_to_node[node_a]
-        for node_b in nodes[i + 1:]:
-            from_node_b, _ = from_to_node[node_b]
-            if to_node_a == from_node_b:
-                edges.append((node_a, node_b))
+        children = sorted(
+            (c for c in from_index.get(to_node_a, []) if node_order[c] > node_order[node_a]),
+            key=node_order.__getitem__,
+        )
+        edges.extend((node_a, node_b) for node_b in children)
 
     return FixedGraph(
         node_source="external_network",
@@ -161,12 +169,8 @@ def compute_realised_connectivity(
         rc_pair_pct = float("nan")
     else:
         roots = [_find(parent, node) for node in graph.nodes]
-        reachable_pairs = sum(
-            1
-            for i in range(len(roots))
-            for j in range(i + 1, len(roots))
-            if roots[i] == roots[j]
-        )
+        sizes = Counter(roots)
+        reachable_pairs = sum(comb(size, 2) for size in sizes.values())
         rc_pair_pct = 100.0 * reachable_pairs / total_pairs
 
     return RealisedConnectivityResult(

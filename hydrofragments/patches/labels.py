@@ -52,28 +52,40 @@ def _filter_and_normalize(
     raw_labels: np.ndarray, *, min_patch_pixels: int
 ) -> LabelResult:
     flat = raw_labels.reshape(-1)
-    unique, first, counts = np.unique(
-        flat, return_index=True, return_counts=True
-    )
 
-    foreground = unique != 0
-    retained_positions = np.flatnonzero(
-        foreground & (counts >= min_patch_pixels)
-    )
-    retained_positions = retained_positions[
-        np.argsort(first[retained_positions], kind="stable")
+    # Raw label IDs from ndimage/dask-image labeling are a dense range of
+    # non-negative ints (0 = background), so bincount gives per-ID pixel
+    # counts in O(P+K) without sorting -- unlike np.unique(..., counts).
+    max_raw_id = int(flat.max()) if flat.size else 0
+    counts = np.bincount(flat, minlength=max_raw_id + 1)
+
+    # First-occurrence index per raw ID, O(P): np.minimum.at accumulates the
+    # smallest (i.e. first, since flat is row-major) position per raw ID with
+    # well-defined, order-independent ufunc.at semantics -- unlike basic
+    # fancy-index assignment, whose behavior on repeated indices is
+    # explicitly documented as unspecified. Raw IDs need not be monotonic
+    # with row-major occurrence order after dask-image's cross-chunk
+    # reconciliation, so this cannot be assumed for free -- it must be
+    # computed explicitly, same as the np.unique(return_index=True) it
+    # replaces.
+    first = np.full(max_raw_id + 1, flat.size, dtype=np.intp)
+    positions = np.arange(flat.size, dtype=np.intp)
+    np.minimum.at(first, flat, positions)
+
+    raw_ids = np.arange(max_raw_id + 1)
+    foreground = raw_ids != 0
+    retained_ids = np.flatnonzero(foreground & (counts >= min_patch_pixels))
+    retained_ids = retained_ids[
+        np.argsort(first[retained_ids], kind="stable")
     ]
 
-    count = int(retained_positions.size)
+    count = int(retained_ids.size)
     if count > np.iinfo(np.int32).max:
         raise OverflowError("component count exceeds int32 label capacity")
 
-    canonical_for_unique = np.zeros(unique.size, dtype=np.int32)
-    canonical_for_unique[retained_positions] = np.arange(
-        1, count + 1, dtype=np.int32
-    )
-    unique_positions = np.searchsorted(unique, flat)
-    labels = canonical_for_unique[unique_positions].reshape(raw_labels.shape)
+    lookup = np.zeros(max_raw_id + 1, dtype=np.int32)
+    lookup[retained_ids] = np.arange(1, count + 1, dtype=np.int32)
+    labels = lookup[flat].reshape(raw_labels.shape)
     return LabelResult(labels=labels, count=count)
 
 

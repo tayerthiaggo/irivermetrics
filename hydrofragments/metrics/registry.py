@@ -141,7 +141,7 @@ _METRICS = (
     MetricSpec(
         "mesh",
         MetricFamily.FRAGMENTATION,
-        "km2",
+        "m2",
         tier="secondary",
         dependencies=(
             MetricDependency.PATCHES,

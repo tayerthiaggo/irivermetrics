@@ -188,6 +188,7 @@ def compute_patch_metrics(
 
     lpi = float(areas.max() / a_total_m2 * 100.0)
     awmsi = float(np.sum((0.25 * perimeters / np.sqrt(areas)) * weights))
+    # MESH value is in m² by contract; registry unit label must match.
     mesh_m2 = float(np.sum(areas**2) / a_total_m2) if include_mesh else None
     if np.all(np.isfinite(lengths) & (lengths > 0)):
         elongation = 2.0 * np.sqrt(areas / np.pi) / lengths
@@ -207,7 +208,7 @@ def compute_patch_metrics(
     )
 
 
-def analyze_patch_metrics(
+def analyze_patch_bundle(
     mask: Any,
     *,
     pixel_size_m: float,
@@ -216,8 +217,16 @@ def analyze_patch_metrics(
     min_patch_pixels: int = 3,
     target_component_pixels: int = 1_000_000,
     include_mesh: bool = False,
-) -> PatchMetricResult:
-    """Run the exact CPU reference pipeline for one monthly 2-D mask."""
+    include_width: bool = False,
+    resolution_floor_pixels: float | None = None,
+) -> tuple[PatchMetricResult, PoolWidthDistribution | None]:
+    """Label, crop, and measure one monthly 2-D mask exactly once.
+
+    Core patch metrics are always produced. When ``include_width`` is set,
+    the same measured ``properties`` (with EDT width already attached) are
+    also reduced into a ``PoolWidthDistribution`` -- avoiding a second
+    label/crop/measure pass over the same mask (M2).
+    """
     if pixel_size_m <= 0:
         raise ValueError("pixel_size_m must be positive")
     if a_total_m2 <= 0:
@@ -233,11 +242,45 @@ def analyze_patch_metrics(
         crops, target_pixels=target_component_pixels
     ):
         properties.extend(
-            measure_components(bucket, pixel_size_m=pixel_size_m)
+            measure_components(
+                bucket, pixel_size_m=pixel_size_m, include_width=include_width
+            )
         )
-    return compute_patch_metrics(
+    core = compute_patch_metrics(
         properties, a_total_m2=a_total_m2, include_mesh=include_mesh
     )
+    width = None
+    if include_width:
+        width = compute_pool_width_distribution(
+            properties,
+            pixel_size_m=pixel_size_m,
+            resolution_floor_pixels=resolution_floor_pixels,
+        )
+    return core, width
+
+
+def analyze_patch_metrics(
+    mask: Any,
+    *,
+    pixel_size_m: float,
+    a_total_m2: float,
+    connectivity: int = 8,
+    min_patch_pixels: int = 3,
+    target_component_pixels: int = 1_000_000,
+    include_mesh: bool = False,
+) -> PatchMetricResult:
+    """Run the exact CPU reference pipeline for one monthly 2-D mask."""
+    core, _ = analyze_patch_bundle(
+        mask,
+        pixel_size_m=pixel_size_m,
+        a_total_m2=a_total_m2,
+        connectivity=connectivity,
+        min_patch_pixels=min_patch_pixels,
+        target_component_pixels=target_component_pixels,
+        include_mesh=include_mesh,
+        include_width=False,
+    )
+    return core
 
 
 def analyze_pool_width_distribution(
@@ -250,31 +293,28 @@ def analyze_pool_width_distribution(
     target_component_pixels: int = 1_000_000,
 ) -> PoolWidthDistribution:
     """Run optional EDT width work without changing the core patch path."""
-    labels = label_components(
+    # a_total_m2 only feeds core patch metrics (lpi/mesh), which are
+    # discarded here; any positive placeholder keeps analyze_patch_bundle's
+    # validation happy without affecting the returned width distribution.
+    _, width = analyze_patch_bundle(
         mask,
+        pixel_size_m=pixel_size_m,
+        a_total_m2=1.0,
         connectivity=connectivity,
         min_patch_pixels=min_patch_pixels,
-    )
-    properties: list[PatchProperties] = []
-    for bucket in bucket_component_crops(
-        iter_component_crops(labels.labels), target_pixels=target_component_pixels
-    ):
-        properties.extend(
-            measure_components(
-                bucket, pixel_size_m=pixel_size_m, include_width=True
-            )
-        )
-    return compute_pool_width_distribution(
-        properties,
-        pixel_size_m=pixel_size_m,
+        target_component_pixels=target_component_pixels,
+        include_mesh=False,
+        include_width=True,
         resolution_floor_pixels=resolution_floor_pixels,
     )
+    return width
 
 
 __all__ = [
     "PatchMetricResult",
     "MeshCorrelationGate",
     "PoolWidthDistribution",
+    "analyze_patch_bundle",
     "analyze_patch_metrics",
     "analyze_pool_width_distribution",
     "compute_pool_width_distribution",
