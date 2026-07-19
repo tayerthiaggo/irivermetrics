@@ -450,6 +450,7 @@ The end-dry footprint version is recommended for v1 because it uses monthly mask
 - `N_t = count(label(W_t = 1, connectivity = 8, min_patch_pixels))`.
 - `WA_t = cell_area × count(W_t = 1)` or `Σ_i a_i`.
 - `APSEC_t = WA_t / A_ref × 100`.
+- **`low_coverage_flag`** — **`[TASK 8 FOLLOW-UP 2026-07-19]`** additive per-month metadata on the `apsec` metric row (`MetricRecord.low_coverage_flag`, `hydrofragments/metrics/extent.py::compute_apsec`): `True` when that month's fraction of valid pixels (mean of `valid_obs` over the spatial dims) falls below `validity.min_valid_fraction_month` (§1 item 5, `hydrofragments/config.py`, default 0.70). It never changes `APSEC_t`'s value — it only flags months where the wetted-area count above was computed from a sparse observation footprint. Wired into the live `analyze()` path via `hydrofragments/compat.py::section_compat_rows` -- prior to this, `compute_apsec`'s `valid_obs`/`min_valid_fraction` parameters existed and were unit-tested but the only production call site never passed them, so the flag was always `False` in shipped output regardless of actual coverage.
 - `WL_t = length of wet channel/skeleton cells`.
 - `LPSEC_t = WL_t / L_ref × 100`.
 - **`OCC_p`** — **`[AUDIT FIX 2026-07-19]`** the pooled ratio `Σ_t W_{p,t} / Σ_t V_{p,t} × 100` shown in v1.1/early v1.2 drafts is **not** what ships. Decision Gate 0 (U2/Q1, approved 2026-07-14) supersedes it with a **season-stratified equal-weight mean**, because the pooled ratio is biased by confirmed seasonal missing-not-at-random (MNAR) observation gaps (`docs/audit/evidence/validity_reliability_report.md` §4): a calendar month that happens to have more valid observations in the record would otherwise be over-weighted relative to a sparsely-observed month. The shipped estimator, exactly as implemented in `hydrofragments/metrics/persistence.py::compute_occurrence` / `_season_stratified_occurrence`:
@@ -515,7 +516,7 @@ run_id | config_hash | package_version | git_sha | crs | area_unit | length_unit
 monthly_composite | water_threshold | threshold_method | min_patch_pixels |
 connectivity_rule | metric_family | statistic | unit | value_type |
 n_valid_pixels | n_water_pixels | valid_fraction_month | min_valid_fraction_month |
-proxy_channel | metric_dependency | warning_flag |
+low_coverage_flag | proxy_channel | metric_dependency | warning_flag |
 awre_length_method | composite_sensitive | connected_wet_metric | connected_wet_threshold |
 reconnection_metric_used
 ```

@@ -212,8 +212,22 @@ def section_compat_rows(
         # per timestamp, in time order matching monthly["time"] -- the
         # same order the loop below iterates. Call it once here rather
         # than once per month inside the loop (m2).
+        #
+        # valid_obs/min_valid_fraction (Task 8 follow-up, m7): thread the
+        # same monthly["valid_obs"] mask this function already builds
+        # (Task 1 follow-up) through to compute_apsec's optional coverage
+        # floor, sourced from config.validity.min_valid_fraction_month --
+        # the spec's dedicated monthly-AOI-reportability knob (item 5,
+        # separate from the per-pixel min_valid_obs occurrence uses). This
+        # only sets ApsecRecord.low_coverage_flag; the APSEC value is
+        # unaffected.
         apsec_records = compute_apsec(
-            monthly, a_ref_m2=a_ref_m2, cell_area_m2=cell_area_m2, config=config
+            monthly,
+            a_ref_m2=a_ref_m2,
+            cell_area_m2=cell_area_m2,
+            config=config,
+            valid_obs=monthly["valid_obs"],
+            min_valid_fraction=config.validity.min_valid_fraction_month,
         )
 
     rows: list[dict[str, object]] = []
@@ -249,8 +263,10 @@ def section_compat_rows(
             width_sink.append(None)
 
         apsec_value = float("nan")
+        low_coverage_flag: bool | None = None
         if want_apsec:
             apsec_value = apsec_records[time_index].value
+            low_coverage_flag = apsec_records[time_index].low_coverage_flag
 
         rows.append(
             {
@@ -259,6 +275,7 @@ def section_compat_rows(
                 "section_area_km2": section_area_km2,
                 "n_patches": n_patches,
                 "APSEC": apsec_value,
+                "low_coverage_flag": low_coverage_flag,
                 "AWMSI": awmsi,
                 "AWRe": awre,
                 "LPI": lpi,

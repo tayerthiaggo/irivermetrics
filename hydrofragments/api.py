@@ -211,6 +211,7 @@ def _metric_record(
     statistic: Statistic | None = None,
     metric_dependency: MetricDependency = MetricDependency.NONE,
     warning_flags: tuple[WarningFlag, ...] = (WarningFlag.LENGTH_CRS_CAVEAT,),
+    low_coverage_flag: bool | None = None,
 ) -> MetricRecord:
     return MetricRecord(
         run_id=run_id,
@@ -228,6 +229,7 @@ def _metric_record(
         unit=unit,
         value_type=value_type,
         n_pools=n_pools,
+        low_coverage_flag=low_coverage_flag,
         warning_flags=warning_flags,
         is_reportable=value is not None and np.isfinite(value),
         source=source,
@@ -512,6 +514,11 @@ def _records_from_compat_rows(
                     n_pools=(
                         int(row["n_patches"])
                         if metric_id == "number_of_pools" and row.get("n_patches") is not None
+                        else None
+                    ),
+                    low_coverage_flag=(
+                        bool(row["low_coverage_flag"])
+                        if metric_id == "apsec" and row.get("low_coverage_flag") is not None
                         else None
                     ),
                 )

@@ -54,6 +54,7 @@ class MetricRecord:
     n_water_pixels: int | None = None
     valid_fraction_month: float | None = None
     min_valid_fraction_month: float | None = None
+    low_coverage_flag: bool | None = None
     edge_flag: EdgeFlag | None = None
     warning_flags: tuple[WarningFlag, ...] = ()
     is_reportable: bool = False
