@@ -142,6 +142,18 @@ def test_dtype_coercion_is_logged():
     assert "coerced" in fixes
 
 
+def test_dim_reorder_is_logged():
+    # (y, time, x) -- wrong order relative to the expected (time, y, x).
+    data = np.zeros((3, 4, 2), dtype=bool)
+    da_in = xr.DataArray(data, dims=["y", "time", "x"])
+
+    cube = open_water_cube(da_in)
+
+    assert cube.water.dims == ("time", "y", "x")
+    fixes = dict(cube.provenance).get("auto_fixes", "")
+    assert "reorder" in fixes
+
+
 # ---- grid mismatch / CRS refusal (never silently reprojects) --------------
 
 
