@@ -35,6 +35,26 @@ def test_unknown_nested_config_key_is_rejected_with_its_path() -> None:
         )
 
 
+def test_raw_wofs_input_kind_is_accepted() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(input={"kind": "raw_wofs"})
+    )
+
+    assert config.input.kind == "raw_wofs"
+
+
+def test_raw_wofs_input_kind_does_not_require_water_threshold() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(input={"kind": "raw_wofs"})
+    )
+
+    assert config.input.water_threshold is None
+
+
 @pytest.mark.parametrize(
     "missing_key",
     ["water_threshold", "threshold_method", "probability_source"],

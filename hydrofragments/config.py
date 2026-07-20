@@ -274,6 +274,7 @@ class HydroConfig:
             "watermask_tsfill",
             "generic_binary",
             "generic_probability",
+            "raw_wofs",
         }:
             raise ConfigError(f"input.kind has unsupported value: {kind}")
         if kind == "generic_probability":
