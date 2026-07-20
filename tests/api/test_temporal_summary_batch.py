@@ -26,6 +26,7 @@ import xarray as xr
 
 from hydrofragments import HydroConfig, analyze
 from hydrofragments.models import WaterCube
+from tests.fixtures.analytic_masks import temporal_summary_hand_fixture
 
 
 def _raw_arrays(n_years: int) -> tuple[np.ndarray, np.ndarray, pd.DatetimeIndex]:
@@ -78,6 +79,28 @@ def _eager_cube(n_years: int) -> WaterCube:
         water=water,
         valid_obs=valid,
         source="synthetic_eager",
+        cadence="monthly",
+    )
+
+
+def _hand_traceable_temporal_cube() -> WaterCube:
+    water_np, valid_np, times, _ = temporal_summary_hand_fixture()
+
+    water = xr.DataArray(
+        da.from_array(water_np, chunks=(6, 2, 2)),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    valid = xr.DataArray(
+        da.from_array(valid_np, chunks=(6, 2, 2)),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+
+    return WaterCube(
+        water=water,
+        valid_obs=valid,
+        source="synthetic_hand_traceable",
         cadence="monthly",
     )
 
@@ -202,3 +225,15 @@ def test_batched_temporal_summaries_match_eager_nondask_values(tmp_path, n_years
     # comparison above is non-trivial (not just comparing two zeros/NaNs).
     assert 0.0 < dask_values["recurrence"] < 100.0
     assert n_years == sum(1 for key in dask_values if key.startswith("hydroperiod_"))
+
+
+def test_batched_temporal_summaries_match_hand_derived_values(tmp_path):
+    """Pin batched temporal summary values against independent hand arithmetic."""
+    values = _recurrence_and_hydroperiod_values(
+        tmp_path, _hand_traceable_temporal_cube()
+    )
+    _, _, _, expected = temporal_summary_hand_fixture()
+
+    assert values == {
+        key: pytest.approx(value) for key, value in expected.items()
+    }
