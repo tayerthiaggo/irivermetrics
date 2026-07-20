@@ -24,7 +24,7 @@ class LowSupportBehavior(str, Enum):
 
 @dataclass(frozen=True)
 class InputConfig:
-    kind: str
+    kind: str | None = None
     variable_map: tuple[tuple[str, str], ...] = ()
     water_threshold: float | None = None
     threshold_method: str | None = None
@@ -269,8 +269,9 @@ class HydroConfig:
                 "probability_source",
             },
         )
-        kind = str(_required(input_raw, "kind", "input"))
-        if kind not in {
+        kind_raw = input_raw.get("kind")
+        kind = None if kind_raw is None else str(kind_raw)
+        if kind is not None and kind not in {
             "watermask_tsfill",
             "generic_binary",
             "generic_probability",

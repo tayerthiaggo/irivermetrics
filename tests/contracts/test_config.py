@@ -35,6 +35,26 @@ def test_unknown_nested_config_key_is_rejected_with_its_path() -> None:
         )
 
 
+def test_input_kind_none_constructs_successfully() -> None:
+    """kind=None means auto-detect, matching open_water_cube's default."""
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(input={"kind": None})
+    )
+
+    assert config.input.kind is None
+
+
+def test_input_kind_missing_constructs_successfully() -> None:
+    """Omitting input.kind entirely is equivalent to kind=None (auto-detect)."""
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config(input={}))
+
+    assert config.input.kind is None
+
+
 def test_raw_wofs_input_kind_is_accepted() -> None:
     from hydrofragments.config import HydroConfig
 
