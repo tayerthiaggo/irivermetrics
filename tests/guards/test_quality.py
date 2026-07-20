@@ -76,6 +76,7 @@ def _low_coverage_cube() -> WaterCube:
     # Only 2 of 24 months observed -> coverage is far below any reasonable floor.
     valid[0] = True
     valid[1] = True
+    water &= valid  # water=True requires valid_obs=True (WaterCube invariant)
     return WaterCube(
         water=xr.DataArray(water, dims=("time", "y", "x"), coords={"time": times}),
         valid_obs=xr.DataArray(valid, dims=("time", "y", "x"), coords={"time": times}),

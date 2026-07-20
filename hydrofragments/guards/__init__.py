@@ -9,6 +9,11 @@ from hydrofragments.guards.comparison import (
     compare_manifests,
     guard_comparison,
 )
+from hydrofragments.guards.quality import (
+    WATERMASK_TSFILL_HINT,
+    BaselineQualityReport,
+    assess_baseline_quality,
+)
 from hydrofragments.guards.scientific import (
     ScientificGuardError,
     guard_aoi_comparability,
@@ -18,10 +23,13 @@ from hydrofragments.guards.scientific import (
 
 __all__ = [
     "COMPARISON_FIELDS",
+    "WATERMASK_TSFILL_HINT",
+    "BaselineQualityReport",
     "ComparisonApproval",
     "ComparisonGuardError",
     "ComparisonMismatch",
     "ScientificGuardError",
+    "assess_baseline_quality",
     "check_comparison_compatibility",
     "compare_manifests",
     "guard_aoi_comparability",

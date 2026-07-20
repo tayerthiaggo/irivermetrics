@@ -16,6 +16,7 @@ from hydrofragments.compat import section_compat_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.compute import resolve_execution_plan
 from hydrofragments.guards import ComparisonGuardError, guard_comparison
+from hydrofragments.guards.quality import assess_baseline_quality
 from hydrofragments.io.adapters import ADAPTERS, detect_adapter
 from hydrofragments.io.alignment import validate_alignment
 from hydrofragments.io.input_contract import (
@@ -237,6 +238,11 @@ def validate_inputs(
     skipped = tuple((item.metric_id, item.reason) for item in plan.skipped)
     if plan.skipped:
         warnings.append("some requested metrics are unavailable with current inputs")
+
+    if not errors:
+        quality_report = assess_baseline_quality(cube, config=config)
+        if quality_report.recommend_gapfill and quality_report.reason is not None:
+            warnings.append(quality_report.reason)
 
     return ValidationReport(
         is_valid=not errors,
