@@ -122,12 +122,18 @@ def apsec_low_coverage_month_fixture() -> tuple[
 ]:
     """Two-month 2x2 APSEC fixture with one sparse month.
 
-    Ground truth at 10 m resolution over four pixels: both months remain
-    APSEC 100% under the current compat value mask; month 1 has valid fraction
+    Ground truth at 10 m resolution over four pixels: APSEC is 100% for the
+    fully valid month and 25% for the sparse month; month 1 has valid fraction
     1.0 and month 2 has valid fraction 0.25, below a 0.75 coverage floor.
     """
     times = pd.to_datetime(["2020-01-01", "2020-02-01"])
-    water = np.ones((2, 2, 2), dtype=np.uint8)
+    water = np.array(
+        [
+            [[1, 1], [1, 1]],
+            [[1, 0], [0, 0]],
+        ],
+        dtype=np.uint8,
+    )
     valid = np.array(
         [
             [[1, 1], [1, 1]],
@@ -135,6 +141,34 @@ def apsec_low_coverage_month_fixture() -> tuple[
         ],
         dtype=bool,
     )
+    return water, valid, times
+
+
+def patch_bundle_width_fixture() -> tuple[np.ndarray, pd.DatetimeIndex]:
+    """One-month 5x9 fixture with two separated pools for core+width bundling.
+
+    Ground truth under 4-connectivity and a 2-pixel width floor: two retained
+    pools for core patch metrics, one reliable width observation of 40 m at
+    10 m resolution, and one suppressed narrow pool.
+    """
+    times = pd.to_datetime(["2020-01-01"])
+    water = np.zeros((1, 5, 9), dtype=np.uint8)
+    water[0, 0, 0:4] = 1
+    water[0, 2:5, 6:9] = 1
+    return water, times
+
+
+def invalid_water_observation_fixture() -> tuple[
+    np.ndarray, np.ndarray, pd.DatetimeIndex
+]:
+    """One-month 2x2 fixture with invalid reliable-water contract.
+
+    Ground truth: one pixel has ``water=True`` and ``valid_obs=False`` and
+    must be rejected before metric output is produced.
+    """
+    times = pd.to_datetime(["2020-01-01"])
+    water = np.array([[[1, 0], [0, 0]]], dtype=np.uint8)
+    valid = np.array([[[0, 1], [1, 1]]], dtype=bool)
     return water, valid, times
 
 

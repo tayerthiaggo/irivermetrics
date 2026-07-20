@@ -167,7 +167,7 @@ def test_analyze_marks_low_coverage_apsec_month(tmp_path):
     apsec = result.metrics_table[result.metrics_table["metric"] == "apsec"].sort_values(
         "date"
     )
-    assert apsec["value"].tolist() == pytest.approx([100.0, 100.0])
+    assert apsec["value"].tolist() == pytest.approx([100.0, 25.0])
     assert apsec["valid_fraction_month"].notna().all()
     assert apsec["valid_fraction_month"].astype(float).tolist() == pytest.approx(
         [1.0, 0.25]

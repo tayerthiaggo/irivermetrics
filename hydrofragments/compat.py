@@ -11,7 +11,7 @@ import xarray as xr
 
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import compute_apsec
-from hydrofragments.metrics.patches import analyze_patch_metrics
+import hydrofragments.metrics.patches as patch_metrics
 from hydrofragments.metrics.persistence import compute_occurrence, compute_refuge_area
 from hydrofragments.metrics.registry import resolve_metrics
 from hydrofragments.schema import MetricDependency
@@ -123,6 +123,13 @@ def _monthly_dataset(da_feature: xr.DataArray) -> xr.Dataset:
 
 _PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
 _PERSISTENCE_METRIC_IDS = frozenset({"occurrence", "refuge_area"})
+_WATER_VALIDITY_ERROR = "water=True requires valid_obs=True for every pixel/month"
+_POOL_WIDTH_STAT_COLUMNS = {
+    "mean": "pool_width_mean",
+    "median": "pool_width_median",
+    "max": "pool_width_max",
+    "cv": "pool_width_cv",
+}
 
 
 def section_compat_rows(
@@ -149,11 +156,23 @@ def section_compat_rows(
     construction) never see a missing key.
     """
     want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
+    want_width = selected_ids is not None and "pool_width" in selected_ids
     want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
     want_apsec = selected_ids is None or "apsec" in selected_ids
 
     monthly = _monthly_dataset(da_feature)
     coverage_valid_obs = valid_obs.astype(bool).load() if valid_obs is not None else None
+    if coverage_valid_obs is not None:
+        if (
+            coverage_valid_obs.dims != monthly["water"].dims
+            or coverage_valid_obs.sizes != monthly["water"].sizes
+        ):
+            raise ValueError("valid_obs must align with water")
+        invalid_water = np.asarray(monthly["water"].values, dtype=bool) & ~np.asarray(
+            coverage_valid_obs.values, dtype=bool
+        )
+        if np.any(invalid_water):
+            raise ValueError(_WATER_VALIDITY_ERROR)
     coverage_fractions: np.ndarray | None = None
     coverage_counts: np.ndarray | None = None
     coverage_low_flags: np.ndarray | None = None
@@ -206,21 +225,36 @@ def section_compat_rows(
         awmsi = float("nan")
         awre = float("nan")
         lpi = float("nan")
-        if want_patches:
+        width_values: dict[str, float] = {
+            column: float("nan") for column in _POOL_WIDTH_STAT_COLUMNS.values()
+        }
+        width_warning_flags = ()
+        if want_patches or want_width:
             mask = np.asarray(
                 monthly["water"].isel(time=time_index).values, dtype=bool
             )
-            patch_metrics = analyze_patch_metrics(
+            patch_result, width_result = patch_metrics.analyze_patch_bundle(
                 mask,
                 pixel_size_m=pixel_size_m,
                 a_total_m2=a_ref_m2,
                 connectivity=config.patches.connectivity_rule,
                 min_patch_pixels=config.patches.min_patch_pixels,
+                include_width=want_width,
+                resolution_floor_pixels=config.patches.width_resolution_floor_pixels,
             )
-            n_patches = patch_metrics.number_of_pools
-            awmsi = patch_metrics.awmsi
-            awre = patch_metrics.awre
-            lpi = patch_metrics.lpi
+            if want_patches:
+                n_patches = patch_result.number_of_pools
+                awmsi = patch_result.awmsi
+                awre = patch_result.awre
+                lpi = patch_result.lpi
+            if width_result is not None:
+                width_values = {
+                    "pool_width_mean": width_result.mean_m,
+                    "pool_width_median": width_result.median_m,
+                    "pool_width_max": width_result.max_m,
+                    "pool_width_cv": width_result.cv,
+                }
+                width_warning_flags = width_result.warning_flags
 
         apsec_value = float("nan")
         low_coverage = False
@@ -252,6 +286,9 @@ def section_compat_rows(
             "pp_mean_%": pp_mean,
             "ra_area_km2": refuge.value if refuge is not None else float("nan"),
         }
+        if want_width:
+            row.update(width_values)
+            row["pool_width_warning_flags"] = width_warning_flags
         if coverage_valid_obs is not None:
             row.update(
                 {

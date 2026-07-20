@@ -21,7 +21,6 @@ from hydrofragments.io.alignment import validate_alignment
 from hydrofragments.metrics import (
     ApsecRecord,
     MetricPlan,
-    analyze_pool_width_distribution,
     compute_extent_contraction,
     compute_hydroperiod,
     compute_inter_pool_gaps,
@@ -76,6 +75,29 @@ def _coerce_dataarray(source: xr.DataArray | xr.Dataset) -> xr.DataArray:
     return source
 
 
+_WATER_VALIDITY_ERROR = "water=True requires valid_obs=True for every pixel/month"
+
+
+def _can_check_water_validity_eager(
+    water: xr.DataArray, valid_obs: xr.DataArray
+) -> bool:
+    return water.chunks is None and valid_obs.chunks is None
+
+
+def _has_water_without_valid_obs(water: xr.DataArray, valid_obs: xr.DataArray) -> bool:
+    if not _can_check_water_validity_eager(water, valid_obs):
+        return False
+    invalid_water = water.astype(bool) & ~valid_obs.astype(bool)
+    return bool(np.any(np.asarray(invalid_water.values, dtype=bool)))
+
+
+def _ensure_water_implies_valid_obs(
+    water: xr.DataArray, valid_obs: xr.DataArray
+) -> None:
+    if _has_water_without_valid_obs(water, valid_obs):
+        raise ValueError(_WATER_VALIDITY_ERROR)
+
+
 def open_water_cube(
     source: xr.DataArray | xr.Dataset | str | Path,
     *,
@@ -122,6 +144,7 @@ def open_water_cube(
             if chunks is not None:
                 valid = valid.chunk(chunks)
             validate_alignment(water, valid)
+            _ensure_water_implies_valid_obs(water, valid)
     cadence = detect_cadence(water)
     crs = water.rio.crs.to_string() if hasattr(water, "rio") and water.rio.crs else None
     return WaterCube(
@@ -147,7 +170,7 @@ def validate_inputs(
     dual_composites_available: bool = False,
     wet_any_month: Mapping[str, bool] | None = None,
 ) -> ValidationReport:
-    """Validate contracts without computing metrics."""
+    """Validate contracts without running metric kernels."""
     errors: list[str] = []
     warnings: list[str] = []
     if cube.water.sizes != cube.valid_obs.sizes:
@@ -158,6 +181,9 @@ def validate_inputs(
         validate_alignment(cube.water, cube.valid_obs)
     except ValueError as error:
         errors.append(str(error))
+    else:
+        if _has_water_without_valid_obs(cube.water, cube.valid_obs):
+            errors.append(_WATER_VALIDITY_ERROR)
 
     available = {MetricDependency.VALIDITY}
     if config.patches.min_patch_pixels > 0:
@@ -340,71 +366,22 @@ def _channel_profile_records(
     return records
 
 
-def _pool_width_records(
-    *,
-    monthly: xr.Dataset,
-    run_id: str,
-    config: HydroConfig,
-    catchment_id: str,
-    aoi_id: str,
-    resolution_m: float,
-    crs: str,
-    source: str,
-) -> list[MetricRecord]:
-    floor = config.patches.width_resolution_floor_pixels
-    if floor is None:
-        raise ValueError("pool_width requires width_resolution_floor_pixels")
-    records: list[MetricRecord] = []
-    for index, timestamp in enumerate(pd.to_datetime(monthly["time"].values)):
-        mask = np.asarray(
-            (monthly["water"].isel(time=index) & monthly["valid_obs"].isel(time=index)).values,
-            dtype=bool,
-        )
-        result = analyze_pool_width_distribution(
-            mask,
-            pixel_size_m=resolution_m,
-            resolution_floor_pixels=floor,
-            connectivity=config.patches.connectivity_rule,
-            min_patch_pixels=config.patches.min_patch_pixels,
-        )
-        for statistic, value in (
-            (Statistic.MEAN, result.mean_m),
-            (Statistic.MEDIAN, result.median_m),
-            (Statistic.MAX, result.max_m),
-            (Statistic.CV, result.cv),
-        ):
-            if not np.isfinite(value):
-                continue
-            records.append(
-                _metric_record(
-                    run_id=run_id,
-                    config=config,
-                    catchment_id=catchment_id,
-                    aoi_id=aoi_id,
-                    metric="pool_width",
-                    metric_family=MetricFamily.MORPHOLOGY,
-                    statistic=statistic,
-                    value=float(value),
-                    unit="dimensionless" if statistic is Statistic.CV else "m",
-                    value_type=ValueType.MONTHLY,
-                    source=source,
-                    timestamp=timestamp.to_pydatetime(),
-                    resolution_m=resolution_m,
-                    crs=crs,
-                    metric_dependency=MetricDependency.WIDTH_FLOOR,
-                    warning_flags=result.warning_flags,
-                )
-            )
-    return records
-
-
 # Metric ids that can ever originate from section_compat_rows() /
 # _records_from_compat_rows() below (the legacy wide-row bridge). Kept in
 # sync with the "mapping" table inside _records_from_compat_rows -- used to
 # skip the whole compat-row compute path when a narrow profile selects none
 # of these (B1).
 _COMPAT_ROW_METRIC_IDS = frozenset(
-    {"apsec", "number_of_pools", "lpi", "awre", "awmsi", "occurrence", "refuge_area"}
+    {
+        "apsec",
+        "number_of_pools",
+        "lpi",
+        "awre",
+        "awmsi",
+        "pool_width",
+        "occurrence",
+        "refuge_area",
+    }
 )
 
 
@@ -420,38 +397,91 @@ def _records_from_compat_rows(
     source: str,
 ) -> list[MetricRecord]:
     mapping = {
-        "APSEC": (MetricFamily.EXTENT, "apsec", "percent", ValueType.MONTHLY),
+        "APSEC": (MetricFamily.EXTENT, "apsec", "percent", ValueType.MONTHLY, None),
         "n_patches": (
             MetricFamily.FRAGMENTATION,
             "number_of_pools",
             "count",
             ValueType.MONTHLY,
+            None,
         ),
-        "LPI": (MetricFamily.FRAGMENTATION, "lpi", "percent", ValueType.MONTHLY),
-        "AWRe": (MetricFamily.MORPHOLOGY, "awre", "dimensionless", ValueType.MONTHLY),
-        "AWMSI": (MetricFamily.MORPHOLOGY, "awmsi", "dimensionless", ValueType.MONTHLY),
+        "LPI": (
+            MetricFamily.FRAGMENTATION,
+            "lpi",
+            "percent",
+            ValueType.MONTHLY,
+            None,
+        ),
+        "AWRe": (
+            MetricFamily.MORPHOLOGY,
+            "awre",
+            "dimensionless",
+            ValueType.MONTHLY,
+            None,
+        ),
+        "AWMSI": (
+            MetricFamily.MORPHOLOGY,
+            "awmsi",
+            "dimensionless",
+            ValueType.MONTHLY,
+            None,
+        ),
+        "pool_width_mean": (
+            MetricFamily.MORPHOLOGY,
+            "pool_width",
+            "m",
+            ValueType.MONTHLY,
+            Statistic.MEAN,
+        ),
+        "pool_width_median": (
+            MetricFamily.MORPHOLOGY,
+            "pool_width",
+            "m",
+            ValueType.MONTHLY,
+            Statistic.MEDIAN,
+        ),
+        "pool_width_max": (
+            MetricFamily.MORPHOLOGY,
+            "pool_width",
+            "m",
+            ValueType.MONTHLY,
+            Statistic.MAX,
+        ),
+        "pool_width_cv": (
+            MetricFamily.MORPHOLOGY,
+            "pool_width",
+            "dimensionless",
+            ValueType.MONTHLY,
+            Statistic.CV,
+        ),
         "pp_mean_%": (
             MetricFamily.PERSISTENCE,
             "occurrence",
             "percent",
             ValueType.RASTER_SUMMARY,
+            None,
         ),
         "ra_area_km2": (
             MetricFamily.PERSISTENCE,
             "refuge_area",
             "km2",
             ValueType.RASTER_SUMMARY,
+            None,
         ),
     }
     records: list[MetricRecord] = []
     for row in rows:
         timestamp = pd.Timestamp(row["date"]).to_pydatetime()
-        for column, (family, metric_id, unit, value_type) in mapping.items():
+        for column, (family, metric_id, unit, value_type, statistic) in mapping.items():
             value = row.get(column)
             if value is None or (isinstance(value, float) and not np.isfinite(value)):
                 numeric_value = None
             else:
                 numeric_value = float(value)
+            if metric_id == "pool_width" and (
+                numeric_value is None or not np.isfinite(numeric_value)
+            ):
+                continue
             monthly_metric = value_type is ValueType.MONTHLY
             low_coverage = monthly_metric and bool(row.get("low_coverage_flag", False))
             records.append(
@@ -465,6 +495,7 @@ def _records_from_compat_rows(
                     value=numeric_value,
                     unit=unit,
                     value_type=value_type,
+                    statistic=statistic,
                     timestamp=timestamp,
                     resolution_m=resolution_m,
                     crs=crs,
@@ -499,6 +530,17 @@ def _records_from_compat_rows(
                     ),
                     edge_flag=(
                         EdgeFlag.LOW_VALID_OBS if low_coverage else None
+                    ),
+                    warning_flags=(
+                        row["pool_width_warning_flags"]
+                        if metric_id == "pool_width"
+                        and row.get("pool_width_warning_flags") is not None
+                        else (WarningFlag.LENGTH_CRS_CAVEAT,)
+                    ),
+                    metric_dependency=(
+                        MetricDependency.WIDTH_FLOOR
+                        if metric_id == "pool_width"
+                        else MetricDependency.NONE
                     ),
                     is_reportable=False if low_coverage else None,
                 )
@@ -776,19 +818,6 @@ def analyze(
                 context=drainage,
                 wet_profiles=channel_wet_profiles,
                 segment_lengths_m=channel_segment_lengths_m,
-                run_id=run_id,
-                config=config,
-                catchment_id=catchment,
-                aoi_id=aoi_id,
-                resolution_m=pixel_size_m,
-                crs=crs,
-                source=cube.source,
-            )
-        )
-    if "pool_width" in selected_ids:
-        records.extend(
-            _pool_width_records(
-                monthly=monthly,
                 run_id=run_id,
                 config=config,
                 catchment_id=catchment,

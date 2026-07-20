@@ -31,6 +31,7 @@ def synthetic_cube():
     water[::2, 5:7, 5:7] = True  # intermittent patch C (even months)
     valid = np.ones((t, y, x), dtype=bool)
     valid[3, :, :] = rng.random((y, x)) > 0.1  # one partially-invalid month
+    valid |= water
     times = np.array(
         ["2015-01", "2015-02", "2015-03", "2015-04", "2015-05", "2015-06"],
         dtype="datetime64[M]",

@@ -7,7 +7,7 @@ the fact. On a real satellite cube this forces the whole time-y-x cube
 through every kernel even when the caller only asked for a narrow profile.
 
 These tests pin the fix: narrow profiles that exclude patch-dependent
-metrics must not invoke ``analyze_patch_metrics`` at all, and the
+metrics must not invoke ``analyze_patch_bundle`` at all, and the
 persistence-family kernels (``recurrence``/``hydroperiod``, emitted through
 the separate ``_temporal_profile_records`` path) must still work correctly
 when a narrow profile selects them.
@@ -49,9 +49,9 @@ def _pixel_temporal_config(tmp_path):
 
 
 def test_narrow_profile_skips_patch_morphology(synthetic_cube, tmp_path):
-    """A profile with no patch-dependent metrics must not call analyze_patch_metrics."""
+    """A profile with no patch-dependent metrics must not call analyze_patch_bundle."""
     config = _pixel_temporal_config(tmp_path)
-    with mock.patch("hydrofragments.compat.analyze_patch_metrics") as patch_spy:
+    with mock.patch("hydrofragments.metrics.patches.analyze_patch_bundle") as patch_spy:
         analyze(synthetic_cube, aoi_id="demo", config=config, pixel_size_m=30.0)
     patch_spy.assert_not_called()
 
