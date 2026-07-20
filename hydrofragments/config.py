@@ -167,6 +167,7 @@ _TOP_LEVEL_KEYS = {
     "connectivity",
     "compute",
     "output",
+    "gapfill",
 }
 
 
@@ -249,6 +250,13 @@ class HydroConfig:
     connectivity: ConnectivityConfig = field(default_factory=ConnectivityConfig)
     compute: ComputeConfig = field(default_factory=ComputeConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
+    gapfill: bool = False
+    """``True`` declares the input was already gapfilled upstream (typically
+    via WaterMask-TSFill). HydroFragments trusts this declaration and does
+    not re-verify it against the data: when ``True``, baseline-quality
+    gapfill recommendations (see :mod:`hydrofragments.guards.quality`) are
+    suppressed regardless of measured coverage. Defaults to ``False`` --
+    current behavior: run raw and surface quality flags/recommendations."""
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> "HydroConfig":
@@ -638,6 +646,7 @@ class HydroConfig:
             connectivity=connectivity,
             compute=compute,
             output=output,
+            gapfill=bool(source.get("gapfill", False)),
         )
 
     def scientific_config(self) -> dict[str, Any]:
@@ -727,6 +736,7 @@ class HydroConfig:
                 "worker_memory_fraction": self.compute.worker_memory_fraction,
                 "workers": self.compute.workers,
             },
+            "gapfill": self.gapfill,
             "output": {
                 "formats": list(self.output.formats),
                 "include_patch_table": self.output.include_patch_table,
