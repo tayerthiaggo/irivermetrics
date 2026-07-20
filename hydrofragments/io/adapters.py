@@ -45,7 +45,59 @@ def parse_raw_wofs(
     return water, valid
 
 
+def parse_generic_binary(
+    da_in,
+    *,
+    valid_obs: xr.DataArray | None = None,
+    nodata: float | int | None = None,
+):
+    """Parse a generic ``{0, 1}``/bool water mask into (water, valid_obs).
+
+    This is the fallback adapter for source-agnostic binary masks that carry
+    no WOfS-specific or TSFill-specific sentinel convention: ``bool`` arrays
+    pass straight through, ``{0, 1}`` int/float arrays are coerced to bool.
+    Any other finite value is refused with an actionable error -- this
+    adapter never guesses at a threshold (that is ``raw_wofs``'s/
+    ``generic_probability``'s job).
+
+    ``nodata``, when supplied, marks pixels equal to that sentinel value as
+    invalid (excluded from both ``water`` and ``valid_obs``) -- this lets a
+    single-band mask carry an explicit "no data" sentinel without a paired
+    ``valid_obs`` layer. If ``valid_obs`` is also supplied, both are honored
+    (a pixel is valid only if ``valid_obs`` says so AND it is not the
+    ``nodata`` sentinel).
+
+    If neither ``valid_obs`` nor ``nodata`` is supplied, an all-True valid
+    mask of the same shape is returned (matching ``parse_raw_wofs``'s
+    fallback behavior for missing ``valid_obs``).
+    """
+    if da_in.dtype != bool:
+        checked = da_in if nodata is None else da_in.where(da_in != nodata, 0)
+        is_binary = bool(((checked == 0) | (checked == 1)).all())
+        if not is_binary:
+            raise ValueError(
+                "parse_generic_binary: input contains values outside {0, 1} "
+                "and is not boolean; generic_binary requires an already-"
+                "binary mask (use raw_wofs or generic_probability with a "
+                "water_threshold for probability/frequency inputs)"
+            )
+    water = (da_in == 1) if da_in.dtype != bool else da_in.astype(bool)
+
+    if valid_obs is None:
+        valid = xr.ones_like(water, dtype=bool)
+    else:
+        valid = valid_obs.astype(bool)
+
+    if nodata is not None:
+        is_nodata = da_in == nodata
+        valid = valid & ~is_nodata
+        water = water & ~is_nodata
+
+    return water, valid
+
+
 ADAPTERS: dict[str, Callable] = {
     "watermask_tsfill": parse_watermask_tsfill,
     "raw_wofs": parse_raw_wofs,
+    "generic_binary": parse_generic_binary,
 }
