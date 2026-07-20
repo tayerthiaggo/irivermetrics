@@ -7,11 +7,21 @@
 - `water` — boolean or encoded water state
 - `valid_obs` — boolean valid-observation mask
 - `cadence` — `monthly` or `submonthly`
-- optional provenance metadata
+- `provenance` — key/value tuples recording the resolved adapter, the
+  requested `input_kind` (or `"auto"`), chunking, and any auto-fixes applied
+  (see "Auto-detection and the input contract" below)
 
 ## Supported sources
 
-### WaterMask-TSFill Zarr / Dataset
+`open_water_cube(source, ...)` accepts an `xr.DataArray`, an `xr.Dataset`, or
+a path (currently `.zarr`). `input_kind` defaults to `None`: the shape of
+`source` is auto-detected and routed to the matching adapter below. Passing
+an explicit `input_kind` (one of `watermask_tsfill`, `raw_wofs`,
+`generic_binary`) skips detection and forces that adapter — use this when
+detection would be ambiguous, or when the caller already knows the source's
+shape.
+
+### WaterMask-TSFill Zarr / Dataset (`watermask_tsfill`)
 
 Variables: `water_mask`, optional `observed`, `confidence`, `method_flag`.
 
@@ -27,15 +37,117 @@ Sentinel values:
 Sentinels must be decoded **before** any signed cast. They are never counted as
 dry or water.
 
-### Generic binary pair
+**Auto-detection signature:** a variable literally named `water_mask`, or a
+`uint8` array whose only values are a subset of `{0, 1, 254, 255}` and
+includes at least one of the TSFill-specific sentinels (`254`/`255`) —
+distinguishes a TSFill export from a plain `{0,1}` binary mask that merely
+happens to be `uint8`.
 
-`water` + `valid_obs` arrays or a single binary mask (`1` = water) with implicit
-`valid_obs=True` everywhere.
+**TSFill handoff.** TSFill (a separate tool) owns DEA/STAC access and
+gapfilling; HydroFragments only consumes its output. The handoff is a single
+export/import boundary:
+
+```
+DEA/STAC source imagery
+        |
+        v
+  WaterMask-TSFill  (gapfills, encodes 0/1/254/255 sentinels)
+        |
+        v
+  canonical uint8 Zarr/Dataset (water_mask + optional observed/
+  confidence/method_flag)
+        |
+        v
+  open_water_cube(path)  --auto-detect-->  watermask_tsfill adapter
+        |
+        v
+  WaterCube(water, valid_obs)
+```
+
+HydroFragments never talks to DEA/STAC directly (no `odc.stac`/`pystac`
+dependency) and never gapfills (see the note at the end of "Auto-detection
+and the input contract" below).
+
+### Raw DEA WOfS (`raw_wofs`)
+
+A `water` or `frequency`-named band/variable following DEA WOfS naming
+conventions, values in `{0, 1}` (already-binary) or a probability/frequency
+in `[0, 1]` requiring `water_threshold` to binarize (raise `ValueError` if
+non-binary and no `water_threshold` is supplied — this adapter never
+guesses a threshold). Raw WOfS does not bundle a separate valid-observation
+layer by convention: if the caller does not supply `valid_obs`, an all-`True`
+mask is used. Pass `water_threshold` to `open_water_cube(..., input_kind=
+"raw_wofs", water_threshold=0.5)` (or via `HydroConfig.input.water_threshold`
+for the config-driven path) to threshold a probability/frequency band.
+
+**Auto-detection signature:** a variable named `water` or `frequency`.
+
+### Generic binary pair (`generic_binary`)
+
+The fallback adapter for source-agnostic masks with no WOfS-specific or
+TSFill-specific naming/sentinel convention: `bool` arrays pass straight
+through; `{0, 1}` int/float arrays are coerced to bool. An optional paired
+`valid_obs` array and/or an explicit `nodata` sentinel value are honored (a
+pixel excluded by either is invalid and never counted as water). With
+neither, an all-`True` valid mask is used.
+
+**Auto-detection signature:** this is the fallback — anything not matching
+`watermask_tsfill`'s or `raw_wofs`'s signature above, provided the values are
+`bool` or `{0, 1}`.
 
 ### Generic probability (config-gated)
 
 Requires `input.kind = generic_probability` plus threshold provenance fields in
-`HydroConfig`.
+`HydroConfig`. Not yet wired through `open_water_cube`'s adapter registry —
+this is a known gap tracked outside this document's scope, not a supported
+`open_water_cube` code path today.
+
+## Auto-detection and the input contract
+
+`open_water_cube` never asks the user to manually describe their data's
+layout. Instead it runs an inspect-then-act sequence:
+
+1. **Normalize structure** (always safe, always logged) — rename a single
+   unambiguous data variable to the expected name, apply `variable_map`
+   renames, coerce an already-binary `{0,1}` int/float array to `bool`,
+   reorder dims to `(time, y, x)`. Every fix applied is recorded as a
+   human-readable string in `WaterCube.provenance["auto_fixes"]`.
+2. **Detect the adapter** (unless `input_kind` was given explicitly) — see
+   each adapter's "Auto-detection signature" above. A `Dataset` with more
+   than one data variable and no recognizable water-like candidate is
+   **never guessed** — it raises `ValueError` naming the ambiguous variables,
+   asking the caller to supply `variable_map` or an explicit `input_kind`.
+3. **Check the contract, never silently fix a grid/CRS problem** — the
+   following always raise `InputContractError` (never a silent
+   resample/reproject):
+   - Grid/transform mismatch between the water layer and a caller-supplied
+     `valid_obs` layer (shape, dim order, or coordinate values differ).
+   - CRS mismatch between the water and `valid_obs` layers.
+   - A defined-but-geographic (degrees) CRS on the water layer — a
+     projected CRS in metres is required (spec §8 guard 8). An *undefined*
+     CRS is not itself an error (many valid in-memory/generic_binary inputs
+     carry no georeferencing at all); only a CRS that is set and in degrees
+     is refused.
+   - An ambiguous multi-variable `Dataset` with no water-like candidate (see
+     step 2).
+4. **Dispatch to the adapter** — the resolved/normalized array is parsed by
+   the chosen adapter into `(water, valid_obs)`.
+
+| Mismatch | Outcome |
+|---|---|
+| Single unnamed/renamable data variable | auto-fix (rename), logged |
+| `variable_map` rename | auto-fix (rename), logged |
+| `{0,1}` int/float dtype | auto-fix (coerce to bool), logged |
+| Dims out of `(time, y, x)` order | auto-fix (reorder), logged |
+| Grid/transform mismatch (water vs. valid_obs) | raise `InputContractError` |
+| CRS mismatch (water vs. valid_obs) | raise `InputContractError` |
+| Geographic (degrees) CRS | raise `InputContractError` |
+| Ambiguous multi-variable Dataset | raise `ValueError`/`InputContractError` |
+
+HydroFragments never gapfills; it only consumes already-gapfilled input
+(typically via WaterMask-TSFill, see above). Baseline-quality assessment and
+a `gapfill` workflow flag are planned as a follow-on (not implemented by the
+adapter/contract wiring documented here).
 
 ## Validity policy
 
