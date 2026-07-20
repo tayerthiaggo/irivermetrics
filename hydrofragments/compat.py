@@ -133,6 +133,7 @@ def section_compat_rows(
     pixel_size_m: float,
     config: HydroConfig,
     selected_ids: set[str] | None = None,
+    valid_obs: xr.DataArray | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -152,6 +153,23 @@ def section_compat_rows(
     want_apsec = selected_ids is None or "apsec" in selected_ids
 
     monthly = _monthly_dataset(da_feature)
+    coverage_valid_obs = valid_obs.astype(bool).load() if valid_obs is not None else None
+    coverage_fractions: np.ndarray | None = None
+    coverage_counts: np.ndarray | None = None
+    coverage_low_flags: np.ndarray | None = None
+    min_valid_fraction: float | None = None
+    if coverage_valid_obs is not None:
+        coverage_dims = [dim for dim in coverage_valid_obs.dims if dim != "time"]
+        coverage_fractions = np.asarray(
+            coverage_valid_obs.mean(dim=coverage_dims).values,
+            dtype=float,
+        )
+        coverage_counts = np.asarray(
+            coverage_valid_obs.astype(np.int64).sum(dim=coverage_dims).values,
+            dtype=np.int64,
+        )
+        min_valid_fraction = config.validity.min_valid_fraction_month
+        coverage_low_flags = coverage_fractions < min_valid_fraction
     cell_area_m2 = float(pixel_size_m) ** 2
     a_ref_m2 = float(section_area_km2) * 1_000_000.0
 
@@ -174,7 +192,12 @@ def section_compat_rows(
         # same order the loop below iterates. Call it once here rather
         # than once per month inside the loop (m2).
         apsec_records = compute_apsec(
-            monthly, a_ref_m2=a_ref_m2, cell_area_m2=cell_area_m2, config=config
+            monthly,
+            a_ref_m2=a_ref_m2,
+            cell_area_m2=cell_area_m2,
+            config=config,
+            valid_obs=coverage_valid_obs,
+            min_valid_fraction=min_valid_fraction,
         )
 
     rows: list[dict[str, object]] = []
@@ -200,23 +223,46 @@ def section_compat_rows(
             lpi = patch_metrics.lpi
 
         apsec_value = float("nan")
+        low_coverage = False
+        valid_fraction = None
+        n_valid_pixels = None
+        apsec_n_water_pixels = None
         if want_apsec:
-            apsec_value = apsec_records[time_index].value
+            apsec_record = apsec_records[time_index]
+            apsec_value = apsec_record.value
+            apsec_n_water_pixels = apsec_record.n_water_pixels
+        if (
+            coverage_fractions is not None
+            and coverage_counts is not None
+            and coverage_low_flags is not None
+        ):
+            valid_fraction = float(coverage_fractions[time_index])
+            n_valid_pixels = int(coverage_counts[time_index])
+            low_coverage = bool(coverage_low_flags[time_index])
 
-        rows.append(
-            {
-                "date": pd.Timestamp(timestamp),
-                "section": section,
-                "section_area_km2": section_area_km2,
-                "n_patches": n_patches,
-                "APSEC": apsec_value,
-                "AWMSI": awmsi,
-                "AWRe": awre,
-                "LPI": lpi,
-                "pp_mean_%": pp_mean,
-                "ra_area_km2": refuge.value if refuge is not None else float("nan"),
-            }
-        )
+        row = {
+            "date": pd.Timestamp(timestamp),
+            "section": section,
+            "section_area_km2": section_area_km2,
+            "n_patches": n_patches,
+            "APSEC": apsec_value,
+            "AWMSI": awmsi,
+            "AWRe": awre,
+            "LPI": lpi,
+            "pp_mean_%": pp_mean,
+            "ra_area_km2": refuge.value if refuge is not None else float("nan"),
+        }
+        if coverage_valid_obs is not None:
+            row.update(
+                {
+                    "low_coverage_flag": low_coverage,
+                    "valid_fraction_month": valid_fraction,
+                    "min_valid_fraction_month": min_valid_fraction,
+                    "n_valid_pixels": n_valid_pixels,
+                    "APSEC_n_water_pixels": apsec_n_water_pixels,
+                }
+            )
+        rows.append(row)
     return rows
 
 

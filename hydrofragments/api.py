@@ -38,6 +38,7 @@ from hydrofragments.models import (
 )
 from hydrofragments.output import records_to_frame, write_run_metadata
 from hydrofragments.schema import (
+    EdgeFlag,
     MetricDependency,
     MetricFamily,
     SCHEMA_VERSION,
@@ -211,7 +212,16 @@ def _metric_record(
     statistic: Statistic | None = None,
     metric_dependency: MetricDependency = MetricDependency.NONE,
     warning_flags: tuple[WarningFlag, ...] = (WarningFlag.LENGTH_CRS_CAVEAT,),
+    n_valid_pixels: int | None = None,
+    n_water_pixels: int | None = None,
+    valid_fraction_month: float | None = None,
+    min_valid_fraction_month: float | None = None,
+    edge_flag: EdgeFlag | None = None,
+    is_reportable: bool | None = None,
 ) -> MetricRecord:
+    reportable = value is not None and np.isfinite(value)
+    if is_reportable is not None:
+        reportable = is_reportable
     return MetricRecord(
         run_id=run_id,
         config_hash=config.config_hash,
@@ -228,8 +238,13 @@ def _metric_record(
         unit=unit,
         value_type=value_type,
         n_pools=n_pools,
+        n_valid_pixels=n_valid_pixels,
+        n_water_pixels=n_water_pixels,
+        valid_fraction_month=valid_fraction_month,
+        min_valid_fraction_month=min_valid_fraction_month,
+        edge_flag=edge_flag,
         warning_flags=warning_flags,
-        is_reportable=value is not None and np.isfinite(value),
+        is_reportable=reportable,
         source=source,
         resolution_m=resolution_m,
         crs=crs,
@@ -437,6 +452,8 @@ def _records_from_compat_rows(
                 numeric_value = None
             else:
                 numeric_value = float(value)
+            monthly_metric = value_type is ValueType.MONTHLY
+            low_coverage = monthly_metric and bool(row.get("low_coverage_flag", False))
             records.append(
                 _metric_record(
                     run_id=run_id,
@@ -457,6 +474,33 @@ def _records_from_compat_rows(
                         if metric_id == "number_of_pools" and row.get("n_patches") is not None
                         else None
                     ),
+                    n_valid_pixels=(
+                        int(row["n_valid_pixels"])
+                        if monthly_metric and row.get("n_valid_pixels") is not None
+                        else None
+                    ),
+                    n_water_pixels=(
+                        int(row["APSEC_n_water_pixels"])
+                        if metric_id == "apsec"
+                        and row.get("APSEC_n_water_pixels") is not None
+                        else None
+                    ),
+                    valid_fraction_month=(
+                        float(row["valid_fraction_month"])
+                        if monthly_metric
+                        and row.get("valid_fraction_month") is not None
+                        else None
+                    ),
+                    min_valid_fraction_month=(
+                        float(row["min_valid_fraction_month"])
+                        if monthly_metric
+                        and row.get("min_valid_fraction_month") is not None
+                        else None
+                    ),
+                    edge_flag=(
+                        EdgeFlag.LOW_VALID_OBS if low_coverage else None
+                    ),
+                    is_reportable=False if low_coverage else None,
                 )
             )
     return records
@@ -705,6 +749,7 @@ def analyze(
             pixel_size_m=pixel_size_m,
             config=config,
             selected_ids=selected_ids,
+            valid_obs=monthly["valid_obs"],
         )
         records = _records_from_compat_rows(
             rows,

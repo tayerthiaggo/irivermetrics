@@ -21,8 +21,11 @@ import pandas as pd
 import pytest
 import xarray as xr
 
+from hydrofragments import analyze, open_water_cube
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import compute_apsec
+from hydrofragments.schema import EdgeFlag
+from tests.fixtures.analytic_masks import apsec_low_coverage_month_fixture
 
 
 def _config() -> HydroConfig:
@@ -128,3 +131,69 @@ def test_low_coverage_flag_defaults_to_false_dataclass_field():
         cell_area_m2=1.0,
     )
     assert record.low_coverage_flag is False
+
+
+def test_analyze_marks_low_coverage_apsec_month(tmp_path):
+    """The live analyze() path must surface APSEC low-coverage metadata."""
+    water_np, valid_np, times = apsec_low_coverage_month_fixture()
+    water = xr.DataArray(
+        water_np,
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    valid_obs = xr.DataArray(
+        valid_np,
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    cube = open_water_cube(water, valid_obs=valid_obs, input_kind="generic_binary")
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "metric_profiles": ["contracts_core"],
+            "input": {"kind": "generic_binary"},
+            "validity": {"min_valid_fraction_month": 0.75, "min_valid_obs": 1},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "output": {"output_dir": str(tmp_path)},
+        }
+    )
+
+    result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=10.0)
+
+    apsec = result.metrics_table[result.metrics_table["metric"] == "apsec"].sort_values(
+        "date"
+    )
+    assert apsec["value"].tolist() == pytest.approx([100.0, 100.0])
+    assert apsec["valid_fraction_month"].notna().all()
+    assert apsec["valid_fraction_month"].astype(float).tolist() == pytest.approx(
+        [1.0, 0.25]
+    )
+    assert apsec["min_valid_fraction_month"].notna().all()
+    assert apsec["min_valid_fraction_month"].astype(float).tolist() == pytest.approx(
+        [0.75, 0.75]
+    )
+    edge_flags = apsec["edge_flag"].tolist()
+    assert pd.isna(edge_flags[0])
+    assert edge_flags[1] == EdgeFlag.LOW_VALID_OBS.value
+    assert apsec["is_reportable"].tolist() == [True, False]
+
+    sparse_month = result.metrics_table[
+        (result.metrics_table["date"] == pd.Timestamp("2020-02-01"))
+        & (result.metrics_table["value_type"] == "monthly")
+    ]
+    assert set(sparse_month["metric"]) == {
+        "apsec",
+        "awmsi",
+        "awre",
+        "lpi",
+        "number_of_pools",
+    }
+    assert sparse_month["valid_fraction_month"].astype(float).tolist() == pytest.approx(
+        [0.25] * len(sparse_month)
+    )
+    assert set(sparse_month["edge_flag"]) == {EdgeFlag.LOW_VALID_OBS.value}
+    assert sparse_month["is_reportable"].tolist() == [False] * len(sparse_month)

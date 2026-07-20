@@ -117,6 +117,59 @@ def recurrence_temporal_fixture() -> tuple[np.ndarray, np.ndarray, pd.DatetimeIn
     return water, valid, times
 
 
+def apsec_low_coverage_month_fixture() -> tuple[
+    np.ndarray, np.ndarray, pd.DatetimeIndex
+]:
+    """Two-month 2x2 APSEC fixture with one sparse month.
+
+    Ground truth at 10 m resolution over four pixels: both months remain
+    APSEC 100% under the current compat value mask; month 1 has valid fraction
+    1.0 and month 2 has valid fraction 0.25, below a 0.75 coverage floor.
+    """
+    times = pd.to_datetime(["2020-01-01", "2020-02-01"])
+    water = np.ones((2, 2, 2), dtype=np.uint8)
+    valid = np.array(
+        [
+            [[1, 1], [1, 1]],
+            [[1, 0], [0, 0]],
+        ],
+        dtype=bool,
+    )
+    return water, valid, times
+
+
+def temporal_summary_hand_fixture() -> tuple[
+    np.ndarray, np.ndarray, pd.DatetimeIndex, dict[str, float]
+]:
+    """Two-year 2x2 fixture for hand-derived temporal AOI summaries.
+
+    Ground truth:
+    - AOI-mean recurrence = mean(50%, 50%, 50%, 8.333333%) = 39.583333%.
+    - AOI-mean hydroperiod 2020 = mean(1/2, 1, 1/2, 1/12) = 0.520833.
+    - AOI-mean hydroperiod 2021 = mean(1/2, 0, 1/2, 1/12) = 0.270833.
+    """
+    times = pd.date_range("2020-01-01", periods=24, freq="MS")
+    water = np.zeros((24, 2, 2), dtype=bool)
+    valid = np.ones((24, 2, 2), dtype=bool)
+
+    water[0:6, 0, 0] = True
+    water[12:18, 0, 0] = True
+    water[0:12, 0, 1] = True
+    valid[6:12, 1, 0] = False
+    valid[18:24, 1, 0] = False
+    water[0:3, 1, 0] = True
+    water[12:15, 1, 0] = True
+    water[0, 1, 1] = True
+    water[13, 1, 1] = True
+
+    expected = {
+        "recurrence": 39.58333333333333,
+        "hydroperiod_2020": 0.5208333333333334,
+        "hydroperiod_2021": 0.2708333333333333,
+    }
+    return water, valid, times, expected
+
+
 def refuge_stability_fixture() -> tuple[np.ndarray, np.ndarray]:
     """Two consecutive end-dry footprints with Jaccard overlap 3/5 = 0.6."""
     previous = np.array([[1, 1, 0], [1, 1, 0]], dtype=bool)
