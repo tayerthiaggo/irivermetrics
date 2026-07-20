@@ -16,8 +16,13 @@ from hydrofragments.compat import section_compat_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.compute import resolve_execution_plan
 from hydrofragments.guards import ComparisonGuardError, guard_comparison
-from hydrofragments.io.adapters import parse_watermask_tsfill
+from hydrofragments.io.adapters import ADAPTERS, detect_adapter
 from hydrofragments.io.alignment import validate_alignment
+from hydrofragments.io.input_contract import (
+    check_crs_defined,
+    check_grid_alignment,
+    normalize_structure,
+)
 from hydrofragments.metrics import (
     ApsecRecord,
     MetricPlan,
@@ -65,16 +70,6 @@ def _describe_chunks(array: xr.DataArray) -> str:
     )
 
 
-def _coerce_dataarray(source: xr.DataArray | xr.Dataset) -> xr.DataArray:
-    if isinstance(source, xr.Dataset):
-        if "water" in source:
-            return source["water"]
-        if len(source.data_vars) == 1:
-            return next(iter(source.data_vars.values()))
-        raise ValueError("Dataset must expose a single water variable or 'water'")
-    return source
-
-
 _WATER_VALIDITY_ERROR = "water=True requires valid_obs=True for every pixel/month"
 
 
@@ -98,65 +93,99 @@ def _ensure_water_implies_valid_obs(
         raise ValueError(_WATER_VALIDITY_ERROR)
 
 
+def _resolved_crs(array: xr.DataArray) -> str | None:
+    return array.rio.crs.to_string() if hasattr(array, "rio") and array.rio.crs else None
+
+
 def open_water_cube(
     source: xr.DataArray | xr.Dataset | str | Path,
     *,
     valid_obs: xr.DataArray | None = None,
     variable_map: Mapping[str, str] | None = None,
     chunks: Mapping[str, int] | None = None,
-    input_kind: str = "generic_binary",
+    input_kind: str | None = None,
+    water_threshold: float | None = None,
 ) -> WaterCube:
-    """Open a canonical aligned water/valid cube from supported sources."""
-    del variable_map  # reserved for later adapter expansion
+    """Open a canonical aligned water/valid cube from supported sources.
 
+    ``input_kind`` is ``None`` by default: the shape of ``source`` is
+    auto-detected (:func:`hydrofragments.io.adapters.detect_adapter`) and
+    routed to the matching adapter in
+    :data:`hydrofragments.io.adapters.ADAPTERS`. Passing an explicit
+    ``input_kind`` (one of the registry keys) skips auto-detection and
+    forces that adapter -- useful when detection would be ambiguous or the
+    caller already knows the source's shape.
+
+    Before adapter dispatch, safe structural mismatches are auto-fixed
+    (single unambiguous variable rename, ``variable_map`` rename, ``{0,1}``
+    -> bool coercion, dim reorder) via
+    :func:`hydrofragments.io.input_contract.normalize_structure`; every fix
+    applied is logged into the returned ``WaterCube.provenance`` under the
+    ``auto_fixes`` key. Grid/CRS mismatches are never auto-fixed --
+    HydroFragments never silently resamples or reprojects, so those raise
+    an actionable :class:`hydrofragments.io.input_contract.InputContractError`
+    (spec §14 / §8 guard 8).
+    """
     if isinstance(source, (str, Path)):
         path = Path(source)
         if path.suffix == ".zarr" or path.name.endswith(".zarr"):
-            dataset = xr.open_zarr(path, chunks=chunks if chunks is not None else "auto")
-            raw = dataset["water_mask"] if "water_mask" in dataset else dataset["water"]
-            water, valid = parse_watermask_tsfill(raw)
-            cadence = detect_cadence(water)
-            crs = water.rio.crs.to_string() if hasattr(water, "rio") and water.rio.crs else None
-            return WaterCube(
-                water=water,
-                valid_obs=valid,
-                source=str(path),
-                cadence=cadence,
-                crs=crs,
-                provenance=(
-                    ("adapter", "watermask_tsfill"),
-                    ("chunks", _describe_chunks(water)),
-                ),
-            )
-        raise ValueError(f"unsupported source path: {path}")
+            source = xr.open_zarr(path, chunks=chunks if chunks is not None else "auto")
+            source_label = str(path)
+        else:
+            raise ValueError(f"unsupported source path: {path}")
+    else:
+        source_label = None
 
-    array = _coerce_dataarray(source)
+    array, fixes = normalize_structure(source, variable_map=variable_map)
     if chunks is not None:
         array = array.chunk(chunks)
-    if input_kind == "watermask_tsfill":
-        water, valid = parse_watermask_tsfill(array)
+
+    resolved_kind = input_kind if input_kind is not None else detect_adapter(array)
+    adapter = ADAPTERS.get(resolved_kind)
+    if adapter is None:
+        raise ValueError(
+            f"open_water_cube: unknown input_kind '{resolved_kind}'; "
+            f"expected one of {sorted(ADAPTERS)}"
+        )
+
+    check_crs_defined(array)
+
+    if resolved_kind == "watermask_tsfill":
+        water, valid = adapter(array)
+    elif resolved_kind == "raw_wofs":
+        water, valid = adapter(
+            array, water_threshold=water_threshold, valid_obs=valid_obs
+        )
     else:
-        water = (array == 1).astype(bool)
-        if valid_obs is None:
-            valid = xr.ones_like(water, dtype=bool)
-        else:
-            valid = valid_obs.astype(bool)
-            if chunks is not None:
-                valid = valid.chunk(chunks)
-            validate_alignment(water, valid)
-            _ensure_water_implies_valid_obs(water, valid)
+        water, valid = adapter(array, valid_obs=valid_obs)
+
+    if chunks is not None:
+        valid = valid.chunk(chunks)
+    if valid_obs is not None:
+        check_grid_alignment(water, valid)
+        _ensure_water_implies_valid_obs(water, valid)
+
     cadence = detect_cadence(water)
-    crs = water.rio.crs.to_string() if hasattr(water, "rio") and water.rio.crs else None
+    crs = _resolved_crs(water)
+    # Keep both pre-existing provenance keys ("input_kind"/"chunks") for
+    # backward compatibility and add the resolved adapter name (may differ
+    # from input_kind when input_kind was None and auto-detected) plus any
+    # auto-fixes input_contract applied.
+    provenance: list[tuple[str, str]] = [
+        ("input_kind", input_kind if input_kind is not None else "auto"),
+        ("adapter", resolved_kind),
+        ("chunks", _describe_chunks(water)),
+    ]
+    if fixes:
+        provenance.append(("auto_fixes", "; ".join(fixes)))
+
     return WaterCube(
         water=water,
         valid_obs=valid,
-        source=input_kind,
+        source=source_label if source_label is not None else resolved_kind,
         cadence=cadence,
         crs=crs,
-        provenance=(
-            ("input_kind", input_kind),
-            ("chunks", _describe_chunks(water)),
-        ),
+        provenance=tuple(provenance),
     )
 
 

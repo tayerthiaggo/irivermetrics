@@ -81,7 +81,13 @@ def test_degrees_crs_is_refused():
         check_crs_defined(water)
 
 
-def test_undefined_crs_is_refused():
+def test_undefined_crs_is_permitted_not_refused():
+    """An unset CRS is not itself an error (spec guard targets *degrees*,
+
+    not *absence*) -- this matches the existing geographic-CRS guard
+    elsewhere in the codebase (spatial/crs.py::normalize_spatial_inputs),
+    and many valid generic_binary/in-memory inputs carry no georeferencing.
+    """
     t, y, x = 4, 3, 3
     data = np.zeros((t, y, x), dtype=bool)
     ys = np.arange(y, dtype=float) * -30.0 + 8_000_000.0
@@ -91,8 +97,7 @@ def test_undefined_crs_is_refused():
     )
     # No .rio.write_crs called -> CRS undefined.
 
-    with pytest.raises(InputContractError, match="CRS|undefined"):
-        check_crs_defined(water)
+    check_crs_defined(water)  # must not raise
 
 
 def test_array_without_rio_accessor_concept_is_skipped_cleanly():

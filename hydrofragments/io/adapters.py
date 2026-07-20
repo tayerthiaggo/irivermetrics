@@ -114,14 +114,17 @@ _RAW_WOFS_VARIABLE_NAMES = frozenset({"water", "frequency"})
 def _pick_data_array(source: "xr.DataArray | xr.Dataset") -> tuple[xr.DataArray, str | None]:
     """Return ``(array, variable_name)`` for detection purposes.
 
-    ``variable_name`` is ``None`` for a bare ``DataArray``. Raises a
-    ``ValueError`` naming the ambiguity when ``source`` is a ``Dataset``
+    ``variable_name`` falls back to ``source.name`` for a bare
+    ``DataArray`` (e.g. one already extracted from a Dataset upstream, as
+    ``open_water_cube``'s ``normalize_structure`` step does -- xarray
+    preserves the originating variable name on ``Dataset[name]``). Raises
+    a ``ValueError`` naming the ambiguity when ``source`` is a ``Dataset``
     with more than one data variable and none of them look water-like
     (matches TSFill's or raw WOfS's known variable names, or is the sole
     variable in the dataset).
     """
     if isinstance(source, xr.DataArray):
-        return source, None
+        return source, source.name
 
     data_vars = list(source.data_vars)
     if len(data_vars) == 1:

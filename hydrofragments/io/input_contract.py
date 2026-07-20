@@ -40,28 +40,24 @@ class ResolvedInput:
 
 
 def check_crs_defined(water: xr.DataArray) -> None:
-    """Raise if ``water``'s CRS is undefined or geographic (degrees).
+    """Raise if ``water`` carries an explicit, geographic (degrees) CRS.
 
-    Skips cleanly for arrays with no ``.rio`` accessor concept at all (e.g.
-    a pure in-memory test fixture with no spatial coordinates) -- there is
-    nothing to check in that case, and the raise here is only meaningful
-    for georeferenced inputs.
+    Only applies when ``water`` has a ``.rio`` accessor with a CRS actually
+    set -- skips cleanly for arrays without a CRS concept at all (e.g. a
+    pure in-memory test fixture with no spatial coordinates/CRS metadata)
+    or with no CRS set, matching the existing geographic-CRS guard
+    elsewhere in this codebase
+    (:func:`hydrofragments.spatial.crs.normalize_spatial_inputs`). An
+    *undefined* CRS is not itself refused here -- many valid in-memory/
+    generic_binary inputs carry no georeferencing at all -- but a CRS that
+    *is* set and in degrees is always refused, never silently reprojected
+    (spec §8 guard 8).
     """
     if not hasattr(water, "rio"):
         return
-    has_spatial_dims = "x" in water.dims and "y" in water.dims
-    if not has_spatial_dims:
-        # No recognizable spatial coordinate concept at all (e.g. a bare
-        # in-memory test fixture) -- nothing to validate.
-        return
     crs = water.rio.crs
     if crs is None:
-        raise InputContractError(
-            "water.crs is undefined; a projected CRS in metres is required "
-            "(spec §8 guard 8) -- HydroFragments never silently assumes or "
-            "reprojects a CRS. Set it explicitly, e.g. "
-            "water.rio.write_crs('EPSG:3577')"
-        )
+        return
     if crs.is_geographic:
         raise InputContractError(
             f"water.crs is geographic (degrees): '{crs.to_string()}'. "
