@@ -243,6 +243,7 @@ def _metric_record(
     valid_fraction_month: float | None = None,
     min_valid_fraction_month: float | None = None,
     edge_flag: EdgeFlag | None = None,
+    low_coverage_flag: bool | None = None,
     is_reportable: bool | None = None,
 ) -> MetricRecord:
     reportable = value is not None and np.isfinite(value)
@@ -269,6 +270,7 @@ def _metric_record(
         valid_fraction_month=valid_fraction_month,
         min_valid_fraction_month=min_valid_fraction_month,
         edge_flag=edge_flag,
+        low_coverage_flag=low_coverage_flag,
         warning_flags=warning_flags,
         is_reportable=reportable,
         source=source,
@@ -531,6 +533,7 @@ def _records_from_compat_rows(
                     edge_flag=(
                         EdgeFlag.LOW_VALID_OBS if low_coverage else None
                     ),
+                    low_coverage_flag=low_coverage if monthly_metric else None,
                     warning_flags=(
                         row["pool_width_warning_flags"]
                         if metric_id == "pool_width"

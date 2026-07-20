@@ -183,6 +183,107 @@ def _recurrence_and_hydroperiod_values(tmp_path, cube: WaterCube) -> dict[str, f
     return values
 
 
+def _hand_traceable_dask_cube() -> WaterCube:
+    """A tiny, fully-hand-computable dask-backed cube: 2x2 pixels, 2 years (24 months).
+
+    All months are valid (``valid_obs`` all ``True``), so every denominator in
+    the recurrence/hydroperiod formulas below is simply the month count --
+    there is no missingness to reason about. The water pattern is an explicit
+    literal array (not random) chosen so each of the four pixels exercises a
+    different case:
+
+    - pixel (0, 0): wet Jan-Jun, dry Jul-Dec, in *both* 2015 and 2016.
+    - pixel (0, 1): wet every month of both years.
+    - pixel (1, 0): dry every month of both years.
+    - pixel (1, 1): wet every month of 2015, dry every month of 2016.
+
+    Expected values (see ``test_batched_temporal_summaries_match_hand_derived_values``
+    for the derivation) are computed independently of
+    ``_temporal_profile_records``/``compute_recurrence``/``compute_hydroperiod``,
+    directly from the formulas documented in
+    ``hydrofragments/metrics/persistence.py:165-208``.
+    """
+    n_years = 2
+    months = n_years * 12
+    times = pd.date_range("2015-01-01", periods=months, freq="MS")
+
+    water = np.zeros((months, 2, 2), dtype=bool)
+    for m in range(months):
+        year_is_2015 = (m // 12) == 0
+        month_in_year = m % 12
+        water[m, 0, 0] = month_in_year < 6  # wet Jan-Jun, dry Jul-Dec, every year
+        water[m, 0, 1] = True  # always wet
+        water[m, 1, 0] = False  # always dry
+        water[m, 1, 1] = year_is_2015  # wet all of 2015, dry all of 2016
+
+    valid = np.ones((months, 2, 2), dtype=bool)
+
+    water_data = da.from_array(water, chunks=(3, 2, 2))
+    valid_data = da.from_array(valid, chunks=(3, 2, 2))
+
+    water_da = xr.DataArray(water_data, dims=("time", "y", "x"), coords={"time": times})
+    valid_da = xr.DataArray(valid_data, dims=("time", "y", "x"), coords={"time": times})
+
+    return WaterCube(
+        water=water_da,
+        valid_obs=valid_da,
+        source="hand_traceable_dask",
+        cadence="monthly",
+    )
+
+
+def test_batched_temporal_summaries_match_hand_derived_values(tmp_path):
+    """Pin batched recurrence/hydroperiod against independently hand-derived numbers.
+
+    ``test_batched_temporal_summaries_match_eager_nondask_values`` (below) only
+    proves the batched (dask) and unbatched (eager) runs agree with *each
+    other* -- both go through the identical post-m8 batching/dict-assembly
+    logic in ``_temporal_profile_records``, so a backend-agnostic bug (e.g. a
+    value assigned to the wrong ``hydroperiod_{year}`` key, or an off-by-one
+    in per-year windowing) would reproduce identically on both sides and pass
+    that test anyway. This test instead pins ``analyze()``'s real output
+    against values derived by hand from the formulas in
+    ``compute_recurrence``/``compute_hydroperiod``
+    (``hydrofragments/metrics/persistence.py:165-208``), independent of any
+    code in ``_temporal_profile_records`` itself.
+
+    Hand derivation (all months valid, so every denominator below is just a
+    month count):
+
+    Hydroperiod (``HP_{p,y} = wet valid months / valid months``, per pixel
+    per year, then AOI-meaned over the 4 pixels):
+
+    - 2015: pixel (0,0)=6/12=0.5, (0,1)=12/12=1.0, (1,0)=0/12=0.0, (1,1)=12/12=1.0
+      -> AOI mean = (0.5 + 1.0 + 0.0 + 1.0) / 4 = 0.625
+    - 2016: pixel (0,0)=6/12=0.5, (0,1)=12/12=1.0, (1,0)=0/12=0.0, (1,1)=0/12=0.0
+      -> AOI mean = (0.5 + 1.0 + 0.0 + 0.0) / 4 = 0.375
+
+    Recurrence (per pixel: group months by calendar month name across both
+    years, take wet-valid/valid per month-group, average the 12 monthly
+    ratios, then *100 for percent; then AOI-mean over the 4 pixels):
+
+    - pixel (0,0): Jan-Jun wet in both years (2/2=1.0 each), Jul-Dec dry in
+      both years (0/2=0.0 each) -> mean of twelve values = 6/12 = 0.5 -> 50%
+    - pixel (0,1): every calendar month wet in both years (2/2=1.0) -> 100%
+    - pixel (1,0): every calendar month dry in both years (0/2=0.0) -> 0%
+    - pixel (1,1): every calendar month wet in 2015 only, dry in 2016
+      (1/2=0.5 each) -> mean of twelve 0.5's = 0.5 -> 50%
+    - AOI mean recurrence = (50 + 100 + 0 + 50) / 4 = 50.0%
+
+    These numbers were cross-checked with a standalone script calling
+    ``compute_recurrence``/``compute_hydroperiod`` directly (not through
+    ``_temporal_profile_records``) and matched exactly; they are pinned here
+    as literal expected values.
+    """
+    cube = _hand_traceable_dask_cube()
+    values = _recurrence_and_hydroperiod_values(tmp_path, cube)
+
+    assert values["recurrence"] == pytest.approx(50.0)
+    assert values["hydroperiod_2015"] == pytest.approx(0.625)
+    assert values["hydroperiod_2016"] == pytest.approx(0.375)
+    assert set(values) == {"recurrence", "hydroperiod_2015", "hydroperiod_2016"}
+
+
 @pytest.mark.parametrize("n_years", [2, 5])
 def test_batched_temporal_summaries_match_eager_nondask_values(tmp_path, n_years):
     """The batched dask compute must produce the *same numbers* as an eager, non-dask run.

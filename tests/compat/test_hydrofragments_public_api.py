@@ -379,6 +379,63 @@ def test_analyze_emits_dual_composite_contraction_rows(tmp_path) -> None:
     assert rows["hy_confidence"].notna().all()
 
 
+def test_analyze_flags_low_coverage_month_on_apsec_record(tmp_path) -> None:
+    """Task 8 follow-up (m7): the APSEC coverage-floor flag must be live on
+    the real analyze() path, not just reachable via compute_apsec() called
+    directly (see tests/metrics/test_apsec_coverage_floor.py for the
+    kernel-level coverage). Before this task, section_compat_rows() never
+    passed valid_obs/min_valid_fraction into compute_apsec(), so
+    ApsecRecord.low_coverage_flag was always False in production output even
+    though analyze() already threads the cube's real valid_obs everywhere
+    else (Task 1 follow-up).
+
+    6 months on a 10x10 grid. Water is confined to the same 60-pixel region
+    every month (rows 4-9), so it is untouched by the invalid pixels below --
+    this isolates the flag from the value, exactly like
+    test_apsec_value_unchanged_by_coverage_floor in
+    tests/metrics/test_apsec_coverage_floor.py. Month index 3 additionally
+    has 40 invalid pixels in the (always-dry) rows 0-3 -- 60% coverage,
+    below the default config.validity.min_valid_fraction_month floor (0.70)
+    -- while every other month is fully valid.
+    """
+    times = pd.date_range("2020-01-01", periods=6, freq="MS")
+    water = np.zeros((6, 10, 10), dtype=bool)
+    water[:, 4:10, :] = True  # 60/100 pixels wet every month, rows 0-3 always dry
+    valid = np.ones((6, 10, 10), dtype=bool)
+    valid[3, 0:4, :] = False  # 40/100 invalid in month 3 (dry rows only) -> 60% coverage
+
+    cube = open_water_cube(
+        xr.DataArray(water, dims=("time", "y", "x"), coords={"time": times}),
+        valid_obs=xr.DataArray(valid, dims=("time", "y", "x"), coords={"time": times}),
+        input_kind="generic_binary",
+    )
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "output": {"output_dir": str(tmp_path)},
+        }
+    )
+
+    result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
+
+    apsec_rows = result.metrics_table[
+        result.metrics_table["metric"] == "apsec"
+    ].sort_values("date").reset_index(drop=True)
+    assert len(apsec_rows) == 6
+    assert apsec_rows.loc[3, "low_coverage_flag"] == True  # noqa: E712
+    assert list(apsec_rows.drop(index=3)["low_coverage_flag"]) == [False] * 5
+
+    # The value itself must be unaffected by the flag -- all-water everywhere,
+    # so every month's APSEC value should be identical regardless of coverage.
+    assert apsec_rows["value"].nunique() == 1
+
+
 def test_compare_results_rejects_mismatched_validity_policy() -> None:
     from hydrofragments.guards.comparison import ComparisonGuardError
 
