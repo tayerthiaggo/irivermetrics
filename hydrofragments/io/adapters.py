@@ -1,5 +1,6 @@
 from typing import Callable
 
+import numpy as np
 import xarray as xr
 import dask.array as da
 from hydrofragments.io.validity import apply_validity_policy
@@ -101,3 +102,84 @@ ADAPTERS: dict[str, Callable] = {
     "raw_wofs": parse_raw_wofs,
     "generic_binary": parse_generic_binary,
 }
+
+
+# WaterMask-TSFill's uint8 sentinel convention (see io/validity.py):
+# 0 = dry, 1 = water, 254 = outside AOI, 255 = unobserved.
+_TSFILL_SENTINELS = frozenset({0, 1, 254, 255})
+_TSFILL_VARIABLE_NAMES = frozenset({"water_mask"})
+_RAW_WOFS_VARIABLE_NAMES = frozenset({"water", "frequency"})
+
+
+def _pick_data_array(source: "xr.DataArray | xr.Dataset") -> tuple[xr.DataArray, str | None]:
+    """Return ``(array, variable_name)`` for detection purposes.
+
+    ``variable_name`` is ``None`` for a bare ``DataArray``. Raises a
+    ``ValueError`` naming the ambiguity when ``source`` is a ``Dataset``
+    with more than one data variable and none of them look water-like
+    (matches TSFill's or raw WOfS's known variable names, or is the sole
+    variable in the dataset).
+    """
+    if isinstance(source, xr.DataArray):
+        return source, None
+
+    data_vars = list(source.data_vars)
+    if len(data_vars) == 1:
+        name = data_vars[0]
+        return source[name], name
+
+    for name in _TSFILL_VARIABLE_NAMES | _RAW_WOFS_VARIABLE_NAMES:
+        if name in source:
+            return source[name], name
+
+    raise ValueError(
+        "detect_adapter: ambiguous Dataset with multiple variables "
+        f"({sorted(data_vars)}) and no water-like candidate (expected one "
+        "of 'water_mask' [watermask_tsfill], 'water'/'frequency' "
+        "[raw_wofs], or a single data variable); pass input_kind explicitly "
+        "or use variable_map to disambiguate"
+    )
+
+
+def _looks_like_tsfill(array: xr.DataArray, variable_name: str | None) -> bool:
+    if variable_name in _TSFILL_VARIABLE_NAMES:
+        return True
+    if array.dtype != "uint8":
+        return False
+    values = np.unique(array.values)
+    if not set(values.tolist()).issubset(_TSFILL_SENTINELS):
+        return False
+    # Require at least one TSFill-specific sentinel (254/255) to distinguish
+    # from a plain {0,1} generic_binary/raw_wofs mask that merely happens to
+    # be uint8-typed.
+    return bool({254, 255} & set(values.tolist()))
+
+
+def _looks_like_raw_wofs(array: xr.DataArray, variable_name: str | None) -> bool:
+    return variable_name in _RAW_WOFS_VARIABLE_NAMES
+
+
+def detect_adapter(source: "xr.DataArray | xr.Dataset") -> str:
+    """Pick the registry key (``ADAPTERS`` name) matching ``source``'s shape.
+
+    Detection order (first match wins):
+
+    1. ``watermask_tsfill`` -- variable named ``water_mask``, or a uint8
+       array whose only values are a subset of ``{0, 1, 254, 255}`` and
+       includes at least one of the TSFill-specific sentinels (254/255).
+    2. ``raw_wofs`` -- variable named ``water`` or ``frequency`` (DEA WOfS
+       band naming convention).
+    3. ``generic_binary`` -- fallback: bool or ``{0, 1}`` values with no
+       WOfS-specific band naming.
+
+    For a ``Dataset`` with more than one data variable and no recognizable
+    water-like candidate, raises ``ValueError`` rather than silently
+    guessing (ambiguity must be surfaced, not resolved by chance).
+    """
+    array, variable_name = _pick_data_array(source)
+
+    if _looks_like_tsfill(array, variable_name):
+        return "watermask_tsfill"
+    if _looks_like_raw_wofs(array, variable_name):
+        return "raw_wofs"
+    return "generic_binary"
