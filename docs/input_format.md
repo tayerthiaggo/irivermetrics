@@ -145,9 +145,38 @@ layout. Instead it runs an inspect-then-act sequence:
 | Ambiguous multi-variable Dataset | raise `ValueError`/`InputContractError` |
 
 HydroFragments never gapfills; it only consumes already-gapfilled input
-(typically via WaterMask-TSFill, see above). Baseline-quality assessment and
-a `gapfill` workflow flag are planned as a follow-on (not implemented by the
-adapter/contract wiring documented here).
+(typically via WaterMask-TSFill, see above). Set `gapfill: true` in config
+once your input is pre-filled (e.g. via WaterMask-TSFill); leave it `false`
+(the default) to run on raw data and get quality flags instead — see
+"Baseline quality assessment and the `gapfill` flag" below.
+
+## Baseline quality assessment and the `gapfill` flag
+
+Before running metrics, `validate_inputs`/`analyze` assess how much valid
+observation coverage the input cube actually has
+(`hydrofragments.guards.quality.assess_baseline_quality`):
+
+- Overall valid-observation coverage, per-calendar-month valid fraction, and
+  a season-stratified occurrence summary (reusing the same MNAR-corrected
+  estimator locked in for the `occurrence` metric, Decision U2/Q1).
+- The fraction of pixels/pixel-months below the existing
+  `validity.min_valid_obs` / `validity.min_valid_fraction_month` floors.
+
+When coverage is below those floors and `HydroConfig.gapfill` is `False`
+(the default), a recommendation is appended to `ValidationReport.warnings`
+(and threaded into the run manifest) pointing at WaterMask-TSFill:
+"insufficient baseline coverage; consider pre-processing with
+WaterMask-TSFill before running HydroFragments, or set gapfill=true if
+already gapfilled."
+
+Set `gapfill: true` once the input has already been gapfilled upstream (for
+example via WaterMask-TSFill) to suppress this recommendation. HydroFragments
+trusts that declaration outright and does **not** re-check coverage against
+it — the whole point of the flag is that the caller already knows. Either
+way, `gapfill` is recorded in the run manifest's `execution_config` so it is
+auditable per run. This assessment is purely advisory: it never mutates
+`cube.water`/`cube.valid_obs`, and HydroFragments itself never gapfills,
+interpolates, or otherwise fills data — that remains WaterMask-TSFill's job.
 
 ## Validity policy
 

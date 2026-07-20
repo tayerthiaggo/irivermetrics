@@ -57,7 +57,9 @@ caveat that guards against its most common misreading.
 2. **Low satellite coverage.** Some periods have unusually incomplete
    satellite coverage. A flagged value is a rough indication, not a
    confirmed reading — don't compare a flagged value directly against an
-   unflagged one.
+   unflagged one. When coverage across the whole analysis is too low, the
+   run itself carries a warning recommending the data be pre-processed
+   (gapfilled) before re-running — see the note at the end of this section.
 3. **Two ways to summarise a month.** There is more than one way to turn a
    month of satellite passes into one number, and the choices can disagree —
    especially for the contraction rate. Where they disagree meaningfully,
@@ -70,6 +72,15 @@ caveat that guards against its most common misreading.
 5. **Width is not depth.** Repeated here because it is the easiest number to
    misread: pool width describes surface width only, never depth or stored
    volume.
+
+**A note on gapfilling.** HydroFragments does not gapfill (fill in missing
+satellite observations) itself. If a run's baseline coverage is too low, it
+recommends pre-processing the imagery with the companion tool
+WaterMask-TSFill before re-running, rather than silently working around the
+gap. If your data has already been gapfilled upstream, tell the analysis
+team so the run is configured with `gapfill: true` — that setting suppresses
+the coverage recommendation because HydroFragments trusts the declaration
+rather than re-checking it.
 
 ---
 
