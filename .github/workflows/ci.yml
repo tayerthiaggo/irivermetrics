@@ -40,3 +40,57 @@ jobs:
         # Only run on push to main to keep PR checks fast
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: pytest -q -m slow --timeout=600
+
+      - name: Run CUDA parity harness (CuPy-absent self-skip path)
+        # No GPU runner exists in this matrix, so CuPy is never installed
+        # here. This step exercises the "CuPy unavailable -> clean skip, no
+        # ImportError" code path (see hydrofragments/benchmarks/
+        # cuda_parity.py) -- it is NOT real GPU parity evidence. Real parity
+        # evidence must be recorded from a GPU host and committed to
+        # hydrofragments/benchmarks/results/cuda_baseline.json; see
+        # docs/acceleration.md. cuda_parity.py is function-only (matching
+        # cpu_baseline.py's convention, no __main__ block), so it is
+        # invoked here via -c rather than -m.
+        run: |
+          python -c "
+          import json
+          from hydrofragments.benchmarks.cuda_parity import run_cuda_parity
+          result = run_cuda_parity()
+          print(json.dumps({k: v for k, v in result.items() if k != 'cases'}, indent=2))
+          assert result['skipped'] is True, 'expected CuPy-absent skip in CPU-only CI'
+          "
+
+  cuda-benchmarks:
+    # Real-GPU transfer-cost benchmarking (hydrofragments/benchmarks/
+    # cuda_transfer_cost.py) is not run in this repo's CI: there is
+    # currently no GPU-labeled runner available. This job is written to
+    # describe the intended shape (a self-hosted runner with a `cuda` label)
+    # so it can be turned on by flipping `if: false` once such a runner
+    # exists, without needing to re-derive the wiring later. Until then it
+    # is inert and does not affect CI status.
+    if: false
+    runs-on: [self-hosted, cuda]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package with CUDA extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test,cuda]"
+
+      - name: Run CUDA transfer-cost benchmark on real hardware
+        # cuda_transfer_cost.py is function-only (matching cpu_baseline.py's
+        # convention, no __main__ block); write_cuda_transfer_cost() is the
+        # entry point that produces the JSON/Markdown evidence pair. This
+        # step, when a GPU runner exists, is where cuda_baseline.json's
+        # net_speedup_pass evidence should be regenerated from.
+        run: |
+          python -c "
+          from hydrofragments.benchmarks.cuda_transfer_cost import write_cuda_transfer_cost
+          write_cuda_transfer_cost('hydrofragments/benchmarks/results')
+          "

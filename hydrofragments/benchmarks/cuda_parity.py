@@ -258,9 +258,4 @@ def write_cuda_parity(
     return payload
 
 
-if __name__ == "__main__":
-    result = write_cuda_parity(Path(__file__).parent / "results")
-    print(json.dumps({k: v for k, v in result.items() if k != "cases"}, indent=2))
-
-
 __all__ = ["ParitySpec", "DEFAULT_CASES", "run_cuda_parity", "write_cuda_parity"]

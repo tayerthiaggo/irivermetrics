@@ -15,7 +15,6 @@ execute its real CUDA path there.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 import importlib
 import json
@@ -260,11 +259,6 @@ def write_cuda_transfer_cost(
         "markdown": str(markdown_path),
     }
     return payload
-
-
-if __name__ == "__main__":
-    result = write_cuda_transfer_cost(Path(__file__).parent / "results")
-    print(json.dumps({k: v for k, v in result.items() if k != "stages"}, indent=2))
 
 
 __all__ = [
