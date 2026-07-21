@@ -34,6 +34,21 @@ CUDA_CANDIDATE_STAGES: tuple[str, ...] = (
     "monthly_reduction",
     "occurrence",
 )
+
+# Twin of CUDA_CANDIDATE_STAGES for Numba JIT prototypes: a kernel name is a
+# candidate, not a promise. Only "inter_pool_gap_runs" has a Numba prototype
+# today (hydrofragments/metrics/clustering.py's
+# _compute_inter_pool_gaps_numba) -- the other hot-loop candidate named in
+# the plan (per-crop EDT/width extraction in
+# hydrofragments/patches/morphology.py::_measure_component) was profiled and
+# rejected: skimage's compiled medial_axis() dominates wall time by roughly
+# 3-4 orders of magnitude over the surrounding pure-Python/NumPy
+# post-processing (a single vectorized ``(2.0 * dist[axis]).max()``
+# reduction), so there is no tractable Numba win available there without
+# reimplementing medial_axis itself, which is out of scope. See
+# docs/acceleration.md's Numba section for the full writeup.
+NUMBA_CANDIDATE_KERNELS: tuple[str, ...] = ("inter_pool_gap_runs",)
+
 FLOATING_TOLERANCES: dict[str, float] = {
     "float32": 1e-5,
     "float64": 1e-12,
@@ -57,6 +72,7 @@ class BackendCapabilities:
     free_memory_bytes: int | None = None
     total_memory_bytes: int | None = None
     enabled_cuda_stages: tuple[str, ...] = ()
+    numba_enabled_kernels: tuple[str, ...] = ()
     reason: str | None = None
 
     @classmethod
@@ -73,6 +89,7 @@ class BackendCapabilities:
             "free_memory_bytes": self.free_memory_bytes,
             "total_memory_bytes": self.total_memory_bytes,
             "enabled_cuda_stages": list(self.enabled_cuda_stages),
+            "numba_enabled_kernels": list(self.numba_enabled_kernels),
             "reason": self.reason,
         }
 
@@ -118,6 +135,17 @@ _DEFAULT_BASELINE_PATH: Path = (
     Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "cuda_baseline.json"
 )
 
+# Twin of _DEFAULT_BASELINE_PATH for the Numba evidence gate. Produced by
+# hand-distilling hydrofragments/benchmarks/numba_kernels.py's parity +
+# speedup report into this compact per-kernel gate summary, the same
+# curatorial step docs/acceleration.md describes for cuda_baseline.json. This
+# repo ships without this file by default -- every NUMBA_CANDIDATE_KERNELS
+# entry stays disabled (falls back to the pure-Python/NumPy implementation)
+# until a benchmark run records evidence here.
+_DEFAULT_NUMBA_BASELINE_PATH: Path = (
+    Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "numba_baseline.json"
+)
+
 
 def gated_stages_from_baseline(
     baseline_path: str | Path | None = None,
@@ -161,6 +189,59 @@ def gated_stages_from_baseline(
     return tuple(gated)
 
 
+def gated_kernels_from_baseline(
+    baseline_path: str | Path | None = None,
+) -> tuple[str, ...]:
+    """Read the Numba evidence-gate baseline JSON and return graduated kernels.
+
+    Twin of :func:`gated_stages_from_baseline` for Numba JIT kernels instead
+    of CUDA stages. A kernel graduates from :data:`NUMBA_CANDIDATE_KERNELS`
+    only if the baseline records both ``parity_pass: true`` (numerically
+    identical to the existing pure-Python/NumPy implementation, see
+    ``benchmarks/numba_kernels.py``) and ``speedup_pass: true`` (the warmed-up
+    ``@njit`` call beats the baseline implementation's wall time) for that
+    kernel. Missing file, unreadable/malformed JSON, an empty mapping, or a
+    kernel name outside ``NUMBA_CANDIDATE_KERNELS`` are all treated as "no
+    evidence" rather than raising -- same never-crash contract as
+    :func:`gated_stages_from_baseline`.
+
+    Unlike CUDA, Numba has no hardware-availability probe step (a JIT
+    compiler works on any CPU, there is no device to detect), so this
+    function is the entire gate -- there is no probe-then-gate two-step
+    equivalent to ``_resolve_cuda_capabilities_from_probe``.
+    """
+
+    path = (
+        Path(baseline_path)
+        if baseline_path is not None
+        else _DEFAULT_NUMBA_BASELINE_PATH
+    )
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return ()
+
+    if not isinstance(payload, dict):
+        return ()
+    kernels = payload.get("kernels")
+    if not isinstance(kernels, dict):
+        return ()
+
+    gated = []
+    for kernel in NUMBA_CANDIDATE_KERNELS:
+        evidence = kernels.get(kernel)
+        if not isinstance(evidence, dict):
+            continue
+        if evidence.get("parity_pass") is True and evidence.get("speedup_pass") is True:
+            gated.append(kernel)
+    return tuple(gated)
+
+
 def _resolve_cuda_capabilities_from_probe(
     *,
     cupy_available: bool,
@@ -194,6 +275,7 @@ def _resolve_cuda_capabilities_from_probe(
         free_memory_bytes=free_memory_bytes,
         total_memory_bytes=total_memory_bytes,
         enabled_cuda_stages=enabled_cuda_stages,
+        numba_enabled_kernels=gated_kernels_from_baseline(),
         reason=reason,
     )
 
@@ -204,21 +286,35 @@ def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
     CPU policy construction calls this function with its default. Accelerator
     resolution opts into the import and catches all runtime initialization
     failures so auto mode can report a truthful CPU fallback.
+
+    Numba kernel gating is independent of the CUDA probe: unlike CuPy, Numba
+    has no hardware-availability step to gate behind (JIT compilation works
+    on any CPU), so ``numba_enabled_kernels`` is resolved from baseline
+    evidence on every call, including the ``probe_cuda=False`` default path.
     """
 
+    numba_enabled_kernels = gated_kernels_from_baseline()
+
     if not probe_cuda:
-        return BackendCapabilities.cpu_only("CUDA probe disabled by CPU policy")
+        return BackendCapabilities(
+            reason="CUDA probe disabled by CPU policy",
+            numba_enabled_kernels=numba_enabled_kernels,
+        )
 
     try:
         cupy = importlib.import_module("cupy")
     except Exception as error:  # optional dependency and runtime failures
-        return BackendCapabilities.cpu_only(f"CuPy unavailable: {error}")
+        return BackendCapabilities(
+            reason=f"CuPy unavailable: {error}",
+            numba_enabled_kernels=numba_enabled_kernels,
+        )
 
     try:
         if not bool(cupy.is_available()):
             return BackendCapabilities(
                 cupy_available=True,
                 cupy_version=getattr(cupy, "__version__", None),
+                numba_enabled_kernels=numba_enabled_kernels,
                 reason="CUDA runtime unavailable",
             )
         device_count = int(cupy.cuda.runtime.getDeviceCount())
@@ -226,6 +322,7 @@ def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
             return BackendCapabilities(
                 cupy_available=True,
                 cupy_version=getattr(cupy, "__version__", None),
+                numba_enabled_kernels=numba_enabled_kernels,
                 reason="CUDA reports no visible devices",
             )
         with cupy.cuda.Device(0) as device:
@@ -239,6 +336,7 @@ def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
         return BackendCapabilities(
             cupy_available=True,
             cupy_version=getattr(cupy, "__version__", None),
+            numba_enabled_kernels=numba_enabled_kernels,
             reason=f"CUDA initialization failed: {error}",
         )
 
@@ -315,11 +413,13 @@ def resolve_execution_plan(
 __all__ = [
     "BackendCapabilities",
     "CUDA_CANDIDATE_STAGES",
+    "NUMBA_CANDIDATE_KERNELS",
     "CapabilityError",
     "DEFAULT_STAGES",
     "ExecutionPlan",
     "FLOATING_TOLERANCES",
     "detect_capabilities",
+    "gated_kernels_from_baseline",
     "gated_stages_from_baseline",
     "resolve_execution_plan",
 ]

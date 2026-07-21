@@ -269,3 +269,155 @@ def test_analyze_manifest_records_actual_backend_for_each_stage(tmp_path) -> Non
     assert manifest["backend"]["planned"] == "cpu"
     assert manifest["backend"]["capabilities"]["cuda_available"] is False
     assert manifest["backend"]["capabilities"]["enabled_cuda_stages"] == []
+
+
+# --- Numba evidence gate (mirrors the CUDA gate tests above; twin pattern) ---
+
+
+def test_backend_capabilities_defaults_numba_enabled_kernels_empty() -> None:
+    from hydrofragments.compute.capabilities import BackendCapabilities
+
+    capabilities = BackendCapabilities()
+
+    assert capabilities.numba_enabled_kernels == ()
+    assert capabilities.to_mapping()["numba_enabled_kernels"] == []
+
+
+def test_gated_kernels_from_baseline_empty_when_file_absent(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_kernels_from_baseline
+
+    missing_path = tmp_path / "numba_baseline.json"
+    assert gated_kernels_from_baseline(missing_path) == ()
+
+
+def test_gated_kernels_from_baseline_empty_when_file_empty_json(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_kernels_from_baseline
+
+    path = tmp_path / "numba_baseline.json"
+    path.write_text("{}", encoding="utf-8")
+    assert gated_kernels_from_baseline(path) == ()
+
+
+def test_gated_kernels_from_baseline_empty_when_file_is_malformed_json(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_kernels_from_baseline
+
+    path = tmp_path / "numba_baseline.json"
+    path.write_text("{not valid json", encoding="utf-8")
+    assert gated_kernels_from_baseline(path) == ()
+
+
+def test_gated_kernels_from_baseline_requires_both_parity_and_speedup_pass(
+    tmp_path,
+) -> None:
+    import json
+
+    from hydrofragments.compute.capabilities import gated_kernels_from_baseline
+
+    path = tmp_path / "numba_baseline.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0.0",
+                "baseline": "numba_gate_evidence",
+                "kernels": {
+                    "inter_pool_gap_runs": {
+                        "parity_pass": True,
+                        "speedup_pass": True,
+                    },
+                    "not_actually_faster": {
+                        "parity_pass": True,
+                        "speedup_pass": False,
+                    },
+                    "not_numerically_equal": {
+                        "parity_pass": False,
+                        "speedup_pass": True,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    gated = gated_kernels_from_baseline(path)
+
+    # Only kernels that are both in NUMBA_CANDIDATE_KERNELS and pass both
+    # gates graduate. "not_actually_faster"/"not_numerically_equal" are not
+    # real candidate kernel names, but this also proves the "must pass both"
+    # rule independent of membership -- see the next test for the membership
+    # filter specifically.
+    assert "inter_pool_gap_runs" in gated
+    assert "not_actually_faster" not in gated
+    assert "not_numerically_equal" not in gated
+
+
+def test_gated_kernels_from_baseline_ignores_kernels_outside_candidate_list(
+    tmp_path,
+) -> None:
+    import json
+
+    from hydrofragments.compute.capabilities import gated_kernels_from_baseline
+
+    path = tmp_path / "numba_baseline.json"
+    path.write_text(
+        json.dumps(
+            {
+                "kernels": {
+                    "not_a_real_kernel": {
+                        "parity_pass": True,
+                        "speedup_pass": True,
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert gated_kernels_from_baseline(path) == ()
+
+
+def test_detect_capabilities_with_numba_baseline_populates_enabled_kernels(
+    monkeypatch, tmp_path
+) -> None:
+    """Numba has no hardware probe step (JIT works on any CPU) -- gating is
+    purely file-evidence-driven, unlike CUDA's probe-then-gate two-step."""
+    import json
+
+    from hydrofragments.compute import capabilities as capabilities_module
+
+    baseline_path = tmp_path / "numba_baseline.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "kernels": {
+                    "inter_pool_gap_runs": {
+                        "parity_pass": True,
+                        "speedup_pass": True,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        capabilities_module, "_DEFAULT_NUMBA_BASELINE_PATH", baseline_path
+    )
+
+    result = capabilities_module.detect_capabilities()
+
+    assert result.numba_enabled_kernels == ("inter_pool_gap_runs",)
+
+
+def test_detect_capabilities_with_no_numba_baseline_file_keeps_kernels_empty(
+    monkeypatch, tmp_path
+) -> None:
+    from hydrofragments.compute import capabilities as capabilities_module
+
+    monkeypatch.setattr(
+        capabilities_module,
+        "_DEFAULT_NUMBA_BASELINE_PATH",
+        tmp_path / "numba_baseline.json",
+    )
+
+    result = capabilities_module.detect_capabilities()
+
+    assert result.numba_enabled_kernels == ()
