@@ -1,8 +1,15 @@
-"""M8/M13 — README and docs quickstart/validation examples must be runnable."""
+"""M8/M13 — README and docs quickstart/validation examples must be runnable.
+
+Also covers Section 5's notebook-execution contract: ``01_quickstart.ipynb``
+must actually *execute* end-to-end (not just parse as JSON) in well under a
+minute, via the ``nbmake`` pytest plugin run as an isolated subprocess.
+"""
 
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +20,7 @@ import xarray as xr
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = Path("README.md").read_text(encoding="utf-8")
+QUICKSTART_NOTEBOOK = REPO_ROOT / "examples" / "01_quickstart.ipynb"
 
 # M13 audience-facing docs are optional-code: they may contain zero python
 # blocks (prose/tables only), but any block present must execute cleanly.
@@ -92,3 +100,47 @@ def test_m13_doc_exists_and_is_nonempty(doc_path: Path) -> None:
     assert doc_path.is_file(), f"required M13 doc missing: {doc_path}"
     text = doc_path.read_text(encoding="utf-8").strip()
     assert len(text) > 0
+
+
+# ---- Section 5: 01_quickstart.ipynb must actually execute -----------------
+#
+# Run via ``nbmake`` in an isolated pytest subprocess (rather than importing
+# the nbmake plugin in-process) so this test suite's own pytest run/plugin
+# set does not interfere with nbmake's collection, and so a notebook
+# execution failure reports nbmake's own rich cell-level diagnostics instead
+# of an opaque failure from a nested pytest run.
+
+
+def test_quickstart_notebook_exists() -> None:
+    assert QUICKSTART_NOTEBOOK.is_file(), (
+        f"required quickstart notebook missing: {QUICKSTART_NOTEBOOK}"
+    )
+
+
+@pytest.mark.timeout(90)
+def test_quickstart_notebook_executes_end_to_end() -> None:
+    """Actually run every cell (not just parse the .ipynb as JSON).
+
+    The brief requires this to complete "well under a minute" given the
+    notebook is designed to run in under two minutes on a laptop with a
+    tiny fixture; 90s is a generous CI-safe ceiling around that.
+    """
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--nbmake",
+            "--nbmake-timeout=60",
+            "-q",
+            str(QUICKSTART_NOTEBOOK),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    assert completed.returncode == 0, (
+        "01_quickstart.ipynb failed to execute end-to-end:\n"
+        f"--- stdout ---\n{completed.stdout}\n--- stderr ---\n{completed.stderr}"
+    )
