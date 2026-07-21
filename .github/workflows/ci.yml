@@ -47,8 +47,9 @@ jobs:
         # ImportError" code path (see hydrofragments/benchmarks/
         # cuda_parity.py) -- it is NOT real GPU parity evidence. Real parity
         # evidence must be recorded from a GPU host and committed to
-        # hydrofragments/benchmarks/results/cuda_baseline.json; see
-        # docs/acceleration.md. cuda_parity.py is function-only (matching
+        # benchmarks/results/cuda_baseline.json (repo root, alongside the
+        # existing cpu_baseline.json); see docs/acceleration.md.
+        # cuda_parity.py is function-only (matching
         # cpu_baseline.py's convention, no __main__ block), so it is
         # invoked here via -c rather than -m.
         run: |
@@ -92,5 +93,5 @@ jobs:
         run: |
           python -c "
           from hydrofragments.benchmarks.cuda_transfer_cost import write_cuda_transfer_cost
-          write_cuda_transfer_cost('hydrofragments/benchmarks/results')
+          write_cuda_transfer_cost('benchmarks/results')
           "

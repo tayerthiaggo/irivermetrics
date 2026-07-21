@@ -22,3 +22,8 @@ probes CuPy/CUDA when planning a run and records the actual backend used for
 each stage. No CUDA stage is enabled by this baseline; optional acceleration
 requires parity and transfer-cost evidence against these CPU outputs. Set
 `compute.accelerator="none"` to force a CPU-only run.
+
+See [`acceleration.md`](./acceleration.md) for how the CUDA evidence gate
+works end to end (candidate stages, the parity and transfer-cost benchmark
+harnesses, the `cuda_baseline.json` schema, and why no CUDA stage is
+enabled in this repository today).

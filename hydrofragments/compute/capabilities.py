@@ -107,12 +107,15 @@ class ExecutionPlan:
 
 # Baseline evidence file produced by running the benchmark harnesses in
 # hydrofragments/benchmarks/ (cuda_parity.py + cuda_transfer_cost.py) and
-# hand-assembled into this compact per-stage gate summary. See
+# hand-assembled into this compact per-stage gate summary. Lives at
+# benchmarks/results/cuda_baseline.json (repo root) -- the same location as
+# the existing committed benchmarks/results/cpu_baseline.json, per this
+# repo's established convention (see docs/performance.md). See
 # docs/acceleration.md for the full schema and how to (re)generate it. This
 # repo ships without this file by default -- CUDA stays fully CPU-fallback
 # until a real GPU host records evidence here.
 _DEFAULT_BASELINE_PATH: Path = (
-    Path(__file__).resolve().parents[2] / "hydrofragments" / "benchmarks" / "results" / "cuda_baseline.json"
+    Path(__file__).resolve().parents[2] / "benchmarks" / "results" / "cuda_baseline.json"
 )
 
 
