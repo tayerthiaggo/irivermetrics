@@ -34,6 +34,14 @@ enabled in this release candidate.
 
 ## Quickstart
 
+**New to HydroFragments?** [`examples/01_quickstart.ipynb`](examples/01_quickstart.ipynb)
+walks through the same pipeline below in plain language, with a plot, runnable
+end-to-end on a bundled tiny fixture in under two minutes -- no external data
+required. From there, [`examples/02_dea_via_tsfill.ipynb`](examples/02_dea_via_tsfill.ipynb)
+covers the real Digital Earth Australia / WaterMask-TSFill workflow, and
+[`examples/03_metrics_walkthrough.ipynb`](examples/03_metrics_walkthrough.ipynb)
+tours every metric family and the 4-zone spatial stratification.
+
 ```python
 import numpy as np
 import pandas as pd
@@ -72,6 +80,19 @@ result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
 print(result.metrics_table[["date", "metric", "value"]].head())
 ```
 
+### Command line
+
+Once you have a real config file and input, the same pipeline is available
+without opening a notebook or writing a script:
+
+```bash
+hydrofragments analyze --config cfg.yaml --input data.zarr --aoi my_reach --out results/
+```
+
+`--config` accepts YAML or JSON (see `HydroConfig.from_mapping` for the exact
+schema); `--input` is passed straight to `open_water_cube`. Run
+`hydrofragments analyze --help` for the full argument list.
+
 ## Legacy import (deprecated)
 
 ```python
@@ -89,6 +110,9 @@ in compatibility output.
 - [Input format](docs/input_format.md)
 - [Migration v1.2](docs/migration_v1_2.md)
 - [Historical `calculate_metrics` reference](docs/module2.md) (legacy, quarantined)
+- [Quickstart notebook](examples/01_quickstart.ipynb)
+- [DEA / WaterMask-TSFill notebook](examples/02_dea_via_tsfill.ipynb)
+- [Metrics walkthrough notebook](examples/03_metrics_walkthrough.ipynb)
 
 ## Citation
 
