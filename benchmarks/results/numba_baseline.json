@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0.0",
+  "baseline": "numba_gate_evidence",
+  "created_at": "2026-07-21T12:35:55.053347+00:00",
+  "kernels": {
+    "inter_pool_gap_runs": {
+      "parity_pass": true,
+      "speedup_pass": true,
+      "speedup_ratio": 49.4078880029646
+    }
+  }
+}

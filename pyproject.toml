@@ -52,6 +52,14 @@ cuda = [
 cuda11 = [
   "cupy-cuda11x>=13.0"
 ]
+# Optional Numba JIT prototypes (hydrofragments/metrics/clustering_numba.py).
+# Mirrors the CUDA extras' evidence-gate posture: installing this extra does
+# not enable any kernel by itself -- hydrofragments.compute.capabilities'
+# numba_enabled_kernels stays empty until benchmarks/results/numba_baseline.json
+# records parity + speedup evidence. See docs/acceleration.md.
+accel = [
+  "numba>=0.59"
+]
 # V6 DCI reference benchmark (validation/run_dci_benchmark.py) requires the
 # `riverconn` R package (Baldan et al. 2022, CRAN; verified with v0.3.31),
 # NOT a Python distribution -- there is no pip-installable `riverconn`. It is

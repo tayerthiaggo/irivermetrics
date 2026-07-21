@@ -147,6 +147,7 @@ def _compute_inter_pool_gaps_numba(wet: np.ndarray, lengths: np.ndarray) -> np.n
 
 __all__ = [
     "numba_available",
+    "_build_numba_kernel",
     "_compute_inter_pool_gaps_numba",
     "_pure_python_inter_pool_gaps",
 ]

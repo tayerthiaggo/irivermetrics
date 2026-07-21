@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0.0",
+  "baseline": "numba_kernels",
+  "created_at": "2026-07-21T12:35:55.053347+00:00",
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Windows-10-10.0.19045-SP0"
+  },
+  "numba_available": true,
+  "skipped": false,
+  "skip_reason": null,
+  "candidate_kernels": [
+    "inter_pool_gap_runs"
+  ],
+  "all_parity_pass": true,
+  "kernels": [
+    {
+      "kernel": "inter_pool_gap_runs",
+      "cases": [
+        {
+          "case_id": "N0_small",
+          "size": 64,
+          "parity_pass": true,
+          "max_abs_diff": 0.0
+        },
+        {
+          "case_id": "N0_medium",
+          "size": 2000,
+          "parity_pass": true,
+          "max_abs_diff": 0.0
+        },
+        {
+          "case_id": "N0_large",
+          "size": 50000,
+          "parity_pass": true,
+          "max_abs_diff": 0.0
+        }
+      ],
+      "parity_pass": true,
+      "warm_speedup": {
+        "measured_at_size": 50000,
+        "cold_wall_seconds": 0.16353169991634786,
+        "warm_baseline_seconds": 0.00965430005453527,
+        "warm_numba_seconds": 0.00019539997447282076,
+        "speedup_ratio": 49.4078880029646
+      },
+      "speedup_pass": true
+    }
+  ]
+}
