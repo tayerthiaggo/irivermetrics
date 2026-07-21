@@ -61,6 +61,28 @@ jobs:
           assert result['skipped'] is True, 'expected CuPy-absent skip in CPU-only CI'
           "
 
+      - name: Run Numba benchmark harness (Numba-absent self-skip path)
+        # The `accel` extra (numba) is deliberately not installed by the
+        # `pip install -e ".[test]"` step above, so this exercises the
+        # "Numba unavailable -> clean skip, no ImportError" code path (see
+        # hydrofragments/benchmarks/numba_kernels.py) -- it is not evidence
+        # regeneration. Real parity + speedup evidence backing the committed
+        # benchmarks/results/numba_baseline.json (which currently reports
+        # inter_pool_gap_runs as evidence-graduated) was recorded separately
+        # with numba installed; see docs/acceleration.md. Unlike the CUDA
+        # job below, no special runner is needed to regenerate Numba
+        # evidence -- it only requires `pip install -e ".[accel]"` on any
+        # CPU, so this step is a smoke test of the fallback path only, not
+        # a statement that this repo can't validate Numba evidence in CI.
+        run: |
+          python -c "
+          import json
+          from hydrofragments.benchmarks.numba_kernels import run_numba_benchmark
+          result = run_numba_benchmark()
+          print(json.dumps({k: v for k, v in result.items() if k != 'kernels'}, indent=2))
+          assert result['skipped'] is True, 'expected Numba-absent skip in CPU-only CI'
+          "
+
   cuda-benchmarks:
     # Real-GPU transfer-cost benchmarking (hydrofragments/benchmarks/
     # cuda_transfer_cost.py) is not run in this repo's CI: there is
