@@ -106,6 +106,15 @@ def assess_baseline_quality(
         "overall_valid_fraction": valid_f.mean(),
     }
 
+    # The per-pixel-total `min_valid_obs` check only needs the length of the
+    # `time` dimension, not calendar-month grouping, so it runs unconditionally
+    # -- independent of whether `time` carries a usable datetime coordinate.
+    valid_count = valid_obs.astype(np.int64).sum(dim="time")
+    below_min_valid_obs = valid_count < config.validity.min_valid_obs
+    scalars["below_min_valid_obs_fraction"] = (
+        below_min_valid_obs.astype(np.float64).mean()
+    )
+
     has_monthly_time = _has_monthly_time_coord(valid_obs)
     if has_monthly_time:
         grouped_sum = valid_f.groupby("time.month").sum(dim="time")
@@ -113,13 +122,8 @@ def assess_baseline_quality(
         month_fraction = (grouped_sum / grouped_count).rename("month_fraction")
         pixel_dims = [dim for dim in month_fraction.dims if dim != "month"]
 
-        valid_count = valid_obs.astype(np.int64).sum(dim="time")
-        below_min_valid_obs = valid_count < config.validity.min_valid_obs
         below_month_floor = month_fraction < config.validity.min_valid_fraction_month
 
-        scalars["below_min_valid_obs_fraction"] = (
-            below_min_valid_obs.astype(np.float64).mean()
-        )
         scalars["below_min_valid_fraction_month_fraction"] = (
             below_month_floor.astype(np.float64).mean()
         )
@@ -132,9 +136,10 @@ def assess_baseline_quality(
     else:
         # No usable calendar-month coordinate to stratify by (e.g. a minimal
         # fixture cube with a bare `time` dimension and no coordinate
-        # values). Fall back to overall coverage only; nothing "below the
-        # month floor" can be claimed without calendar months to check.
-        scalars["below_min_valid_obs_fraction"] = xr.DataArray(0.0)
+        # values). Fall back to overall coverage only for the month-floor
+        # and seasonal MNAR statistics; nothing "below the month floor" can
+        # be claimed without calendar months to check. The min_valid_obs
+        # check above still applies -- it only needs `time` dimension length.
         scalars["below_min_valid_fraction_month_fraction"] = xr.DataArray(0.0)
         scalars["seasonal_occurrence_pct"] = xr.DataArray(np.nan)
 

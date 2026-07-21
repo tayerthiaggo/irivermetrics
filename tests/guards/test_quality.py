@@ -98,6 +98,33 @@ def _high_coverage_cube() -> WaterCube:
     )
 
 
+def _no_coord_low_coverage_cube() -> WaterCube:
+    """A cube with a bare `time` dimension (no datetime coordinate values,
+    same style as tests/connectivity/test_pipeline_wiring.py:31-37) AND
+    deliberately low valid-obs counts, well under `min_valid_obs`.
+
+    Exercises the `_has_monthly_time_coord` False branch: the min_valid_obs
+    per-pixel-total check only needs the `time` dimension's length, not
+    calendar-month grouping, so it must still fire here even though there is
+    no coordinate to stratify by.
+    """
+    water = xr.DataArray(
+        np.zeros((24, 3, 3), dtype=bool),
+        dims=("time", "y", "x"),
+    )
+    valid = xr.zeros_like(water, dtype=bool)
+    # Only 2 of 24 timesteps observed -> valid_count=2, far below any
+    # reasonable min_valid_obs floor (default used here is 20).
+    valid[0] = True
+    valid[1] = True
+    return WaterCube(
+        water=water,
+        valid_obs=valid,
+        source="synthetic_no_coord_low_coverage",
+        cadence="monthly",
+    )
+
+
 def _hand_derived_mnar_cube() -> WaterCube:
     """2-year, 2-calendar-month (Jan/Jul), single-pixel fixture -- see module docstring."""
     times = pd.to_datetime(
@@ -151,6 +178,20 @@ class TestGapfillRecommendation:
         )
         assert report.recommend_gapfill is False
         assert report.reason is None
+
+    def test_no_coord_time_dim_still_computes_below_min_valid_obs_fraction(self):
+        # Regression: below_min_valid_obs_fraction must not be hardcoded to
+        # 0.0 when `time` lacks a datetime coordinate (the
+        # `_has_monthly_time_coord` False branch) -- the min_valid_obs check
+        # only depends on `time` dimension length, not calendar-month
+        # grouping, so it must still be computed and can still recommend
+        # gapfilling for a coordinate-less cube with genuinely low coverage.
+        report = assess_baseline_quality(
+            _no_coord_low_coverage_cube(), config=_config(gapfill=False)
+        )
+        assert report.below_min_valid_obs_fraction > 0.0
+        assert report.recommend_gapfill is True
+        assert report.reason is not None
 
 
 class TestMnarHandDerivedFixture:
