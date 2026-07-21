@@ -76,6 +76,162 @@ def test_floating_tolerance_is_declared_by_dtype() -> None:
     assert FLOATING_TOLERANCES["float32"] >= FLOATING_TOLERANCES["float64"]
 
 
+def test_gated_stages_from_baseline_empty_when_file_absent(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_stages_from_baseline
+
+    missing_path = tmp_path / "cuda_baseline.json"
+    assert gated_stages_from_baseline(missing_path) == ()
+
+
+def test_gated_stages_from_baseline_empty_when_file_empty_json(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_stages_from_baseline
+
+    path = tmp_path / "cuda_baseline.json"
+    path.write_text("{}", encoding="utf-8")
+    assert gated_stages_from_baseline(path) == ()
+
+
+def test_gated_stages_from_baseline_empty_when_file_is_malformed_json(tmp_path) -> None:
+    from hydrofragments.compute.capabilities import gated_stages_from_baseline
+
+    path = tmp_path / "cuda_baseline.json"
+    path.write_text("{not valid json", encoding="utf-8")
+    assert gated_stages_from_baseline(path) == ()
+
+
+def test_gated_stages_from_baseline_requires_both_parity_and_speedup_pass(
+    tmp_path,
+) -> None:
+    import json
+
+    from hydrofragments.compute.capabilities import gated_stages_from_baseline
+
+    path = tmp_path / "cuda_baseline.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0.0",
+                "baseline": "cuda_gate_evidence",
+                "stages": {
+                    "valid_counts": {
+                        "parity_pass": True,
+                        "net_speedup_pass": True,
+                    },
+                    "monthly_reduction": {
+                        "parity_pass": True,
+                        "net_speedup_pass": False,
+                    },
+                    "occurrence": {
+                        "parity_pass": False,
+                        "net_speedup_pass": True,
+                    },
+                    "masks": {
+                        "parity_pass": False,
+                        "net_speedup_pass": False,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    gated = gated_stages_from_baseline(path)
+
+    assert gated == ("valid_counts",)
+
+
+def test_gated_stages_from_baseline_ignores_stages_outside_candidate_list(
+    tmp_path,
+) -> None:
+    import json
+
+    from hydrofragments.compute.capabilities import gated_stages_from_baseline
+
+    path = tmp_path / "cuda_baseline.json"
+    path.write_text(
+        json.dumps(
+            {
+                "stages": {
+                    "not_a_real_stage": {
+                        "parity_pass": True,
+                        "net_speedup_pass": True,
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert gated_stages_from_baseline(path) == ()
+
+
+def test_detect_capabilities_with_baseline_populates_enabled_cuda_stages(
+    monkeypatch, tmp_path
+) -> None:
+    """Injects the CUDA-available branch's inputs without real hardware, per
+    the brief's guidance to make the baseline-reading step unit-testable in
+    isolation from the CuPy smoke test."""
+    import json
+
+    from hydrofragments.compute import capabilities as capabilities_module
+
+    baseline_path = tmp_path / "cuda_baseline.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "stages": {
+                    "valid_counts": {
+                        "parity_pass": True,
+                        "net_speedup_pass": True,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        capabilities_module, "_DEFAULT_BASELINE_PATH", baseline_path
+    )
+
+    result = capabilities_module._resolve_cuda_capabilities_from_probe(
+        cupy_available=True,
+        cuda_available=True,
+        cupy_version="99.0",
+        cuda_runtime_version=12000,
+        device_count=1,
+        free_memory_bytes=1_000,
+        total_memory_bytes=2_000,
+    )
+
+    assert result.enabled_cuda_stages == ("valid_counts",)
+    assert result.cuda_available is True
+
+
+def test_detect_capabilities_with_no_baseline_file_keeps_stages_empty(
+    monkeypatch, tmp_path
+) -> None:
+    from hydrofragments.compute import capabilities as capabilities_module
+
+    monkeypatch.setattr(
+        capabilities_module,
+        "_DEFAULT_BASELINE_PATH",
+        tmp_path / "cuda_baseline.json",
+    )
+
+    result = capabilities_module._resolve_cuda_capabilities_from_probe(
+        cupy_available=True,
+        cuda_available=True,
+        cupy_version="99.0",
+        cuda_runtime_version=12000,
+        device_count=1,
+        free_memory_bytes=1_000,
+        total_memory_bytes=2_000,
+    )
+
+    assert result.enabled_cuda_stages == ()
+    assert "no stage" in (result.reason or "").lower() or result.reason
+
+
 def test_analyze_manifest_records_actual_backend_for_each_stage(tmp_path) -> None:
     from hydrofragments.api import analyze
     from hydrofragments.config import HydroConfig

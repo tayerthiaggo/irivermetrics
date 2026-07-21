@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import importlib
+import json
+from pathlib import Path
 from typing import Iterable
 
 
@@ -103,6 +105,96 @@ class ExecutionPlan:
         }
 
 
+# Baseline evidence file produced by running the benchmark harnesses in
+# hydrofragments/benchmarks/ (cuda_parity.py + cuda_transfer_cost.py) and
+# hand-assembled into this compact per-stage gate summary. See
+# docs/acceleration.md for the full schema and how to (re)generate it. This
+# repo ships without this file by default -- CUDA stays fully CPU-fallback
+# until a real GPU host records evidence here.
+_DEFAULT_BASELINE_PATH: Path = (
+    Path(__file__).resolve().parents[2] / "hydrofragments" / "benchmarks" / "results" / "cuda_baseline.json"
+)
+
+
+def gated_stages_from_baseline(
+    baseline_path: str | Path | None = None,
+) -> tuple[str, ...]:
+    """Read the evidence-gate baseline JSON and return graduated stages.
+
+    A stage graduates from :data:`CUDA_CANDIDATE_STAGES` only if the baseline
+    records both ``parity_pass: true`` (numeric correctness, see
+    ``benchmarks/cuda_parity.py``) and ``net_speedup_pass: true`` (CUDA wall
+    time including transfer beats CPU, see ``benchmarks/cuda_transfer_cost.py``)
+    for that stage. Missing file, unreadable/malformed JSON, an empty
+    mapping, or a stage outside ``CUDA_CANDIDATE_STAGES`` are all treated as
+    "no evidence" rather than raising -- this function must never be the
+    reason a truthful CPU fallback turns into a crash.
+    """
+
+    path = Path(baseline_path) if baseline_path is not None else _DEFAULT_BASELINE_PATH
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return ()
+
+    if not isinstance(payload, dict):
+        return ()
+    stages = payload.get("stages")
+    if not isinstance(stages, dict):
+        return ()
+
+    gated = []
+    for stage in CUDA_CANDIDATE_STAGES:
+        evidence = stages.get(stage)
+        if not isinstance(evidence, dict):
+            continue
+        if evidence.get("parity_pass") is True and evidence.get("net_speedup_pass") is True:
+            gated.append(stage)
+    return tuple(gated)
+
+
+def _resolve_cuda_capabilities_from_probe(
+    *,
+    cupy_available: bool,
+    cuda_available: bool,
+    cupy_version: str | None,
+    cuda_runtime_version: int | None,
+    device_count: int,
+    free_memory_bytes: int | None,
+    total_memory_bytes: int | None,
+) -> BackendCapabilities:
+    """Build the CUDA-detected ``BackendCapabilities``, gated by baseline evidence.
+
+    Split out from :func:`detect_capabilities` so the baseline-reading step
+    is unit-testable without real CUDA hardware: tests call this directly
+    with hand-constructed probe results instead of needing a GPU to reach
+    this code path through the CuPy smoke test above it.
+    """
+
+    enabled_cuda_stages = gated_stages_from_baseline()
+    if enabled_cuda_stages:
+        reason = f"CUDA detected; baseline evidence enables: {', '.join(enabled_cuda_stages)}"
+    else:
+        reason = "CUDA detected; no stage has transfer-cost benefit evidence"
+
+    return BackendCapabilities(
+        cupy_available=cupy_available,
+        cuda_available=cuda_available,
+        cupy_version=cupy_version,
+        cuda_runtime_version=cuda_runtime_version,
+        device_count=device_count,
+        free_memory_bytes=free_memory_bytes,
+        total_memory_bytes=total_memory_bytes,
+        enabled_cuda_stages=enabled_cuda_stages,
+        reason=reason,
+    )
+
+
 def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
     """Return capability evidence without importing CuPy by default.
 
@@ -147,8 +239,7 @@ def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
             reason=f"CUDA initialization failed: {error}",
         )
 
-    # Deliberately empty: benchmark evidence has not approved any stage yet.
-    return BackendCapabilities(
+    return _resolve_cuda_capabilities_from_probe(
         cupy_available=True,
         cuda_available=True,
         cupy_version=getattr(cupy, "__version__", None),
@@ -156,7 +247,6 @@ def detect_capabilities(*, probe_cuda: bool = False) -> BackendCapabilities:
         device_count=device_count,
         free_memory_bytes=int(free_bytes),
         total_memory_bytes=int(total_bytes),
-        reason="CUDA detected; no stage has transfer-cost benefit evidence",
     )
 
 
@@ -227,5 +317,6 @@ __all__ = [
     "ExecutionPlan",
     "FLOATING_TOLERANCES",
     "detect_capabilities",
+    "gated_stages_from_baseline",
     "resolve_execution_plan",
 ]

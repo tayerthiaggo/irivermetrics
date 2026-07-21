@@ -17,6 +17,7 @@ from hydrofragments.compute.capabilities import (
     ExecutionPlan,
     FLOATING_TOLERANCES,
     detect_capabilities,
+    gated_stages_from_baseline,
     resolve_execution_plan,
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     "ExecutionPlan",
     "FLOATING_TOLERANCES",
     "detect_capabilities",
+    "gated_stages_from_baseline",
     "resolve_execution_plan",
     "validate_chunk_budget",
 ]
