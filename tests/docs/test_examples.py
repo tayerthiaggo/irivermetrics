@@ -21,6 +21,14 @@ import xarray as xr
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = Path("README.md").read_text(encoding="utf-8")
 QUICKSTART_NOTEBOOK = REPO_ROOT / "examples" / "01_quickstart.ipynb"
+# 02/03 are executed too (belt-and-braces beyond the brief's strict
+# requirement, which only names 01_quickstart.ipynb) -- cheap given each
+# runs in ~10-15s on the bundled synthetic fixtures.
+ALL_EXAMPLE_NOTEBOOKS = [
+    QUICKSTART_NOTEBOOK,
+    REPO_ROOT / "examples" / "02_dea_via_tsfill.ipynb",
+    REPO_ROOT / "examples" / "03_metrics_walkthrough.ipynb",
+]
 
 # M13 audience-facing docs are optional-code: they may contain zero python
 # blocks (prose/tables only), but any block present must execute cleanly.
@@ -111,10 +119,11 @@ def test_m13_doc_exists_and_is_nonempty(doc_path: Path) -> None:
 # of an opaque failure from a nested pytest run.
 
 
-def test_quickstart_notebook_exists() -> None:
-    assert QUICKSTART_NOTEBOOK.is_file(), (
-        f"required quickstart notebook missing: {QUICKSTART_NOTEBOOK}"
-    )
+@pytest.mark.parametrize(
+    "notebook_path", ALL_EXAMPLE_NOTEBOOKS, ids=lambda p: p.name
+)
+def test_example_notebook_exists(notebook_path: Path) -> None:
+    assert notebook_path.is_file(), f"required example notebook missing: {notebook_path}"
 
 
 @pytest.mark.timeout(90)
@@ -123,24 +132,39 @@ def test_quickstart_notebook_executes_end_to_end() -> None:
 
     The brief requires this to complete "well under a minute" given the
     notebook is designed to run in under two minutes on a laptop with a
-    tiny fixture; 90s is a generous CI-safe ceiling around that.
+    tiny fixture; 90s is a generous CI-safe ceiling around that. This is
+    the one notebook the brief explicitly requires to be execution-tested;
+    the parametrized test below additionally covers 02/03.
     """
+    _run_nbmake(QUICKSTART_NOTEBOOK, timeout_s=90)
+
+
+@pytest.mark.timeout(120)
+@pytest.mark.parametrize(
+    "notebook_path", ALL_EXAMPLE_NOTEBOOKS, ids=lambda p: p.name
+)
+def test_every_example_notebook_executes_end_to_end(notebook_path: Path) -> None:
+    """Belt-and-braces: 02/03 must also actually execute, not just parse."""
+    _run_nbmake(notebook_path, timeout_s=120)
+
+
+def _run_nbmake(notebook_path: Path, *, timeout_s: int) -> None:
     completed = subprocess.run(
         [
             sys.executable,
             "-m",
             "pytest",
             "--nbmake",
-            "--nbmake-timeout=60",
+            "--nbmake-timeout=90",
             "-q",
-            str(QUICKSTART_NOTEBOOK),
+            str(notebook_path),
         ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
-        timeout=90,
+        timeout=timeout_s,
     )
     assert completed.returncode == 0, (
-        "01_quickstart.ipynb failed to execute end-to-end:\n"
+        f"{notebook_path.name} failed to execute end-to-end:\n"
         f"--- stdout ---\n{completed.stdout}\n--- stderr ---\n{completed.stderr}"
     )
