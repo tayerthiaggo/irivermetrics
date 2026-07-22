@@ -77,8 +77,12 @@ non-binary and no `water_threshold` is supplied — this adapter never
 guesses a threshold). Raw WOfS does not bundle a separate valid-observation
 layer by convention: if the caller does not supply `valid_obs`, an all-`True`
 mask is used. Pass `water_threshold` to `open_water_cube(..., input_kind=
-"raw_wofs", water_threshold=0.5)` (or via `HydroConfig.input.water_threshold`
-for the config-driven path) to threshold a probability/frequency band.
+"raw_wofs", water_threshold=0.5)` to threshold a probability/frequency band.
+`HydroConfig.input.water_threshold`/`input.kind`/`input.variable_map` are
+recorded for provenance and comparison-guard purposes only — today's CLI and
+`analyze()` do not read them back into `open_water_cube`; they auto-detect
+every time. Set `water_threshold` as a direct `open_water_cube` kwarg (or via
+your own analyze-time integration) until that config-driven wiring lands.
 
 **Auto-detection signature:** a variable named `water` or `frequency`.
 
