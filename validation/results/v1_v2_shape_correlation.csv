@@ -1,0 +1,3 @@
+run_id,claim_id,claim,statistic,value,sample_size,gate_threshold,gate_passed,status
+d6ad5549dcad4c98863e3a4379927b03,V1,AWRe and AWMSI are orthogonal shape axes,"pearson_r(awre, awmsi)",-0.2908774193217891,458,,,demonstrated
+d6ad5549dcad4c98863e3a4379927b03,V2,LPI and MESH are non-redundant enough to keep both,"pearson_r(lpi, mesh_m2)",0.9057044927949922,458,0.9,False,demonstrated

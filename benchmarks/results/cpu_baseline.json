@@ -1,0 +1,427 @@
+{
+  "schema_version": "1.0.0",
+  "baseline": "cpu_reference",
+  "created_at": "2026-07-17T01:51:55.890440+00:00",
+  "backend_planned": "cpu",
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "numpy": "2.4.6",
+    "dask": "2025.3.0",
+    "xarray": "2026.4.0",
+    "cupy_imported": false,
+    "scheduler": "single-threaded",
+    "workers": 1,
+    "threads_per_worker": 1
+  },
+  "cases": [
+    {
+      "dataset_id": "B0_analytic",
+      "shape": [
+        12,
+        32,
+        32
+      ],
+      "chunks": [
+        [
+          4,
+          4,
+          4
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          16,
+          16
+        ]
+      ],
+      "repeats": 3,
+      "output_checksum": "7dcb715bfd69b61f5745b224d7f96f7d07420b9d6061b24cecf1b5953a93fdba",
+      "valid_count_sum": 11033,
+      "apsec_months": 12,
+      "hardware": {
+        "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+        "gpu": null,
+        "driver": null
+      },
+      "dask": {
+        "scheduler": "single-threaded",
+        "workers": 1,
+        "threads_per_worker": 1,
+        "graph_task_count": 72,
+        "graph_bytes": 351,
+        "scheduler_overhead_fraction": null,
+        "spill_bytes": 0
+      },
+      "memory": {
+        "peak_rss_bytes": null,
+        "peak_managed_bytes": null,
+        "peak_vram_bytes": null,
+        "vram_limit_bytes": null
+      },
+      "io": {
+        "bytes_read": null,
+        "bytes_written": null,
+        "host_device_transfer_bytes": 0,
+        "host_device_transfer_seconds": 0.0
+      },
+      "backend_actual_by_stage": {
+        "assemble_monthly": "cpu",
+        "monthly_reduction": "cpu",
+        "occurrence": "cpu",
+        "apsec": "cpu"
+      },
+      "stages": [
+        {
+          "stage": "assemble_monthly",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 72,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.0026393000152893364,
+            "p95_seconds": 0.0028359499934595077
+          }
+        },
+        {
+          "stage": "monthly_reduction",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 72,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.0029643999878317118,
+            "p95_seconds": 0.003014800004893914
+          }
+        },
+        {
+          "stage": "occurrence",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 72,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.006851300015114248,
+            "p95_seconds": 0.012576740025542675
+          }
+        },
+        {
+          "stage": "apsec",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 72,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.0008989999769255519,
+            "p95_seconds": 0.0013657399686053395
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "B0_fragmentation",
+      "shape": [
+        24,
+        64,
+        64
+      ],
+      "chunks": [
+        [
+          6,
+          6,
+          6,
+          6
+        ],
+        [
+          16,
+          16,
+          16,
+          16
+        ],
+        [
+          16,
+          16,
+          16,
+          16
+        ]
+      ],
+      "repeats": 3,
+      "output_checksum": "f62a9bc1be90637a20dfb26ae0b2273132f35fa1fd27cb5fd0bdbee6e77db63c",
+      "valid_count_sum": 93334,
+      "apsec_months": 24,
+      "hardware": {
+        "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+        "gpu": null,
+        "driver": null
+      },
+      "dask": {
+        "scheduler": "single-threaded",
+        "workers": 1,
+        "threads_per_worker": 1,
+        "graph_task_count": 384,
+        "graph_bytes": 351,
+        "scheduler_overhead_fraction": null,
+        "spill_bytes": 0
+      },
+      "memory": {
+        "peak_rss_bytes": null,
+        "peak_managed_bytes": null,
+        "peak_vram_bytes": null,
+        "vram_limit_bytes": null
+      },
+      "io": {
+        "bytes_read": null,
+        "bytes_written": null,
+        "host_device_transfer_bytes": 0,
+        "host_device_transfer_seconds": 0.0
+      },
+      "backend_actual_by_stage": {
+        "assemble_monthly": "cpu",
+        "monthly_reduction": "cpu",
+        "occurrence": "cpu",
+        "apsec": "cpu"
+      },
+      "stages": [
+        {
+          "stage": "assemble_monthly",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 384,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.002621999999973923,
+            "p95_seconds": 0.0026387400226667523
+          }
+        },
+        {
+          "stage": "monthly_reduction",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 384,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.012758500000927597,
+            "p95_seconds": 0.013212820002809166
+          }
+        },
+        {
+          "stage": "occurrence",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 384,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.00771909998729825,
+            "p95_seconds": 0.00780990999774076
+          }
+        },
+        {
+          "stage": "apsec",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 384,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.0009615999879315495,
+            "p95_seconds": 0.0009732100239489228
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "B0_scale",
+      "shape": [
+        12,
+        128,
+        128
+      ],
+      "chunks": [
+        [
+          4,
+          4,
+          4
+        ],
+        [
+          32,
+          32,
+          32,
+          32
+        ],
+        [
+          32,
+          32,
+          32,
+          32
+        ]
+      ],
+      "repeats": 3,
+      "output_checksum": "3f3cddb442f64564ff9960a6b4ed84299634bb6d890450d226cbd2f9c9f4a519",
+      "valid_count_sum": 192727,
+      "apsec_months": 12,
+      "hardware": {
+        "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+        "gpu": null,
+        "driver": null
+      },
+      "dask": {
+        "scheduler": "single-threaded",
+        "workers": 1,
+        "threads_per_worker": 1,
+        "graph_task_count": 288,
+        "graph_bytes": 351,
+        "scheduler_overhead_fraction": null,
+        "spill_bytes": 0
+      },
+      "memory": {
+        "peak_rss_bytes": null,
+        "peak_managed_bytes": null,
+        "peak_vram_bytes": null,
+        "vram_limit_bytes": null
+      },
+      "io": {
+        "bytes_read": null,
+        "bytes_written": null,
+        "host_device_transfer_bytes": 0,
+        "host_device_transfer_seconds": 0.0
+      },
+      "backend_actual_by_stage": {
+        "assemble_monthly": "cpu",
+        "monthly_reduction": "cpu",
+        "occurrence": "cpu",
+        "apsec": "cpu"
+      },
+      "stages": [
+        {
+          "stage": "assemble_monthly",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 288,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.002852700010407716,
+            "p95_seconds": 0.003759990003891289
+          }
+        },
+        {
+          "stage": "monthly_reduction",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 288,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.010659899970050901,
+            "p95_seconds": 0.01070237997919321
+          }
+        },
+        {
+          "stage": "occurrence",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 288,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.015578599995933473,
+            "p95_seconds": 0.019335650000721218
+          }
+        },
+        {
+          "stage": "apsec",
+          "backend_planned": "cpu",
+          "backend_actual": "cpu",
+          "host_device_transfer_bytes": 0,
+          "host_device_transfer_seconds": 0.0,
+          "graph_task_count": 288,
+          "graph_bytes": 351,
+          "peak_rss_bytes": null,
+          "peak_vram_bytes": null,
+          "vram_limit_bytes": null,
+          "scheduler_overhead_fraction": null,
+          "timing_seconds": {
+            "runs": 3,
+            "median_seconds": 0.0012126000365242362,
+            "p95_seconds": 0.001852859987411648
+          }
+        }
+      ]
+    }
+  ]
+}

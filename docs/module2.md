@@ -1,3 +1,8 @@
+> **Quarantined (legacy reference):** documents the pre-v1.2 metric register.
+> Canonical v1.2 metrics and migration rules are in
+> [migration_v1_2.md](./migration_v1_2.md). Dropped metrics (`PF`, `PLF`,
+> `AWMPA`, `AWMPL`, `AWMPW`) are not produced by current code.
+
 # calculate_metrics
 
 **calculate_metrics** (_**da_wmask**, **rcor_extent**=None, **outdir**=None, **section_length**=None, **section_name_col**=None, **min_pool_size**=2, **img_ext**='.tif', **export_shp**=False, **export_PP**=False, **fill_nodata**=True_)

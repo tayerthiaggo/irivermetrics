@@ -1,77 +1,125 @@
-<!-- ![Alt text](docs/logo.jpg) -->
-# iRiverMetrics
+# HydroFragments
 
-## Overview
+> **Status (v1.2.0rc1):** Public package namespace is `hydrofragments`. The legacy
+> `ecofragments.calculate_metrics` facade remains for one deprecation cycle and
+> returns a **non-canonical** wide pivot of retained v1.2 metrics only. Canonical
+> output is tidy Parquet via `hydrofragments.analyze()`. See
+> [docs/migration_v1_2.md](docs/migration_v1_2.md).
 
-**iRiverMetrics** is an open-source Python toolkit designed for analysing the surface water dynamics of intermittent rivers. It offers a set of modules to help researchers and environmental professionals to detect water and compute ecohydrological metrics from multispectral satellite imagery efficiently.
+HydroFragments quantifies **surface-water patch dynamics** in intermittent rivers
+from binary or WaterMask-TSFill monthly water time series. Scope is river
+surface water only — not generic terrestrial/urban patch metrics, and not flow,
+depth, or ecological condition.
 
-## Key Features
+## Shipped in v1.2.0 core (`contracts_core`)
 
-- **Modular Design:** Divided into two modules, each serving a specific purpose. This modular approach allows you to use only the components relevant to your project.
-- **Remote Sensing Integration:** Leverages multispectral and multitemporal satellite imagery, enabling you to analyse surface water features and assess river characteristics. It supports common satellite sensors and data formats.
-- **Efficient Processing:** Employs Dask for distributed computing, ensuring local processing of large-scale datasets.
-- **User-Friendly:** Suitable for users with varying levels of expertise. It includes detailed documentation and code comments to guide you through the process.
+- Occurrence (season-stratified, valid-observation denominator)
+- Refuge area
+- APSEC (fixed AOI denominator)
+- Number of pools, LPI, AWRe, AWMSI
 
-## Modules
+Explicitly deferred: LPSEC, HY/dry-down, connectivity (RC/TCF/DCI runtime),
+MESH/width distributions, and CUDA acceleration.
 
-iRiverMetrics consists of two main modules:
+## Install
 
-1. Water Detection ([`waterdetect_batch`)](docs/module1.md)): Generate water masks from multispectral imagery using the Water Detect package. It integrates spectral water indices and clustering techniques to delineate and map aquatic bodies accurately.
-2. Calculate Metrics ([`calculate_metrics`)](docs/module2.md)): Utilises the water masks to compute a range of metrics comprising various aspects of river surface water, such as morphological characteristics, water persistence, and fragmentation.
-
-## Getting Started
-
-To get started with iRiverMetrics, follow these steps:
-
-1. **Clone the Repository:** Clone the iRiverMetrics repository from GitHub to your local machine.
 ```bash
-cd paste/your/directory/here
-git clone https://github.com/tayerthiaggo/irivermetrics.git
+git clone https://github.com/tayerthiaggo/HydroFragments.git
+cd HydroFragments
+python -m pip install -e ".[test]"
 ```
 
-2. **Install:** Ensure Python ≥ 3.10 is installed. Create a conda environment, install GDAL, then install the package in editable mode:
-```bash
-conda create -n irivermetrics python=3.10
-conda activate irivermetrics
-conda install conda-forge::gdal
-pip install -e path/to/clone/irivermetrics
-```
+CPU-only install: no CuPy/CUDA packages are required. Optional GPU extras are not
+enabled in this release candidate.
 
-3. **Explore the Modules:** Dive into the documentation for each module to understand their functionality and usage.
+## Quickstart
 
-4. **Example Usage:** Review [example use cases](examples/irm_example.ipynb)  and code snippets in the documentation of each module ([waterdetect_batch](docs/module1.md) and [calculate_metrics](docs/module2.md)) apply iRiverMetrics effectively to your projects.
+**New to HydroFragments?** [`examples/01_quickstart.ipynb`](examples/01_quickstart.ipynb)
+walks through the same pipeline below in plain language, with a plot, runnable
+end-to-end on a bundled tiny fixture in under two minutes -- no external data
+required. From there, [`examples/02_dea_via_tsfill.ipynb`](examples/02_dea_via_tsfill.ipynb)
+covers the real Digital Earth Australia / WaterMask-TSFill workflow, and
+[`examples/03_metrics_walkthrough.ipynb`](examples/03_metrics_walkthrough.ipynb)
+tours every metric family and the 4-zone spatial stratification.
 
-5. **Contribute:** Contributions are welcome! If you have enhancements or additional features, please consider contributing back to the project via GitHub.
-
-## Usage Example
 ```python
-# Import modules
-from irivermetrics.irm_main import waterdetect_batch, calculate_metrics
+import numpy as np
+import pandas as pd
+import xarray as xr
 
-## Module 1
-# Path to a directory containing multispectral images (e.g., TIFF files)
-input_img = "path/to/images"
-# Path to the river corridor extent shapefile (.shp)
-r_lines = "path/to/rcor_extent.shp"
-# Generate a DataArray containing water masks based on the specified parameters
-da_wmask = waterdetect_batch(input_img, r_lines)
+from hydrofragments import HydroConfig, analyze, open_water_cube
 
-## Module 2
-# Path to a directory containing water masks or use a defined DataArray
-da_wmask = "path/to/water masks"
-# Path to the river corridor extent (sections) shapefile (.shp)
-rcor_extent = "path/to/rcor_extent.shp"
+times = pd.to_datetime(["2020-01-01", "2020-02-01", "2020-03-01"])
+water = xr.DataArray(
+    np.array(
+        [
+            [[1, 1, 0], [0, 0, 0], [0, 0, 0]],
+            [[1, 1, 1], [1, 0, 0], [0, 0, 0]],
+            [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+        ],
+        dtype=bool,
+    ),
+    dims=("time", "y", "x"),
+    coords={"time": times},
+)
 
-# Calculate river metrics
-metrics = calculate_metrics(da_wmask, rcor_extent)
+cube = open_water_cube(water, input_kind="generic_binary")
+config = HydroConfig.from_mapping(
+    {
+        "config_schema_version": "1.0.0",
+        "input": {"kind": "generic_binary"},
+        "temporal": {
+            "input_cadence": "monthly",
+            "monthly_composite": "supplied",
+            "composite_owner": "caller",
+        },
+        "output": {"output_dir": "hydrofragments_out"},
+    }
+)
+result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
+print(result.metrics_table[["date", "metric", "value"]].head())
 ```
+
+### Command line
+
+Once you have a real config file and input, the same pipeline is available
+without opening a notebook or writing a script:
+
+```bash
+hydrofragments analyze --config cfg.yaml --input data.zarr --aoi my_reach --out results/
+```
+
+`--config` accepts YAML or JSON (see `HydroConfig.from_mapping` for the exact
+schema); `--input` is passed straight to `open_water_cube`. Run
+`hydrofragments analyze --help` for the full argument list.
+
+## Legacy import (deprecated)
+
+```python
+from ecofragments import calculate_metrics  # emits DeprecationWarning
+```
+
+Dropped legacy metrics (`PF`, `PLF`, `AWMPA`, `AWMPL`, `AWMPW`) raise
+`LegacyMetricMigrationError` when explicitly requested. They are never restored
+in compatibility output.
+
+## Documentation
+
+- [Docs index](docs/index.md)
+- [Architecture](docs/architecture.md)
+- [Input format](docs/input_format.md)
+- [Migration v1.2](docs/migration_v1_2.md)
+- [Historical `calculate_metrics` reference](docs/module2.md) (legacy, quarantined)
+- [Quickstart notebook](examples/01_quickstart.ipynb)
+- [DEA / WaterMask-TSFill notebook](examples/02_dea_via_tsfill.ipynb)
+- [Metrics walkthrough notebook](examples/03_metrics_walkthrough.ipynb)
 
 ## Citation
 
-If you use iRiverMetrics in your research or projects, please consider citing the original paper:
+Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D.
+(2023) Ecohydrological metrics derived from multispectral images to characterize
+surface water in an intermittent river, *Journal of Hydrology*, DOI
+[10.1016/j.jhydrol.2023.129087](https://doi.org/10.1016/j.jhydrol.2023.129087).
 
-Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D. (2023) Ecohydrological metrics derived from multispectral images to characterize surface water in an intermittent river, Journal of Hydrology, Volume 617, Part C, DOI:[10.1016/j.jhydrol.2023.129087](https://doi.org/10.1016/j.jhydrol.2023.129087)
-
-and 
-
-Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D. (2023) Identifying intermittent river sections with similar hydrology using remotely sensed metrics, Journal of Hydrology, Volume 626, Part A, DOI:[10.1016/j.jhydrol.2023.130266](https://doi.org/10.1016/j.jhydrol.2023.130266)
+Lineage note: this repository is a clean HydroFragments v1.2 rewrite; predecessor
+public history is not preserved (Decision Q10 option C).

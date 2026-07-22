@@ -178,3 +178,15 @@ node_modules/
 .cache/
 tmp/
 temp/
+data/wofs_monthly_masks_1986_2026.zarr
+
+.agents/
+.claude/
+.github/
+.superpowers/
+ecofragments/
+hydrofragments_out/
+
+# Output directories/fixtures written by running the onboarding notebooks/CLI locally.
+examples/*_out/
+examples/*.zarr
