@@ -89,13 +89,19 @@ def test_normalization_handles_non_monotonic_raw_ids_across_chunks():
     chunked, non-monotonic-raw-ID input end to end and asserts the
     normalized output is still correct row-major-ordered IDs matching the
     dense (ground-truth) result.
+
+    ``local_label_threshold_bytes=0`` forces the dask-image cross-chunk path
+    (W3.4 routes small Dask arrays through SciPy by default, which would
+    make this specific dask-image raw-ID quirk untestable otherwise).
     """
     mask = _non_monotonic_raw_id_mask()
     chunked = da.from_array(mask, chunks=(4, 4))
 
     # Proof this scenario is non-vacuous: the raw (pre-normalization) IDs
     # from cross-chunk reconciliation are genuinely out of row-major order.
-    raw = _materialize_global_labels(chunked, structure=_structure(8))
+    raw = _materialize_global_labels(
+        chunked, structure=_structure(8), local_label_threshold_bytes=0
+    )
     flat_raw = raw.reshape(-1)
     raw_ids = np.unique(flat_raw)
     raw_ids = raw_ids[raw_ids != 0]
@@ -113,7 +119,12 @@ def test_normalization_handles_non_monotonic_raw_ids_across_chunks():
     )
 
     dense = label_components(mask, connectivity=8, min_patch_pixels=1)
-    actual = label_components(chunked, connectivity=8, min_patch_pixels=1)
+    actual = label_components(
+        chunked,
+        connectivity=8,
+        min_patch_pixels=1,
+        local_label_threshold_bytes=0,
+    )
 
     np.testing.assert_array_equal(actual.labels, dense.labels)
     assert actual.count == dense.count == 3
