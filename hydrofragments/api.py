@@ -105,8 +105,17 @@ def open_water_cube(
     variable_map: Mapping[str, str] | None = None,
     chunks: Mapping[str, int] | None = None,
     input_kind: str = "generic_binary",
+    aoi_mask: xr.DataArray | None = None,
+    analysis_mask: xr.DataArray | None = None,
 ) -> WaterCube:
-    """Open a canonical aligned water/valid cube from supported sources."""
+    """Open a canonical aligned water/valid cube from supported sources.
+
+    ``aoi_mask``/``analysis_mask`` are optional aligned 2-D boolean masks
+    passed straight through to :class:`hydrofragments.models.WaterCube`
+    (which validates alignment and defaults either to all-true when
+    omitted -- see its docstring). Every caller that does not pass them
+    keeps today's unpruned full-grid behaviour unchanged.
+    """
     del variable_map  # reserved for later adapter expansion
 
     if isinstance(source, (str, Path)):
@@ -127,6 +136,8 @@ def open_water_cube(
                     ("adapter", "watermask_tsfill"),
                     ("chunks", _describe_chunks(water)),
                 ),
+                aoi_mask=aoi_mask,
+                analysis_mask=analysis_mask,
             )
         raise ValueError(f"unsupported source path: {path}")
 
@@ -157,6 +168,8 @@ def open_water_cube(
             ("input_kind", input_kind),
             ("chunks", _describe_chunks(water)),
         ),
+        aoi_mask=aoi_mask,
+        analysis_mask=analysis_mask,
     )
 
 

@@ -26,6 +26,28 @@ from hydrofragments.spatial.context import SpatialContext
 
 
 @dataclass(frozen=True)
+class AnalysisMaskCoverageResult:
+    """Monthly valid-coverage fraction denominated by ``analysis_mask``.
+
+    Global constraint: "Monthly coverage denominator is approved as
+    conservative potential-water ``analysis_mask``, not full catchment" --
+    unlike APSEC/LPI (which stay pinned to the full ``aoi_mask``, see
+    :func:`compute_apsec`), the monthly *coverage* fraction is deliberately
+    denominated by the smaller, conservative potential-water footprint so a
+    catchment with a large dry margin does not dilute its coverage signal
+    with pixels that were never expected to be observed as water anyway.
+
+    ``coverage_fraction``/``n_valid_pixels`` are one value per ``time``;
+    ``n_mask_pixels`` is the (time-invariant) analysis_mask pixel count used
+    as the shared denominator.
+    """
+
+    coverage_fraction: xr.DataArray
+    n_valid_pixels: xr.DataArray
+    n_mask_pixels: int
+
+
+@dataclass(frozen=True)
 class ApsecRecord:
     """One monthly APSEC value with its supporting counts and fixed A_ref."""
 
@@ -128,4 +150,52 @@ def compute_apsec(
     return records
 
 
-__all__ = ["ApsecRecord", "LpsecResult", "compute_apsec", "compute_lpsec"]
+def compute_analysis_mask_coverage(
+    valid_obs: xr.DataArray, *, analysis_mask: xr.DataArray
+) -> AnalysisMaskCoverageResult:
+    """Per-month valid-pixel coverage fraction denominated by ``analysis_mask``.
+
+    ``valid_obs`` is ``(time, y, x)`` boolean; ``analysis_mask`` is a 2-D
+    boolean mask aligned to ``valid_obs``'s spatial dims/sizes (the same
+    contract :class:`hydrofragments.models.WaterCube` enforces for its
+    ``analysis_mask`` field). The fraction is ``count(valid_obs & mask) /
+    count(mask)`` -- pixels outside ``analysis_mask`` never enter either the
+    numerator or the denominator, so they cannot dilute or inflate coverage,
+    unlike a full-grid mean.
+
+    Raises if ``analysis_mask`` does not spatially align with ``valid_obs``,
+    or if ``analysis_mask`` has zero ``True`` pixels (an empty mask has no
+    meaningful coverage denominator).
+    """
+    spatial_dims = tuple(dim for dim in valid_obs.dims if dim != "time")
+    if tuple(analysis_mask.dims) != spatial_dims or dict(analysis_mask.sizes) != {
+        dim: valid_obs.sizes[dim] for dim in spatial_dims
+    }:
+        raise ValueError(
+            "analysis_mask must align with valid_obs's spatial dims/sizes"
+        )
+
+    mask = analysis_mask.astype(bool)
+    n_mask_pixels = int(mask.sum().item())
+    if n_mask_pixels == 0:
+        raise ValueError("analysis_mask must contain at least one True pixel")
+
+    masked_valid = valid_obs.astype(bool) & mask
+    n_valid_pixels = masked_valid.sum(dim=spatial_dims).astype(np.int64)
+    coverage_fraction = n_valid_pixels.astype(float) / float(n_mask_pixels)
+
+    return AnalysisMaskCoverageResult(
+        coverage_fraction=coverage_fraction,
+        n_valid_pixels=n_valid_pixels,
+        n_mask_pixels=n_mask_pixels,
+    )
+
+
+__all__ = [
+    "AnalysisMaskCoverageResult",
+    "ApsecRecord",
+    "LpsecResult",
+    "compute_analysis_mask_coverage",
+    "compute_apsec",
+    "compute_lpsec",
+]

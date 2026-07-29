@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
+import numpy as np
 import pandas as pd
 import xarray as xr
 
@@ -155,9 +156,61 @@ class MetricRecord:
         return row
 
 
+def _spatial_dims(water: xr.DataArray) -> tuple[str, ...]:
+    return tuple(dim for dim in water.dims if dim != "time")
+
+
+def _default_mask(water: xr.DataArray) -> xr.DataArray:
+    """All-true 2-D mask over ``water``'s spatial grid (unpruned default)."""
+    spatial_dims = _spatial_dims(water)
+    spatial_coords = {
+        name: coord
+        for name, coord in water.coords.items()
+        if set(coord.dims) <= set(spatial_dims)
+    }
+    shape = tuple(water.sizes[dim] for dim in spatial_dims)
+    return xr.DataArray(
+        np.ones(shape, dtype=bool), dims=spatial_dims, coords=spatial_coords
+    )
+
+
+def _validate_mask_alignment(
+    mask: xr.DataArray, *, water: xr.DataArray, name: str
+) -> None:
+    spatial_dims = _spatial_dims(water)
+    if tuple(mask.dims) != spatial_dims:
+        raise ValueError(
+            f"{name} must align with water's spatial dims {spatial_dims}, "
+            f"got {tuple(mask.dims)}"
+        )
+    expected_sizes = {dim: water.sizes[dim] for dim in spatial_dims}
+    if dict(mask.sizes) != expected_sizes:
+        raise ValueError(
+            f"{name} must align with water's spatial grid {expected_sizes}, "
+            f"got {dict(mask.sizes)}"
+        )
+
+
 @dataclass(frozen=True)
 class WaterCube:
-    """Canonical aligned water/valid time series for v1.2 analysis."""
+    """Canonical aligned water/valid time series for v1.2 analysis.
+
+    ``aoi_mask`` and ``analysis_mask`` are optional aligned 2-D boolean masks
+    over the spatial grid (same dims/sizes as ``water`` minus ``time``).
+    ``aoi_mask`` supplies the fixed catchment reference area that
+    APSEC/LPI/reference-area denominators must use (global constraint:
+    "APSEC/LPI/reference-area denominators remain full catchment
+    ``aoi_mask``"). ``analysis_mask`` supplies the conservative
+    potential-water footprint used as the monthly coverage denominator and
+    active-processing extent (global constraint: "Monthly coverage
+    denominator is approved as conservative potential-water
+    ``analysis_mask``, not full catchment").
+
+    Every existing/legacy construction path omits both fields; they then
+    default to all-true over the spatial grid, so current unpruned behaviour
+    is completely unchanged -- a caller who never heard of these masks gets
+    the same full-catchment answer as before this feature existed.
+    """
 
     water: xr.DataArray
     valid_obs: xr.DataArray
@@ -165,6 +218,22 @@ class WaterCube:
     cadence: str
     crs: str | None = None
     provenance: tuple[tuple[str, str], ...] = ()
+    aoi_mask: xr.DataArray | None = None
+    analysis_mask: xr.DataArray | None = None
+
+    def __post_init__(self) -> None:
+        if self.aoi_mask is None:
+            object.__setattr__(self, "aoi_mask", _default_mask(self.water))
+        else:
+            _validate_mask_alignment(self.aoi_mask, water=self.water, name="aoi_mask")
+            object.__setattr__(self, "aoi_mask", self.aoi_mask.astype(bool))
+        if self.analysis_mask is None:
+            object.__setattr__(self, "analysis_mask", _default_mask(self.water))
+        else:
+            _validate_mask_alignment(
+                self.analysis_mask, water=self.water, name="analysis_mask"
+            )
+            object.__setattr__(self, "analysis_mask", self.analysis_mask.astype(bool))
 
 
 @dataclass(frozen=True)
