@@ -225,7 +225,7 @@ class _OccurrenceAccumulator:
             raise ValueError("_OccurrenceAccumulator.finalize called with no months added")
 
         ratios = []
-        for calendar_month, grouped_water in self._water_valid_by_month.items():
+        for calendar_month, grouped_water in sorted(self._water_valid_by_month.items()):
             grouped_valid = self._valid_by_month[calendar_month]
             with np.errstate(invalid="ignore", divide="ignore"):
                 ratio = np.where(grouped_valid > 0, grouped_water / grouped_valid, np.nan)

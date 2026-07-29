@@ -51,8 +51,9 @@ import numpy as np
 import xarray as xr
 import dask.array as da
 
-from hydrofragments.compat import _monthly_dataset, section_compat_rows
+from hydrofragments.compat import _monthly_dataset, _OccurrenceAccumulator, section_compat_rows
 from hydrofragments.config import HydroConfig
+from hydrofragments.metrics import persistence
 
 
 class _DaskComputeCallCounter:
@@ -613,3 +614,119 @@ def test_section_compat_rows_output_byte_identical_lazy_vs_eager():
                     f"mismatch at key={key!r}: eager={eager_value!r} "
                     f"lazy={lazy_value!r}"
                 )
+
+
+# ---------------------------------------------------------------------------
+# Review finding: `_OccurrenceAccumulator.finalize()` must iterate calendar
+# months in SORTED order (1..12), matching `compute_occurrence`'s
+# `groupby("time.month")` reference pipeline, not dict-insertion order (the
+# chronological order calendar months first appear as `add_month()` is
+# called during the per-month loop). These orderings coincide only when the
+# analysis window happens to start in January; for any other start month,
+# dict-insertion order and sorted order diverge, and `np.nanmean` sums the
+# same per-calendar-month ratios in a different sequence, producing a
+# different (though astronomically close, ~1e-14) floating-point result.
+# ---------------------------------------------------------------------------
+
+
+def test_occurrence_accumulator_matches_reference_for_march_starting_multiyear_window():
+    """Adversarial, byte-identical parity test for a non-January-starting,
+    multi-year analysis window.
+
+    Scenario: 3 full years (36 months) starting March 2010. Calendar-month
+    FIRST-OCCURRENCE order under chronological `add_month()` calls is
+    ``[3, 4, 5, ..., 12, 1, 2]`` -- genuinely different from sorted order
+    ``[1, 2, ..., 12]``. This is not a contrived edge case: any real
+    catchment analysis window that does not happen to start in January hits
+    this exact code path (the reviewer's independently-reproduced
+    counterexample used a 5-year window starting March 2010; this test uses
+    the same start month with a 3-year span, the minimum needed to exercise
+    every calendar month at least twice with an irregular wrap).
+
+    Reference: `hydrofragments.metrics.persistence.compute_occurrence`, the
+    whole-array `groupby("time.month")` pipeline `_OccurrenceAccumulator` is
+    meant to reproduce exactly.
+
+    Under test: `_OccurrenceAccumulator`, fed the identical data one
+    calendar month at a time in chronological (March-first) order via
+    `add_month()`, exactly as `section_compat_rows`'s per-month loop does.
+
+    Assertion is BYTE-IDENTICAL (`np.testing.assert_array_equal`), not
+    tolerance-based -- this is the whole point: if calendar-month iteration
+    order in `finalize()` does not match the reference's sorted-order
+    groupby, `np.nanmean` sums the same float64 0/1-derived ratios in a
+    different sequence and the last-bit result differs from the reference,
+    which `assert_array_equal` (unlike `np.allclose`) will catch.
+    """
+    n_time = 36  # 3 full years
+    n_y, n_x = 5, 7
+    start_month = "2010-03"  # March -- deliberately NOT January
+
+    rng = np.random.default_rng(20100301)
+    water = rng.random((n_time, n_y, n_x)) < 0.4
+    # Non-trivial valid_obs (not all-true) so some pixels/months have partial
+    # support -- exercises the NaN-drop-out path in the ratio, not just the
+    # fully-supported case.
+    valid_obs = rng.random((n_time, n_y, n_x)) < 0.9
+
+    times = (
+        np.datetime64(start_month, "M") + np.arange(n_time)
+    ).astype("datetime64[ns]")
+    coords = {
+        "time": times,
+        "y": np.arange(n_y, dtype=float) * -30.0,
+        "x": np.arange(n_x, dtype=float) * 30.0,
+    }
+
+    calendar_months = pd_to_datetime_months(times)
+    first_occurrence_order = list(dict.fromkeys(calendar_months))
+    assert first_occurrence_order == [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2], (
+        "test setup sanity check: chronological first-occurrence order must "
+        f"genuinely differ from sorted order; got {first_occurrence_order}"
+    )
+    assert first_occurrence_order != sorted(first_occurrence_order)
+
+    config = _config()
+
+    # --- Reference: whole-array groupby("time.month") pipeline -------------
+    monthly = xr.Dataset(
+        {
+            "water": (("time", "y", "x"), water),
+            "valid_obs": (("time", "y", "x"), valid_obs),
+        },
+        coords=coords,
+    )
+    reference = persistence.compute_occurrence(monthly, config=config)
+
+    # --- Under test: streaming accumulator, fed in chronological order -----
+    acc = _OccurrenceAccumulator()
+    for time_index in range(n_time):
+        acc.add_month(
+            calendar_month=int(calendar_months[time_index]),
+            water=water[time_index],
+            valid_obs=valid_obs[time_index],
+        )
+    accumulated = acc.finalize(config=config)
+
+    np.testing.assert_array_equal(
+        accumulated.occurrence.values,
+        reference.occurrence.values,
+        err_msg=(
+            "_OccurrenceAccumulator.finalize() must be byte-identical to "
+            "compute_occurrence()'s whole-array groupby reference for a "
+            "non-January-starting multi-year window; a mismatch here means "
+            "finalize() is summing per-calendar-month ratios in a different "
+            "order than the sorted-calendar-month reference"
+        ),
+    )
+    np.testing.assert_array_equal(
+        accumulated.valid_count.values, reference.valid_count.values
+    )
+
+
+def pd_to_datetime_months(times: np.ndarray) -> list[int]:
+    """Extract 1-based calendar month integers from a datetime64[ns] array
+    without depending on pandas import ordering elsewhere in this file."""
+    import pandas as pd
+
+    return [int(m) for m in pd.to_datetime(times).month]
