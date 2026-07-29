@@ -178,6 +178,46 @@ _METRICS = (
 
 METRIC_REGISTRY = {spec.metric_id: spec for spec in _METRICS}
 
+# Metrics that are actually wired into hydrofragments.api.analyze()'s
+# execution path and can be attempted by a default run. This deliberately
+# excludes:
+#   - "mesh": validation-gated (requires an approved mesh-correlation gate)
+#     and never emitted by analyze() regardless of dependency availability.
+#   - "reconnection_timing" / "refuge_spatial_stability": kernel-only, not
+#     wired into analyze()'s execution path.
+#   - "realised_connectivity" / "tcf": runtime-deferred, not wired into
+#     analyze()'s execution path.
+RUNTIME_WIRED_METRIC_IDS = (
+    "occurrence",
+    "refuge_area",
+    "apsec",
+    "number_of_pools",
+    "lpi",
+    "awre",
+    "awmsi",
+    "recurrence",
+    "hydroperiod",
+    "extent_contraction",
+    "lpsec",
+    "inter_pool_gap",
+    "pool_width",
+)
+
+# Explicit, non-runtime-wired skip reasons for every registry metric that is
+# not in RUNTIME_WIRED_METRIC_IDS. Used to populate HydroResult.metric_coverage
+# rows for registry entries that a default "all_available" run never attempts.
+NOT_RUNTIME_WIRED_REASONS = {
+    "mesh": "skipped (validation disabled)",
+    "reconnection_timing": "skipped (not runtime wired)",
+    "refuge_spatial_stability": "skipped (not runtime wired)",
+    "realised_connectivity": "skipped (runtime deferred)",
+    "tcf": "skipped (runtime deferred)",
+}
+
+# Special profile value meaning "every runtime-wired metric whose dependencies
+# are present in this run's inputs" -- see resolve_metrics().
+ALL_AVAILABLE_PROFILE = "all_available"
+
 PROFILES = {
     "contracts_core": (
         "occurrence",
@@ -195,6 +235,7 @@ PROFILES = {
     "channel": ("lpsec", "inter_pool_gap"),
     "secondary": ("mesh", "pool_width"),
     "connectivity": ("realised_connectivity", "tcf"),
+    ALL_AVAILABLE_PROFILE: RUNTIME_WIRED_METRIC_IDS,
 }
 
 
@@ -235,12 +276,41 @@ def resolve_metrics(
     return MetricPlan(selected=tuple(selected), skipped=tuple(skipped))
 
 
+def registry_wide_plan(
+    *, available_dependencies: Iterable[MetricDependency | str]
+) -> MetricPlan:
+    """Resolve every registry metric (not just a caller-chosen profile).
+
+    Used to build ``HydroResult.metric_coverage``, which must include one row
+    per registry entry -- runtime-wired or not -- rather than only the
+    metrics a particular profile selects. Runtime-wired metrics are
+    ``selected`` or ``skipped`` (missing dependency) exactly as
+    :func:`resolve_metrics` would report for the ``all_available`` profile.
+    Registry metrics outside :data:`RUNTIME_WIRED_METRIC_IDS` are always
+    reported skipped, with the explicit non-dependency reason from
+    :data:`NOT_RUNTIME_WIRED_REASONS` -- never "missing dependency", since
+    their absence from a default run is a wiring/validation decision, not a
+    property of this run's inputs.
+    """
+    plan = resolve_metrics(
+        (ALL_AVAILABLE_PROFILE,), available_dependencies=available_dependencies
+    )
+    skipped = list(plan.skipped)
+    for metric_id, reason in NOT_RUNTIME_WIRED_REASONS.items():
+        skipped.append(MetricSkip(metric_id=metric_id, reason=reason))
+    return MetricPlan(selected=plan.selected, skipped=tuple(skipped))
+
+
 __all__ = [
+    "ALL_AVAILABLE_PROFILE",
     "METRIC_REGISTRY",
+    "NOT_RUNTIME_WIRED_REASONS",
     "PROFILES",
+    "RUNTIME_WIRED_METRIC_IDS",
     "MetricPlan",
     "MetricSkip",
     "MetricSpec",
     "RegistryError",
+    "registry_wide_plan",
     "resolve_metrics",
 ]

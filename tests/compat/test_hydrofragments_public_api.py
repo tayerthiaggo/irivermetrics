@@ -83,7 +83,10 @@ def test_validate_inputs_reports_capabilities(tmp_path) -> None:
     report = validate_inputs(cube, aoi_id="demo", config=config)
     assert isinstance(report, ValidationReport)
     assert report.is_valid
-    assert "contracts_core" in report.resolved_profiles
+    # Since W4.1, the default metric_profiles is "all_available" (attempt
+    # every runtime-wired metric whose dependencies are present), not the
+    # narrower "contracts_core".
+    assert "all_available" in report.resolved_profiles
 
 
 def test_validate_inputs_activates_channel_only_for_real_spatial_context() -> None:

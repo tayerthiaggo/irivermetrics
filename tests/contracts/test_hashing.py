@@ -2,7 +2,11 @@ from __future__ import annotations
 
 
 GOLDEN_MINIMAL_CONFIG_HASH = (
-    "2fe5e339d844611e34063ea08dddf7d40acea2aa77c569a900c069444b3e6fc1"
+    # Updated for W4.1: the default metric_profiles changed from
+    # ("contracts_core",) to ("all_available",), which is scientifically
+    # meaningful (it changes which metrics a default run attempts) and is
+    # therefore included in scientific_config()/config_hash by design.
+    "6d1c3d3538efc0ff8f6b1c3c390200879eb20e8e63f624efd41d8a43434fdeed"
 )
 
 

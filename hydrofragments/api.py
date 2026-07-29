@@ -21,11 +21,13 @@ from hydrofragments.io.alignment import validate_alignment
 from hydrofragments.metrics import (
     ApsecRecord,
     MetricPlan,
+    RUNTIME_WIRED_METRIC_IDS,
     compute_extent_contraction,
     compute_hydroperiod,
     compute_inter_pool_gaps,
     compute_lpsec,
     compute_recurrence,
+    registry_wide_plan,
     resolve_metrics,
 )
 from hydrofragments.models import (
@@ -173,6 +175,47 @@ def open_water_cube(
     )
 
 
+def _available_dependencies(
+    *,
+    config: HydroConfig,
+    drainage: Any | None = None,
+    hydroyear_available: bool = False,
+    dual_composites_available: bool = False,
+    wet_any_month: Mapping[str, bool] | None = None,
+) -> set[MetricDependency]:
+    """Assemble the set of metric dependencies actually present in this run.
+
+    Single source of truth for "what inputs did this run actually supply,"
+    shared by both :func:`validate_inputs` (which reports skip reasons
+    without computing anything) and :func:`analyze` (which uses the exact
+    same availability to decide what to execute). Before this helper existed
+    the two call sites independently re-derived this set, and it was
+    possible for them to silently drift apart.
+    """
+    available = {MetricDependency.VALIDITY}
+    if config.patches.min_patch_pixels > 0:
+        available.add(MetricDependency.PATCHES)
+    has_real_channel = (
+        isinstance(drainage, SpatialContext) and drainage.has_real_channel
+    )
+    if has_real_channel:
+        available.add(MetricDependency.CHANNEL)
+    if config.patches.width_resolution_floor_pixels is not None:
+        available.add(MetricDependency.WIDTH_FLOOR)
+    if hydroyear_available:
+        available.add(MetricDependency.HY_ANCHOR)
+    if dual_composites_available:
+        available.add(MetricDependency.DUAL_COMPOSITE)
+    if (
+        has_real_channel
+        and wet_any_month is not None
+        and any(wet_any_month.values())
+    ):
+        available.add(MetricDependency.FIXED_NODES)
+        available.add(MetricDependency.GRAPH)
+    return available
+
+
 def validate_inputs(
     cube: WaterCube,
     aoi_id: str,
@@ -198,25 +241,13 @@ def validate_inputs(
         if _has_water_without_valid_obs(cube.water, cube.valid_obs):
             errors.append(_WATER_VALIDITY_ERROR)
 
-    available = {MetricDependency.VALIDITY}
-    if config.patches.min_patch_pixels > 0:
-        available.add(MetricDependency.PATCHES)
-    if isinstance(drainage, SpatialContext) and drainage.has_real_channel:
-        available.add(MetricDependency.CHANNEL)
-    if config.patches.width_resolution_floor_pixels is not None:
-        available.add(MetricDependency.WIDTH_FLOOR)
-    if hydroyear_available:
-        available.add(MetricDependency.HY_ANCHOR)
-    if dual_composites_available:
-        available.add(MetricDependency.DUAL_COMPOSITE)
-    if (
-        isinstance(drainage, SpatialContext)
-        and drainage.has_real_channel
-        and wet_any_month is not None
-        and any(wet_any_month.values())
-    ):
-        available.add(MetricDependency.FIXED_NODES)
-        available.add(MetricDependency.GRAPH)
+    available = _available_dependencies(
+        config=config,
+        drainage=drainage,
+        hydroyear_available=hydroyear_available,
+        dual_composites_available=dual_composites_available,
+        wet_any_month=wet_any_month,
+    )
     plan = resolve_metrics(config.metric_profiles, available_dependencies=available)
     skipped = tuple((item.metric_id, item.reason) for item in plan.skipped)
     if plan.skipped:
@@ -702,6 +733,119 @@ def _extent_contraction_records(
     return records
 
 
+_COVERAGE_COLUMNS = (
+    "metric",
+    "runtime_wired",
+    "status",
+    "rows",
+    "reportable_rows",
+    "reason",
+)
+
+
+def _quality_reason(rows: pd.DataFrame) -> str:
+    """Best-effort human reason a computed metric has zero reportable rows.
+
+    Only called once a metric's kernel has already run (i.e. it is
+    ``computed``): the metric was never dependency-skipped, but every row it
+    produced failed the ``is_reportable`` check for a data-quality reason
+    (e.g. too few valid observations for the month, or a zero-patch month),
+    or the kernel ran and legitimately produced no rows at all (e.g. zero
+    resolved hydrological-year anchors). Prefers the recorded ``edge_flag``
+    values as the most specific signal; falls back to a generic message when
+    none were set or none were produced.
+    """
+    if rows.empty:
+        return "data quality: kernel ran, no rows produced"
+    flags = sorted(
+        {
+            str(flag)
+            for flag in rows["edge_flag"].dropna().unique()
+            if flag not in (None, "")
+        }
+    )
+    if flags:
+        return "data quality: " + ", ".join(flags)
+    return "data quality: zero reportable rows"
+
+
+def _build_metric_coverage(
+    frame: pd.DataFrame, coverage_plan: MetricPlan, *, selected_ids: set[str]
+) -> pd.DataFrame:
+    """Build the one-row-per-registry-metric coverage table (Step 5).
+
+    ``coverage_plan`` (from :func:`hydrofragments.metrics.registry_wide_plan`)
+    reports what ``all_available`` would resolve to for this run's inputs --
+    every registry metric, split into ``selected`` (runtime-wired and
+    dependency-satisfied) and ``skipped`` (either a runtime-wired metric
+    missing a dependency, or a registry metric that is never runtime-wired at
+    all -- see ``NOT_RUNTIME_WIRED_REASONS``). That is independent of which
+    profile the caller actually asked for, so a runtime-wired,
+    dependency-satisfied metric that an explicit narrower profile (e.g.
+    ``contracts_core``) never selected must not be reported ``computed``: its
+    kernel genuinely did not run this time. ``selected_ids`` -- this run's
+    real execution set from ``resolve_metrics(config.metric_profiles, ...)``
+    -- is what distinguishes "available and actually attempted" from
+    "available but this profile didn't ask for it".
+
+    A metric in both ``coverage_plan.selected`` and ``selected_ids`` is
+    ``computed`` even when it produced zero reportable rows -- that is a
+    data-quality outcome, recorded in ``reason``, never re-labelled as a
+    dependency skip.
+    """
+    skip_reason_by_id = {item.metric_id: item.reason for item in coverage_plan.skipped}
+    rows: list[dict[str, object]] = []
+    for spec in coverage_plan.selected:
+        metric_id = spec.metric_id
+        if metric_id not in selected_ids:
+            rows.append(
+                {
+                    "metric": metric_id,
+                    "runtime_wired": True,
+                    "status": "skipped (not selected by profile)",
+                    "rows": 0,
+                    "reportable_rows": 0,
+                    "reason": "skipped (not selected by profile)",
+                }
+            )
+            continue
+        metric_rows = frame[frame["metric"] == metric_id]
+        n_rows = int(len(metric_rows))
+        n_reportable = (
+            int(metric_rows["is_reportable"].fillna(False).sum()) if n_rows else 0
+        )
+        reason = "" if n_reportable > 0 else _quality_reason(metric_rows)
+        rows.append(
+            {
+                "metric": metric_id,
+                "runtime_wired": True,
+                "status": "computed",
+                "rows": n_rows,
+                "reportable_rows": n_reportable,
+                "reason": reason,
+            }
+        )
+    for metric_id, reason in skip_reason_by_id.items():
+        is_runtime_wired = metric_id in RUNTIME_WIRED_METRIC_IDS
+        status = (
+            "skipped (missing dependency)"
+            if is_runtime_wired
+            else reason
+        )
+        rows.append(
+            {
+                "metric": metric_id,
+                "runtime_wired": is_runtime_wired,
+                "status": status,
+                "rows": 0,
+                "reportable_rows": 0,
+                "reason": reason,
+            }
+        )
+    coverage = pd.DataFrame(rows, columns=_COVERAGE_COLUMNS)
+    return coverage.sort_values("metric", kind="stable").reset_index(drop=True)
+
+
 def analyze(
     cube: WaterCube,
     aoi_id: str,
@@ -766,37 +910,23 @@ def analyze(
     # Resolve which metrics are selected BEFORE computing anything (B1): the
     # compat row bridge below only computes families whose metric ids are in
     # selected_ids, so an expensive family (e.g. patch morphology) that a
-    # narrow profile never asked for is never run.
-    selected_ids = {
-        spec.metric_id for spec in resolve_metrics(
-            config.metric_profiles,
-            available_dependencies=(
-                MetricDependency.VALIDITY,
-                MetricDependency.PATCHES,
-                *(
-                    (MetricDependency.CHANNEL,)
-                    if isinstance(drainage, SpatialContext)
-                    and drainage.has_real_channel
-                    else ()
-                ),
-                *(
-                    (MetricDependency.WIDTH_FLOOR,)
-                    if config.patches.width_resolution_floor_pixels is not None
-                    else ()
-                ),
-                *(
-                    (MetricDependency.HY_ANCHOR,)
-                    if hydroyear_result is not None
-                    else ()
-                ),
-                *(
-                    (MetricDependency.DUAL_COMPOSITE,)
-                    if max_water_apsec is not None and median_apsec is not None
-                    else ()
-                ),
-            ),
-        ).selected
-    }
+    # narrow profile never asked for is never run. Uses the same
+    # _available_dependencies() helper as validate_inputs() so execution and
+    # validation can never silently disagree about what this run's inputs
+    # actually make available.
+    available_dependencies = _available_dependencies(
+        config=config,
+        drainage=drainage,
+        hydroyear_available=hydroyear_result is not None,
+        dual_composites_available=(
+            max_water_apsec is not None and median_apsec is not None
+        ),
+    )
+    metric_plan = resolve_metrics(
+        config.metric_profiles, available_dependencies=available_dependencies
+    )
+    selected_ids = {spec.metric_id for spec in metric_plan.selected}
+    coverage_plan = registry_wide_plan(available_dependencies=available_dependencies)
 
     records: list[MetricRecord] = []
     if selected_ids & _COMPAT_ROW_METRIC_IDS:
@@ -877,6 +1007,9 @@ def analyze(
             )
         )
     frame = records_to_frame(records)
+    metric_coverage = _build_metric_coverage(
+        frame, coverage_plan, selected_ids=selected_ids
+    )
 
     output_dir = Path(config.output.output_dir or ".")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -927,6 +1060,7 @@ def analyze(
         manifest={"run_manifest": str(manifest.manifest_path), "package_version": __version__},
         output_dir=output_dir,
         run_id=run_id,
+        metric_coverage=metric_coverage,
     )
 
 

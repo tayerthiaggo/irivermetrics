@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
@@ -267,6 +267,26 @@ class AnalysisInputs:
     channel_segment_lengths_m: Sequence[float] | None = None
 
 
+def _empty_metric_coverage() -> pd.DataFrame:
+    """Empty, correctly-typed default for ``HydroResult.metric_coverage``.
+
+    Used as the ``default_factory`` so every existing construction site that
+    predates this field (built before ``analyze()`` populated coverage rows)
+    keeps working unchanged -- it simply gets an empty, schema-shaped frame
+    instead of a required constructor argument.
+    """
+    return pd.DataFrame(
+        columns=[
+            "metric",
+            "runtime_wired",
+            "status",
+            "rows",
+            "reportable_rows",
+            "reason",
+        ]
+    )
+
+
 @dataclass(frozen=True)
 class HydroResult:
     """Materialised tidy metrics plus manifest paths for one analysis run."""
@@ -275,6 +295,7 @@ class HydroResult:
     manifest: Mapping[str, object]
     output_dir: Path
     run_id: str
+    metric_coverage: pd.DataFrame = field(default_factory=_empty_metric_coverage)
 
     def write(self, path: str | Path, *, formats: Sequence[str] = ("parquet",)) -> Path:
         from hydrofragments.output.tables import write_output_tables

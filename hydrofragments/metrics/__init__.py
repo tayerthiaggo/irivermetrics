@@ -49,16 +49,21 @@ from hydrofragments.metrics.persistence import (
     compute_refuge_area,
 )
 from hydrofragments.metrics.registry import (
+    ALL_AVAILABLE_PROFILE,
     METRIC_REGISTRY,
+    NOT_RUNTIME_WIRED_REASONS,
     PROFILES,
+    RUNTIME_WIRED_METRIC_IDS,
     MetricPlan,
     MetricSkip,
     MetricSpec,
     RegistryError,
+    registry_wide_plan,
     resolve_metrics,
 )
 
 __all__ = [
+    "ALL_AVAILABLE_PROFILE",
     "ApsecRecord",
     "DualCompositeUnavailableError",
     "ExtentContractionResult",
@@ -71,10 +76,12 @@ __all__ = [
     "MetricPlan",
     "MetricSkip",
     "MetricSpec",
+    "NOT_RUNTIME_WIRED_REASONS",
     "OccurrenceResult",
     "PROFILES",
     "PatchMetricResult",
     "PoolWidthDistribution",
+    "RUNTIME_WIRED_METRIC_IDS",
     "RealisedConnectivityResult",
     "ReconnectionTimingResult",
     "RecurrenceResult",
@@ -101,5 +108,6 @@ __all__ = [
     "compute_refuge_spatial_stability",
     "compute_tcf",
     "evaluate_mesh_correlation_gate",
+    "registry_wide_plan",
     "resolve_metrics",
 ]

@@ -6,12 +6,20 @@ This test's only job is to catch unintended changes to the (metric,
 statistic, value) triples analyze() emits; it is not asserting the values
 are "correct" in any scientific sense.
 
-analyze() is called with the default ``contracts_core`` metric profile (no
-``metric_profiles`` key in config) because that is the smallest working
-configuration -- it needs no drainage/channel context, matching the first
-``analyze()`` call in tests/compat/test_hydrofragments_public_api.py
+analyze() is called with an explicit ``contracts_core`` metric profile
+because that is the smallest working configuration -- it needs no
+drainage/channel context, matching the first ``analyze()`` call in
+tests/compat/test_hydrofragments_public_api.py
 (``test_analyze_returns_tidy_core_metrics_without_forbidden_ids``), which is
 the canonical example of how production constructs an analyze() call.
+
+Note: since W4.1, the *default* ``metric_profiles`` (no key supplied) is
+``all_available``, which additionally computes recurrence/hydroperiod for
+this same synthetic cube -- see
+tests/gating/test_all_available_profile.py::test_default_run_selects_core_recurrence_and_hydroperiod_only
+for that behaviour pinned explicitly. This snapshot stays scoped to
+``contracts_core`` alone so it keeps pinning only the narrow (metric,
+statistic, value) row shape it was designed for.
 """
 
 from __future__ import annotations
@@ -50,6 +58,7 @@ def test_analyze_row_snapshot(synthetic_cube, tmp_path):
     config = HydroConfig.from_mapping(
         {
             "config_schema_version": "1.0.0",
+            "metric_profiles": ["contracts_core"],
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",

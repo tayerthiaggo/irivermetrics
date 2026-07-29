@@ -235,7 +235,7 @@ class HydroConfig:
     input: InputConfig
     temporal: TemporalConfig
     run_label: str | None = None
-    metric_profiles: tuple[str, ...] = ("contracts_core",)
+    metric_profiles: tuple[str, ...] = ("all_available",)
     metric_overrides: MetricOverrides = field(default_factory=MetricOverrides)
     validity: ValidityConfig = field(default_factory=ValidityConfig)
     spatial: SpatialConfig = field(default_factory=SpatialConfig)
@@ -596,7 +596,7 @@ class HydroConfig:
             output_dir=output_raw.get("output_dir"),
         )
 
-        profiles_raw = source.get("metric_profiles", ("contracts_core",))
+        profiles_raw = source.get("metric_profiles", ("all_available",))
         if isinstance(profiles_raw, str):
             raise ConfigError("metric_profiles must be a sequence, not a string")
         metric_profiles = tuple(sorted(set(str(item) for item in profiles_raw)))
