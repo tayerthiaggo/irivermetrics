@@ -113,12 +113,34 @@ def legacy_hydro_config(
     )
 
 
-def _monthly_dataset(da_feature: xr.DataArray) -> xr.Dataset:
-    # Section clips are bounded; materialise once at the compat orchestration boundary.
-    da_feature = da_feature.load()
+def _monthly_dataset(
+    da_feature: xr.DataArray, *, valid_obs: xr.DataArray | None = None
+) -> xr.Dataset:
+    """Build the bounded ``{water, valid_obs}`` monthly payload for one call.
+
+    ``da_feature``/``valid_obs`` may be Dask-backed (lazy). This function
+    keeps them lazy right up until the last possible moment, then
+    materialises BOTH together in a single fused
+    ``xr.Dataset({...}).compute()`` call -- never a separate ``.load()`` per
+    array. That fusion is the whole point: at catchment scale, reading the
+    same bounded input twice (once for ``water``, once for ``valid_obs``)
+    doubles peak memory and I/O for no benefit, since both are needed
+    together by every downstream metric family anyway. There must be no
+    cube-wide pre-read (e.g. a separate ``.any().compute()`` reachability
+    check) anywhere in this path -- any such pass would re-read the same
+    bounded source before patch work starts, exactly the anti-pattern this
+    function exists to eliminate.
+
+    When ``valid_obs`` is omitted, an all-true mask is synthesised (matching
+    legacy callers that have no separate validity concept -- mask == water).
+    """
     water = (da_feature == 1).astype(bool)
-    valid_obs = xr.ones_like(water, dtype=bool)
-    return xr.Dataset({"water": water, "valid_obs": valid_obs})
+    if valid_obs is None:
+        valid_obs = xr.ones_like(water, dtype=bool)
+    else:
+        valid_obs = valid_obs.astype(bool)
+    monthly = xr.Dataset({"water": water, "valid_obs": valid_obs}).compute()
+    return monthly
 
 
 _PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
@@ -160,14 +182,23 @@ def section_compat_rows(
     want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
     want_apsec = selected_ids is None or "apsec" in selected_ids
 
-    monthly = _monthly_dataset(da_feature)
-    coverage_valid_obs = valid_obs.astype(bool).load() if valid_obs is not None else None
-    if coverage_valid_obs is not None:
+    if valid_obs is not None:
+        # Alignment is checked against metadata alone (dims/sizes), which is
+        # always cheap on a lazy (Dask-backed) array -- no compute triggered
+        # here. The bounded feature and caller-supplied valid_obs are then
+        # materialised TOGETHER in one fused compute inside
+        # `_monthly_dataset`, never as two separate `.load()` calls.
         if (
-            coverage_valid_obs.dims != monthly["water"].dims
-            or coverage_valid_obs.sizes != monthly["water"].sizes
+            tuple(valid_obs.dims) != tuple(da_feature.dims)
+            or dict(valid_obs.sizes) != dict(da_feature.sizes)
         ):
             raise ValueError("valid_obs must align with water")
+    monthly = _monthly_dataset(da_feature, valid_obs=valid_obs)
+    coverage_valid_obs = monthly["valid_obs"] if valid_obs is not None else None
+    if coverage_valid_obs is not None:
+        # water/valid_obs are already materialised (fused compute above) --
+        # perform the water=>valid_obs correctness check directly on that
+        # payload rather than re-reading the source.
         invalid_water = np.asarray(monthly["water"].values, dtype=bool) & ~np.asarray(
             coverage_valid_obs.values, dtype=bool
         )
