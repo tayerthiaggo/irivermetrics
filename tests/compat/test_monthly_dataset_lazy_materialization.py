@@ -217,25 +217,26 @@ def test_monthly_dataset_materializes_water_and_valid_obs_in_one_fused_compute()
 
 def test_section_compat_rows_fuses_water_and_valid_obs_into_one_compute():
     """`section_compat_rows` must materialise `water` and its caller-supplied
-    `valid_obs` together in ONE top-level Dask compute, not two.
+    `valid_obs` together in ONE top-level Dask compute PER MONTH, not two
+    separate computes per month, and never more than one month's worth of
+    both arrays in a single compute call.
 
-    This is the adversarial proof required by the brief. Against the PRE-FIX
-    code:
-        monthly = _monthly_dataset(da_feature)   # da_feature.load()  (call #1)
-        coverage_valid_obs = valid_obs.astype(bool).load()            (call #2)
-    -- these are two SEPARATE ``dask.array.compute()`` invocations, each with
-    exactly one array (``counter.calls == [1, 1]``), because
-    ``DataArray.load()`` is called twice, independently, on two different
-    DataArrays. The FIX (a single
-    ``xr.Dataset({"water": ..., "valid_obs": ...}).compute()``) collapses
-    this into ONE invocation with both arrays together
-    (``counter.calls == [2]``).
+    This is the adversarial proof required by the brief. Against the
+    ORIGINAL pre-fix code:
+        da_feature = da_feature.load()           # whole cube (call #1)
+        valid_obs = valid_obs.astype(bool).load()  # whole cube (call #2)
+    -- two SEPARATE ``dask.array.compute()`` invocations, each with exactly
+    one array, over the WHOLE (time, y, x) cube.
 
-    This test therefore asserts BOTH:
-      (a) exactly one top-level compute call happened, and
-      (b) that single call handled 2 dask-backed arrays together (not 1),
-    ruling out "got lucky with call count but still didn't fuse water with
-    valid_obs" as a false pass.
+    The FIRST fix (fusing into ``xr.Dataset({...}).compute()``) collapsed
+    this into one invocation with both arrays together, but still over the
+    WHOLE cube in one shot -- which remains an OOM risk at catchment scale
+    (many months). The fix under test here additionally scopes each fused
+    compute to exactly one month via ``.isel(time=time_index)`` *before* the
+    compute, so for ``n_time`` months there must be exactly ``n_time``
+    top-level compute calls, each fusing water+valid_obs together (2 arrays
+    per call) -- never fewer (would mean months got bundled back together)
+    and never more (would mean an extra, unaccounted read crept in).
     """
     n_time, n_y, n_x = 2, 8, 8
     da_feature, _feature_counter = _make_counting_cube(
@@ -263,31 +264,39 @@ def test_section_compat_rows_fuses_water_and_valid_obs_into_one_compute():
             selected_ids={"number_of_pools", "lpi", "awre", "awmsi"},
         )
 
-    assert counter.n_top_level_computes == 1, (
-        "expected exactly one top-level dask.array.compute() call fusing "
-        "water+valid_obs together; got "
-        f"{counter.n_top_level_computes} separate calls: {counter.calls} -- "
-        "this indicates water and valid_obs are still being materialised as "
-        "two independent top-level reads (the pre-fix pattern) rather than "
-        "one fused xr.Dataset({...}).compute()"
+    assert counter.n_top_level_computes == n_time, (
+        "expected exactly one top-level dask.array.compute() call PER "
+        f"MONTH ({n_time} months) fusing water+valid_obs together; got "
+        f"{counter.n_top_level_computes} calls: {counter.calls} -- either "
+        "months are being bundled back into one whole-cube compute (too "
+        "few calls) or an extra, unaccounted read crept in (too many)"
+    )
+    assert counter.calls == [2] * n_time, (
+        "expected every one of the per-month compute calls to handle both "
+        f"the water and valid_obs arrays together (2 arrays each); got "
+        f"{counter.calls} -- a call with only 1 array means water/valid_obs "
+        "are not fused for that month, even if the call COUNT is right"
     )
     assert counter.max_arrays_in_single_call == 2, (
-        "expected the single top-level compute call to handle both the "
-        "water and valid_obs arrays together (2 arrays in one call); got "
-        f"max_arrays_in_single_call={counter.max_arrays_in_single_call} -- "
-        "materialising only one array per call means water/valid_obs are "
-        "not actually fused, even if the call count happens to be 1"
+        "expected no single compute call to ever handle more than 2 arrays "
+        f"(one month's water+valid_obs); got "
+        f"max_arrays_in_single_call={counter.max_arrays_in_single_call}, "
+        "which would indicate more than one month's data was fused into a "
+        "single compute"
     )
 
 
 def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute():
-    """No independent cube-wide `.any()`-style reachability pre-pass exists.
+    """No independent cube-wide `.any()`-style reachability pre-pass exists,
+    and no family (patches/persistence/apsec) triggers its own extra
+    top-level compute beyond the one fused per-month compute already
+    counted above.
 
-    Beyond the fusion assertion above, this test additionally proves there
-    is no THIRD (or further) top-level compute hiding elsewhere in
-    `section_compat_rows` for this call shape (patches + persistence +
-    apsec all requested) -- i.e. the total top-level compute count for the
-    whole function, not just the water/valid_obs step, is exactly 1.
+    For ``n_time`` months with every family requested (patches + width +
+    persistence + apsec all computed against the same per-month
+    materialised payload), the total top-level compute count for the WHOLE
+    `section_compat_rows` call must be exactly ``n_time`` -- one per month,
+    never a whole-cube pre-pass and never a per-family re-read.
     """
     n_time, n_y, n_x = 3, 8, 8
     da_feature, _fc = _make_counting_cube(
@@ -310,19 +319,21 @@ def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute(
             config=config,
             valid_obs=valid_da,
             # None -> every family computed, exercising patches +
-            # persistence + apsec together against the same materialised
-            # payload -- if any of them triggered its own re-read of the
-            # dask source, it would show up as an extra top-level compute.
+            # persistence + apsec together against the same per-month
+            # materialised payloads -- if any of them triggered its own
+            # re-read of the dask source, it would show up as an extra
+            # top-level compute beyond one-per-month.
             selected_ids=None,
         )
 
-    assert counter.n_top_level_computes == 1, (
-        "expected exactly one top-level compute across the whole "
-        "section_compat_rows call (patches + persistence + apsec all "
-        "reusing the same materialised payload); got "
+    assert counter.n_top_level_computes == n_time, (
+        "expected exactly one top-level compute PER MONTH "
+        f"({n_time} months total) across the whole section_compat_rows "
+        "call (patches + persistence + apsec all reusing the same "
+        f"per-month materialised payload); got "
         f"{counter.n_top_level_computes}: {counter.calls} -- an extra call "
-        "indicates a separate cube-wide pre-pass (e.g. a reachability "
-        ".any().compute()) distinct from the one fused materialization"
+        "indicates a separate cube-wide pre-pass or a per-family re-read "
+        "distinct from the one fused per-month materialization"
     )
 
 
@@ -421,11 +432,16 @@ def test_monthly_dataset_fused_output_matches_eager_reference():
 
 
 def test_monthly_dataset_oom_regression_large_cube_bounded_by_chunk():
-    """OOM-regression proof: a cube far larger than the earlier small tests
-    must still show the same 1:1 chunk-count-to-read-count relationship (no
-    quadratic/duplicate blowup as size grows), pinning that
-    `_monthly_dataset` never needs to instantiate more than its own bounded
-    input regardless of how large that input's grid gets.
+    """Chunk-count-scaling sanity check (NOT an OOM-bounding proof by
+    itself): a cube far larger than the earlier small tests must still show
+    the same 1:1 chunk-count-to-read-count relationship (no
+    quadratic/duplicate blowup as size grows). This alone only proves each
+    *source chunk* is read once -- it says nothing about whether all months
+    are held in memory simultaneously during materialisation. See
+    `test_section_compat_rows_bounds_materialization_to_one_month_at_a_time`
+    below for the actual bounded-materialization proof (Important #2 review
+    finding: this test was previously mislabeled as an OOM regression test
+    when it only demonstrated chunk-count scaling).
     """
     n_time, n_y, n_x = 8, 256, 256
     cube, counter = _make_counting_cube(
@@ -437,6 +453,94 @@ def test_monthly_dataset_oom_regression_large_cube_bounded_by_chunk():
 
     assert counter["n_calls"] == expected_chunks
     assert monthly["water"].shape == (n_time, n_y, n_x)
+
+
+def test_section_compat_rows_bounds_materialization_to_one_month_at_a_time():
+    """The actual OOM-bounding proof (Important #2 review finding).
+
+    Builds a synthetic section with MANY months (150) where each month's 2-D
+    (y, x) slice is small, but the full (time, y, x) array -- if ever
+    materialised in one shot -- would be far larger than any single month.
+    The source is chunked as exactly ONE time step per chunk
+    (``chunks=(1, n_y, n_x)``), so this test can distinguish two competing
+    implementations by their COMPUTE GRAPH SHAPE, without needing to
+    actually exhaust real memory:
+
+      - A whole-array fusion (the prior, still-broken implementation this
+        finding targets) issues ONE top-level ``dask.array.compute()`` call
+        that touches all 150 source chunks together in a single invocation.
+      - A genuinely per-month-bounded implementation (this fix) issues 150
+        SEPARATE top-level compute calls, each touching exactly one
+        source chunk (one month) at a time -- so at no point does any
+        single compute call span more than one month's data.
+
+    This asserts both properties directly:
+      (a) the number of top-level compute calls equals the number of
+          months (proving no whole-array fusion survived), and
+      (b) every source-chunk read recorded by the instrumented block
+          function has a time-extent of exactly 1 (proving no call ever
+          touched more than one month's worth of source data), and
+      (c) the reads are interleaved with (not preceded/batched ahead of)
+          the top-level computes in strict 1:1 order, proving each
+          per-month compute triggers exactly one fresh source read rather
+          than the source being read once upfront and sliced from an
+          in-memory whole-array afterward.
+    """
+    n_time, n_y, n_x = 150, 6, 6
+    da_feature, feature_counter = _make_counting_cube(
+        n_time=n_time, n_y=n_y, n_x=n_x, chunks=(1, n_y, n_x), seed=11
+    )
+    valid_da, valid_counter = _make_counting_cube(
+        n_time=n_time, n_y=n_y, n_x=n_x, chunks=(1, n_y, n_x), seed=12, fill="ones"
+    )
+
+    config = _config()
+    pixel_size_m = 30.0
+    section_area_km2 = float(n_y * n_x) * pixel_size_m**2 / 1_000_000.0
+
+    with _DaskComputeCallCounter() as counter:
+        rows = section_compat_rows(
+            da_feature,
+            section="AOI",
+            section_area_km2=section_area_km2,
+            pixel_size_m=pixel_size_m,
+            config=config,
+            valid_obs=valid_da,
+            selected_ids={"number_of_pools", "lpi", "awre", "awmsi"},
+        )
+
+    assert len(rows) == n_time
+
+    # (a) one top-level compute per month, never one big fused compute for
+    # the whole 150-month section.
+    assert counter.n_top_level_computes == n_time, (
+        f"expected {n_time} top-level compute calls (one per month) proving "
+        "bounded per-month materialization; got "
+        f"{counter.n_top_level_computes} calls: {counter.calls} -- a count "
+        "of 1 here would mean the whole 150-month array was fused and "
+        "materialised in a single compute, exactly the OOM this test guards "
+        "against"
+    )
+    assert counter.calls == [2] * n_time, (
+        "expected every per-month compute to fuse exactly 2 arrays "
+        f"(water+valid_obs for that month, and nothing more); got "
+        f"{counter.calls}"
+    )
+
+    # (b) every recorded source-chunk read has time-extent 1 -- no read
+    # ever spans more than one month's worth of source data.
+    for shape in feature_counter["shapes"] + valid_counter["shapes"]:
+        assert shape[0] == 1, (
+            "expected every source-chunk read to cover exactly one time "
+            f"step; saw a read spanning {shape[0]} time steps: shape={shape}"
+        )
+
+    # Each source array must have been read exactly once per month (150
+    # reads each), matching the 150 top-level computes above 1:1 -- proving
+    # the per-month compute triggers a fresh, bounded read rather than the
+    # source being read once upfront and sliced afterward.
+    assert feature_counter["n_calls"] == n_time
+    assert valid_counter["n_calls"] == n_time
 
 
 def test_section_compat_rows_output_byte_identical_lazy_vs_eager():

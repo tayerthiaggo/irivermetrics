@@ -1,19 +1,28 @@
-"""m2: APSEC must be computed once over the whole time axis, not per month.
+"""APSEC call-count contract across two competing optimisations (m2, W3.3).
 
-``compute_apsec`` (hydrofragments/metrics/extent.py) already reduces over
-the spatial dims across the WHOLE time axis in a single xarray call and
-returns one ``ApsecRecord`` per timestamp -- it needs no changes. The bug
-was at the call site: ``section_compat_rows()`` in hydrofragments/compat.py
-called ``compute_apsec`` once per loop iteration on a one-timestep slice
-(``monthly.isel(time=[time_index])``), throwing away the batching and
-doing M separate xarray reductions instead of one.
+History: an earlier task (m2) hoisted ``compute_apsec`` above the per-month
+loop in ``section_compat_rows()`` so it ran once over the WHOLE time axis in
+a single xarray reduction, instead of once per month -- a real speedup when
+the whole ``(time, y, x)`` payload was already resident in memory.
 
-This test pins the fix with a call-count assertion: driving a multi-month
+W3.3 (``docs/superpowers/plans/2026-07-27-dea-zones-and-catchment-speed.md``
+section 3.3) requires the opposite memory shape: ``section_compat_rows()``
+must never materialise more than one month's ``water``/``valid_obs`` at
+once, so no whole-time-axis payload exists for ``compute_apsec`` to reduce
+over in one call any more. Since bounded memory is the harder, catchment-
+scale-correctness requirement (an OOM is a hard failure; a few extra small
+xarray reductions per month is not), ``compute_apsec`` is now called once
+PER MONTH again -- each call fed that month's already-materialised 2-D
+slice wrapped back into a length-1 ``time`` dim (pure in-memory metadata,
+not a new source read).
+
+This test now pins THAT call-count contract instead: driving a multi-month
 cube through ``analyze()`` (contracts_core profile, which selects apsec)
-must invoke ``compute_apsec`` exactly once, not once per month. It also
-proves the returned APSEC values are unchanged by cross-checking against
-the frozen ``tests/gating/analyze_snapshot.json`` golden values used by
-``tests/gating/test_analyze_row_snapshot.py``.
+must invoke ``compute_apsec`` exactly once per month, not once for the
+whole cube. It also proves the returned APSEC values are unchanged by
+cross-checking against the frozen ``tests/gating/analyze_snapshot.json``
+golden values used by ``tests/gating/test_analyze_row_snapshot.py`` --
+value-correctness is preserved even though the call-count shape reversed.
 """
 
 from __future__ import annotations
@@ -39,13 +48,14 @@ def _contracts_core_config(tmp_path):
     )
 
 
-def test_compute_apsec_called_once_per_analyze(synthetic_cube, tmp_path):
-    """compute_apsec must be called exactly once per analyze() invocation.
+def test_compute_apsec_called_once_per_month(synthetic_cube, tmp_path):
+    """compute_apsec must be called exactly once PER MONTH, not once for
+    the whole cube (W3.3 memory-bounding requirement; see module docstring).
 
-    synthetic_cube has 6 months (see tests/conftest.py). Before the fix,
-    section_compat_rows() called compute_apsec once per month inside its
-    per-timestep loop -- 6 calls. After the fix it is hoisted above the
-    loop -- exactly 1 call, regardless of month count.
+    synthetic_cube has 6 months (see tests/conftest.py). Each call must
+    receive an already-materialised single-month payload -- calling it
+    once for the whole cube would require the whole (time, y, x) array to
+    be resident in memory at once, exactly the OOM risk W3.3 eliminates.
     """
     config = _contracts_core_config(tmp_path)
     with mock.patch(
@@ -54,7 +64,18 @@ def test_compute_apsec_called_once_per_analyze(synthetic_cube, tmp_path):
         result = analyze(
             synthetic_cube, aoi_id="demo", config=config, pixel_size_m=30.0
         )
-    assert spy.call_count == 1
+    assert spy.call_count == 6, (
+        "expected compute_apsec to be called once per month (6 months in "
+        f"synthetic_cube); got {spy.call_count} calls -- a call count of 1 "
+        "would mean the whole cube was batched into one reduction again, "
+        "reintroducing the whole-array materialization W3.3 removed"
+    )
+    for call in spy.call_args_list:
+        monthly_arg = call.args[0] if call.args else call.kwargs["monthly"]
+        assert monthly_arg.sizes["time"] == 1, (
+            "expected every compute_apsec call to be scoped to exactly one "
+            f"month; got time size {monthly_arg.sizes['time']}"
+        )
 
     # Sanity: APSEC rows were actually produced (want_apsec path exercised).
     metrics = set(result.metrics_table["metric"])
