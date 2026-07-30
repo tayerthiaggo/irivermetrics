@@ -224,3 +224,159 @@ def test_full_core_bundle_reopens_without_source_data(tmp_path: Path) -> None:
     assert table.loc[0, "metric"] == "apsec"
     assert occurrence["occurrence"].item() == 100.0
     occurrence.close()
+
+
+def _zone_mask(value: int = 2) -> np.ndarray:
+    return np.array([[value, 0], [0, value]], dtype=np.uint8)
+
+
+def _dea_provenance_arguments(
+    *, mask: np.ndarray | None = None, with_planning_footprint: bool = True
+) -> dict[str, object]:
+    from hydrofragments.output.manifest import build_dea_provenance
+
+    return {
+        "dea_provenance": build_dea_provenance(
+            config(),
+            product="ga_ls_wo_fq_myear_3",
+            version="0.1.0",
+            item_ids=("ga_ls_wo_fq_myear_3_x11y40_2023--P1Y",),
+            crs="EPSG:3577",
+            resolution=30.0,
+            time_span="1987-01-01/2025-12-31",
+            zone_mask=mask if mask is not None else _zone_mask(),
+            planning_footprint={
+                "digest": "sha256:planning-footprint",
+                "factor": 4,
+                "safety_cells": 1,
+                "covered_years": (2020, 2021, 2022),
+                "source_collection": "ga_ls_wo_fq_myear_3",
+                "source_version": "0.1.0",
+                "source_lineage": "dea-wo-stats",
+            }
+            if with_planning_footprint
+            else None,
+        )
+    }
+
+
+def test_manifest_without_dea_provenance_has_no_dea_section() -> None:
+    from hydrofragments.output.manifest import build_run_manifest
+
+    manifest = build_run_manifest(config(), **manifest_arguments())
+
+    assert "dea_provenance" not in manifest
+
+
+def test_manifest_records_dea_provenance_when_supplied() -> None:
+    from hydrofragments.output.manifest import build_run_manifest
+
+    arguments = manifest_arguments()
+    arguments.update(_dea_provenance_arguments())
+    manifest = build_run_manifest(config(), **arguments)
+
+    dea = manifest["dea_provenance"]
+    assert dea["product"] == "ga_ls_wo_fq_myear_3"
+    assert dea["version"] == "0.1.0"
+    assert dea["item_ids"] == ["ga_ls_wo_fq_myear_3_x11y40_2023--P1Y"]
+    assert dea["crs"] == "EPSG:3577"
+    assert dea["resolution"] == 30.0
+    assert dea["time_span"] == "1987-01-01/2025-12-31"
+    assert dea["zone_thresholds"] == {"t_persist": 0.50, "t_season": 0.10}
+    assert isinstance(dea["zone_mask_digest"], str) and len(dea["zone_mask_digest"]) == 64
+
+    planning = dea["planning_footprint"]
+    assert planning == {
+        "digest": "sha256:planning-footprint",
+        "factor": 4,
+        "safety_cells": 1,
+        "covered_years": [2020, 2021, 2022],
+        "source_collection": "ga_ls_wo_fq_myear_3",
+        "source_version": "0.1.0",
+        "source_lineage": "dea-wo-stats",
+    }
+
+
+def test_manifest_dea_provenance_without_planning_footprint_omits_section() -> None:
+    from hydrofragments.output.manifest import build_run_manifest
+
+    arguments = manifest_arguments()
+    arguments.update(
+        _dea_provenance_arguments(with_planning_footprint=False)
+    )
+    manifest = build_run_manifest(config(), **arguments)
+
+    dea = manifest["dea_provenance"]
+    assert "planning_footprint" not in dea
+    assert dea["product"] == "ga_ls_wo_fq_myear_3"
+
+
+def test_manifest_zone_mask_digest_changes_with_mask_content() -> None:
+    from hydrofragments.output.manifest import build_run_manifest
+
+    arguments_a = manifest_arguments()
+    arguments_a.update(_dea_provenance_arguments(mask=_zone_mask(2)))
+    manifest_a = build_run_manifest(config(), **arguments_a)
+
+    arguments_b = manifest_arguments()
+    arguments_b.update(_dea_provenance_arguments(mask=_zone_mask(3)))
+    manifest_b = build_run_manifest(config(), **arguments_b)
+
+    digest_a = manifest_a["dea_provenance"]["zone_mask_digest"]
+    digest_b = manifest_b["dea_provenance"]["zone_mask_digest"]
+    assert digest_a != digest_b
+
+
+def test_manifest_zone_mask_digest_stable_for_identical_content() -> None:
+    from hydrofragments.output.manifest import build_run_manifest
+
+    arguments_a = manifest_arguments()
+    arguments_a.update(_dea_provenance_arguments(mask=_zone_mask(2)))
+    manifest_a = build_run_manifest(config(), **arguments_a)
+
+    arguments_b = manifest_arguments()
+    arguments_b.update(_dea_provenance_arguments(mask=_zone_mask(2)))
+    manifest_b = build_run_manifest(config(), **arguments_b)
+
+    digest_a = manifest_a["dea_provenance"]["zone_mask_digest"]
+    digest_b = manifest_b["dea_provenance"]["zone_mask_digest"]
+    assert digest_a == digest_b
+
+
+def test_manifest_dea_provenance_round_trips_through_bundle(
+    tmp_path: Path,
+) -> None:
+    from hydrofragments.output.manifest import (
+        validate_result_bundle,
+        write_run_metadata,
+    )
+
+    (tmp_path / "metrics").mkdir()
+    (tmp_path / "rasters").mkdir()
+    arguments = manifest_arguments()
+    arguments.update(_dea_provenance_arguments())
+    write_run_metadata(tmp_path, config(), **arguments)
+
+    manifest = validate_result_bundle(tmp_path)
+
+    dea = manifest["dea_provenance"]
+    assert dea["product"] == "ga_ls_wo_fq_myear_3"
+    assert dea["planning_footprint"]["digest"] == "sha256:planning-footprint"
+    assert dea["time_span"] == "1987-01-01/2025-12-31"
+
+
+def test_manifest_without_dea_provenance_round_trips_with_no_section(
+    tmp_path: Path,
+) -> None:
+    from hydrofragments.output.manifest import (
+        validate_result_bundle,
+        write_run_metadata,
+    )
+
+    (tmp_path / "metrics").mkdir()
+    (tmp_path / "rasters").mkdir()
+    write_run_metadata(tmp_path, config(), **manifest_arguments())
+
+    manifest = validate_result_bundle(tmp_path)
+
+    assert "dea_provenance" not in manifest
