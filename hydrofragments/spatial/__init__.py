@@ -1,6 +1,9 @@
 """Fixed AOI, drainage topology, zones, windows, and CRS validation."""
 
-from hydrofragments.spatial.connectivity_context import reach_wet_any_month
+from hydrofragments.spatial.connectivity_context import (
+    reach_monthly_wet_profile,
+    reach_wet_any_month,
+)
 from hydrofragments.spatial.context import (
     DrainageContractError,
     DrainageTopology,
@@ -33,6 +36,7 @@ __all__ = [
     "create_spatial_context",
     "normalize_spatial_inputs",
     "ordered_reach_paths",
+    "reach_monthly_wet_profile",
     "reach_wet_any_month",
     "validate_drainage_topology",
     "zones_from_wo_statistics",

@@ -110,6 +110,54 @@ def _build_reach_label_raster(
     return label_raster, overlap_pixels
 
 
+def _monthly_reach_wet_matrix(
+    drainage: "gpd.GeoDataFrame",
+    water: "xr.DataArray",
+    *,
+    buffer_m: float,
+) -> "np.ndarray":
+    """Per-month, per-reach skeleton-seeded wetness, shape ``(time, n_reach)``.
+
+    Shared kernel behind both :func:`reach_wet_any_month` (which reduces
+    this matrix to a single OR-across-time flag per reach, for
+    ``FIXED_NODES``/``GRAPH`` dependency gating) and
+    :func:`reach_monthly_wet_profile` (which keeps the full per-month
+    matrix, for ``lpsec``/``inter_pool_gap``'s ``channel_wet_profiles``
+    input). Column order follows ``drainage``'s row order, matching
+    :func:`reach_monthly_wet_profile`'s documented contract.
+    """
+    y_coords = water["y"].values
+    x_coords = water["x"].values
+    transform = _raster_transform(y_coords, x_coords)
+    n_reach = len(drainage)
+    label_raster, overlap_pixels = _build_reach_label_raster(
+        drainage, buffer_m=buffer_m, transform=transform,
+        y_coords=y_coords, x_coords=x_coords,
+    )
+
+    n_time = water.sizes["time"]
+    matrix = np.zeros((n_time, n_reach), dtype=bool)
+    for month_index in range(n_time):
+        month_mask = np.asarray(water.isel(time=month_index).values, dtype=bool)
+        if not month_mask.any():
+            continue
+        skeleton = medial_axis(month_mask)
+
+        for label in np.unique(label_raster[skeleton]):
+            if label > 0:
+                matrix[month_index, label - 1] = True
+
+        if overlap_pixels:
+            overlap_rows, overlap_cols = zip(*overlap_pixels.keys())
+            hit = skeleton[np.array(overlap_rows), np.array(overlap_cols)]
+            if hit.any():
+                for (r, c), is_hit in zip(overlap_pixels.keys(), hit):
+                    if is_hit:
+                        for reach_index in overlap_pixels[(r, c)]:
+                            matrix[month_index, reach_index] = True
+    return matrix
+
+
 def reach_wet_any_month(
     drainage: "gpd.GeoDataFrame",
     water: "xr.DataArray",
@@ -132,37 +180,31 @@ def reach_wet_any_month(
     every reach whose buffer covers a wet skeleton pixel is still credited
     -- matching the semantics of the old per-reach independent check.
     """
-    y_coords = water["y"].values
-    x_coords = water["x"].values
-    transform = _raster_transform(y_coords, x_coords)
     reach_ids = [str(reach["HydroID"]) for _, reach in drainage.iterrows()]
-    label_raster, overlap_pixels = _build_reach_label_raster(
-        drainage, buffer_m=buffer_m, transform=transform,
-        y_coords=y_coords, x_coords=x_coords,
-    )
-
-    result: dict[str, bool] = {reach_id: False for reach_id in reach_ids}
-    for month_index in range(water.sizes["time"]):
-        if all(result.values()):
-            break
-        month_mask = np.asarray(water.isel(time=month_index).values, dtype=bool)
-        if not month_mask.any():
-            continue
-        skeleton = medial_axis(month_mask)
-
-        for label in np.unique(label_raster[skeleton]):
-            if label > 0:
-                result[reach_ids[label - 1]] = True
-
-        if overlap_pixels:
-            overlap_rows, overlap_cols = zip(*overlap_pixels.keys())
-            hit = skeleton[np.array(overlap_rows), np.array(overlap_cols)]
-            if hit.any():
-                for (r, c), is_hit in zip(overlap_pixels.keys(), hit):
-                    if is_hit:
-                        for reach_index in overlap_pixels[(r, c)]:
-                            result[reach_ids[reach_index]] = True
-    return result
+    matrix = _monthly_reach_wet_matrix(drainage, water, buffer_m=buffer_m)
+    any_month = matrix.any(axis=0)
+    return {reach_id: bool(any_month[i]) for i, reach_id in enumerate(reach_ids)}
 
 
-__all__ = ["reach_wet_any_month"]
+def reach_monthly_wet_profile(
+    drainage: "gpd.GeoDataFrame",
+    water: "xr.DataArray",
+    *,
+    buffer_m: float,
+) -> "np.ndarray":
+    """Per-month, per-reach wetness matrix for ``AnalysisInputs.channel_wet_profiles``.
+
+    Same skeleton-seeded buffer method as :func:`reach_wet_any_month`
+    (this is that function's per-month matrix kept whole instead of
+    collapsed to an OR across time) -- reused, not reimplemented, so the
+    two functions can never silently disagree about what "wet" means for a
+    reach/month. Returns a ``(time, n_reach)`` boolean array in
+    ``drainage``'s row order, ready to pass as
+    :attr:`hydrofragments.models.AnalysisInputs.channel_wet_profiles`
+    alongside ``drainage.geometry.length`` (in the caller's projected CRS)
+    as the matching ``channel_segment_lengths_m``.
+    """
+    return _monthly_reach_wet_matrix(drainage, water, buffer_m=buffer_m)
+
+
+__all__ = ["reach_monthly_wet_profile", "reach_wet_any_month"]

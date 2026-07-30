@@ -12,6 +12,7 @@ from hydrofragments.api import (
     open_water_cube,
     validate_inputs,
 )
+from hydrofragments.workflow import analyze_from_dea
 
 __all__ = [
     "HydroConfig",
@@ -21,6 +22,7 @@ __all__ = [
     "WaterCube",
     "__version__",
     "analyze",
+    "analyze_from_dea",
     "compare_results",
     "open_water_cube",
     "validate_inputs",

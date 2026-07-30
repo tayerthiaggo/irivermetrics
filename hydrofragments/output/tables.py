@@ -49,6 +49,16 @@ class TableArtifacts:
     vectors_path: Path | None = None
 
 
+_METRIC_COVERAGE_COLUMNS = (
+    "metric",
+    "runtime_wired",
+    "status",
+    "rows",
+    "reportable_rows",
+    "reason",
+)
+
+
 Row = MetricRecord | Mapping[str, object]
 VectorExporter = Callable[[Path, Path], Path]
 
@@ -173,6 +183,31 @@ def read_tidy_csv(source: str | Path) -> pd.DataFrame:
     return records_to_frame(frame)
 
 
+def write_metric_coverage(
+    coverage: pd.DataFrame,
+    output_dir: str | Path,
+) -> Path:
+    """Write the one-row-per-registry-metric coverage table as CSV.
+
+    ``coverage`` is :func:`hydrofragments.api._build_metric_coverage`'s
+    output (also ``HydroResult.metric_coverage``) -- plain diagnostic rows
+    (metric id, whether it is runtime-wired, computed/skipped status, row
+    counts, skip/data-quality reason), never part of the canonical
+    ``OUTPUT_COLUMNS`` metric schema, so it deliberately does not go through
+    :func:`records_to_frame`/:func:`write_tidy_parquet`. CSV only: this is a
+    small, human-readable run-diagnostic table, not a scientific data
+    product requiring Parquet's typed columnar guarantees.
+    """
+    unknown = sorted(set(coverage.columns) - set(_METRIC_COVERAGE_COLUMNS))
+    if unknown:
+        raise TableSchemaError(f"unknown metric_coverage column: {unknown[0]}")
+    root = Path(output_dir)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / "metric_coverage.csv"
+    coverage.loc[:, list(_METRIC_COVERAGE_COLUMNS)].to_csv(path, index=False)
+    return path
+
+
 def write_output_tables(
     records: Iterable[Row] | pd.DataFrame,
     output_dir: str | Path,
@@ -222,6 +257,7 @@ __all__ = [
     "read_tidy_csv",
     "read_tidy_parquet",
     "records_to_frame",
+    "write_metric_coverage",
     "write_output_tables",
     "write_tidy_csv",
     "write_tidy_parquet",

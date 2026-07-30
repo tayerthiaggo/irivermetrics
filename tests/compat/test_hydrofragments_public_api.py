@@ -41,6 +41,7 @@ def test_public_api_symbols_are_exported() -> None:
         "WaterCube",
         "__version__",
         "analyze",
+        "analyze_from_dea",
         "compare_results",
         "open_water_cube",
         "validate_inputs",

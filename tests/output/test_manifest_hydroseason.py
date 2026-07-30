@@ -52,19 +52,19 @@ def test_manifest_records_hydroseason_version_when_supplied():
     manifest = build_run_manifest(
         _config(),
         **_base_arguments(),
-        dependency_versions={"hydroseason": "0.1.0"},
+        dependency_versions={"hydroseason": "0.1.1"},
     )
     assert manifest["versions"] == {
         "package_version": "1.2.0",
         "git_sha": "abc123",
-        "hydroseason": "0.1.0",
+        "hydroseason": "0.1.1",
     }
 
 
 def test_manifest_records_hydroseason_version_automatically():
     manifest = build_run_manifest(_config(), **_base_arguments())
 
-    assert manifest["versions"]["hydroseason"] == "0.1.0"
+    assert manifest["versions"]["hydroseason"] == "0.1.1"
 
 
 def test_manifest_hydroyear_config_appears_in_resolved_config():
@@ -82,7 +82,7 @@ def test_manifest_versions_unchanged_when_dependency_versions_omitted():
     assert manifest["versions"] == {
         "package_version": "1.2.0",
         "git_sha": "abc123",
-        "hydroseason": "0.1.0",
+        "hydroseason": "0.1.1",
     }
 
 
