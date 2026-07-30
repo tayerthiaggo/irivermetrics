@@ -938,6 +938,7 @@ def analyze(
             config=config,
             selected_ids=selected_ids,
             valid_obs=monthly["valid_obs"],
+            analysis_mask=cube.analysis_mask,
         )
         records = _records_from_compat_rows(
             rows,

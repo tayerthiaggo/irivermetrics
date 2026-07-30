@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from hydrofragments.compute.policy import ComputePolicy
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import compute_apsec
 import hydrofragments.metrics.patches as patch_metrics
@@ -17,6 +18,7 @@ import hydrofragments.metrics.persistence as persistence
 from hydrofragments.metrics.persistence import compute_refuge_area
 from hydrofragments.metrics.registry import resolve_metrics
 from hydrofragments.schema import MetricDependency
+from hydrofragments.spatial.active_windows import independent_active_windows
 
 DROPPED_LEGACY_METRICS: dict[str, str] = {
     "PF": (
@@ -163,6 +165,81 @@ def _monthly_dataset(
     return combined.compute()
 
 
+def _resolve_local_label_threshold_bytes(config: HydroConfig) -> int | None:
+    """Thread a configured ``target_chunk_bytes`` into patch labeling.
+
+    ``None`` (the config default) preserves ``label_components``'s own
+    ``ComputePolicy``-class-default fallback exactly as before this
+    resolution existed.
+    """
+    target_chunk_bytes = config.compute.target_chunk_bytes
+    if target_chunk_bytes is None:
+        return None
+    return ComputePolicy(target_chunk_bytes=target_chunk_bytes).target_chunk_bytes
+
+
+def _measure_month_patch_properties(
+    water_month: np.ndarray,
+    *,
+    analysis_mask: np.ndarray | None,
+    pixel_size_m: float,
+    connectivity: int,
+    min_patch_pixels: int,
+    include_width: bool,
+    local_label_threshold_bytes: int | None,
+):
+    """Measure one month's patch properties, windowed when profitable.
+
+    When ``analysis_mask`` is ``None`` or covers the whole grid (the common
+    full-AOI/legacy case -- ``independent_active_windows`` then returns
+    exactly one window spanning the grid), this measures the whole mask in
+    one call, byte-identical to calling ``measure_patch_properties``
+    directly. When ``analysis_mask`` is a real, narrower footprint that
+    splits into multiple independent windows, each window's crop is measured
+    separately and every window's properties are concatenated -- never
+    reduced per window -- so the caller can reduce once across the full set.
+    """
+    if analysis_mask is None:
+        return patch_metrics.measure_patch_properties(
+            water_month,
+            pixel_size_m=pixel_size_m,
+            connectivity=connectivity,
+            min_patch_pixels=min_patch_pixels,
+            include_width=include_width,
+            local_label_threshold_bytes=local_label_threshold_bytes,
+        )
+
+    windows = independent_active_windows(
+        xr.DataArray(analysis_mask, dims=("y", "x")),
+        connectivity=connectivity,
+    )
+    if len(windows) <= 1:
+        return patch_metrics.measure_patch_properties(
+            water_month,
+            pixel_size_m=pixel_size_m,
+            connectivity=connectivity,
+            min_patch_pixels=min_patch_pixels,
+            include_width=include_width,
+            local_label_threshold_bytes=local_label_threshold_bytes,
+        )
+
+    properties = []
+    for window in windows:
+        row0, col0, row1, col1 = window.bbox
+        crop = water_month[row0:row1, col0:col1]
+        properties.extend(
+            patch_metrics.measure_patch_properties(
+                crop,
+                pixel_size_m=pixel_size_m,
+                connectivity=connectivity,
+                min_patch_pixels=min_patch_pixels,
+                include_width=include_width,
+                local_label_threshold_bytes=local_label_threshold_bytes,
+            )
+        )
+    return properties
+
+
 _PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
 _PERSISTENCE_METRIC_IDS = frozenset({"occurrence", "refuge_area"})
 _WATER_VALIDITY_ERROR = "water=True requires valid_obs=True for every pixel/month"
@@ -264,6 +341,7 @@ def section_compat_rows(
     config: HydroConfig,
     selected_ids: set[str] | None = None,
     valid_obs: xr.DataArray | None = None,
+    analysis_mask: xr.DataArray | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -277,6 +355,16 @@ def section_compat_rows(
     keys with ``None``/``nan`` placeholders so ``compat_dataframe()`` and
     ``_records_from_compat_rows`` (which filters by metric id after
     construction) never see a missing key.
+
+    ``analysis_mask``, when given, is the conservative 2-D potential-water
+    footprint (:class:`hydrofragments.models.WaterCube.analysis_mask`). When
+    it splits into more than one :func:`independent_active_windows` window,
+    each window's patch properties are measured separately and concatenated,
+    then reduced into LPI/AWRe/AWMSI/width/counts exactly once across the
+    full concatenated set -- never per-window aggregates combined
+    afterward. Omitting it (the default) or supplying an all-true mask
+    (a single whole-grid window) reproduces today's single whole-mask
+    measurement exactly.
     """
     want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
     want_width = selected_ids is not None and "pool_width" in selected_ids
@@ -292,6 +380,22 @@ def section_compat_rows(
             or dict(valid_obs.sizes) != dict(da_feature.sizes)
         ):
             raise ValueError("valid_obs must align with water")
+
+    spatial_dims = tuple(dim for dim in da_feature.dims if dim != "time")
+    analysis_mask_np: np.ndarray | None = None
+    if analysis_mask is not None:
+        if tuple(analysis_mask.dims) != spatial_dims:
+            raise ValueError("analysis_mask must align with water's spatial dims")
+        expected_sizes = {dim: da_feature.sizes[dim] for dim in spatial_dims}
+        if dict(analysis_mask.sizes) != expected_sizes:
+            raise ValueError("analysis_mask must align with water's spatial grid")
+        # analysis_mask is always 2-D (never (time, y, x)), so materialising
+        # it once here -- regardless of whether it is Dask-backed -- never
+        # reintroduces the whole-cube-at-once anti-pattern _monthly_dataset
+        # exists to avoid.
+        analysis_mask_np = np.asarray(analysis_mask.values, dtype=bool)
+
+    local_label_threshold_bytes = _resolve_local_label_threshold_bytes(config)
 
     # `da_feature["time"]` is always a plain (non-Dask) numpy coordinate --
     # reading it does not materialise any pixel data. This gives the section's
@@ -362,12 +466,19 @@ def section_compat_rows(
         }
         width_warning_flags = ()
         if want_patches or want_width:
-            patch_result, width_result = patch_metrics.analyze_patch_bundle(
+            month_properties = _measure_month_patch_properties(
                 water_month,
+                analysis_mask=analysis_mask_np,
                 pixel_size_m=pixel_size_m,
-                a_total_m2=a_ref_m2,
                 connectivity=config.patches.connectivity_rule,
                 min_patch_pixels=config.patches.min_patch_pixels,
+                include_width=want_width,
+                local_label_threshold_bytes=local_label_threshold_bytes,
+            )
+            patch_result, width_result = patch_metrics.reduce_patch_properties(
+                month_properties,
+                pixel_size_m=pixel_size_m,
+                a_total_m2=a_ref_m2,
                 include_width=want_width,
                 resolution_floor_pixels=config.patches.width_resolution_floor_pixels,
             )
