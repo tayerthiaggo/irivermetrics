@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from typing import Iterable
 
 import numpy as np
+from scipy.ndimage import distance_transform_edt
 from skimage.measure import regionprops_table
-from skimage.morphology import medial_axis
 
 from hydrofragments.patches.components import BBox, ComponentCrop
 
@@ -89,8 +89,21 @@ def _measure_component(
         raise ValueError(f"component {crop.label} has no foreground pixels")
 
     if include_width:
-        axis, dist = medial_axis(mask, return_distance=True)
-        width_pixels = float((2.0 * dist[axis]).max())
+        # Maximum inscribed pool diameter is 2 * the global maximum of the
+        # Euclidean distance transform. The medial axis (skeleton ridge of
+        # the distance transform) is not needed: it is a strict superset of
+        # what this kernel consumes, and computing it is the dominant cost
+        # of this function by a wide margin (W3.5). Restricting the max to
+        # the medial-axis skeleton (the prior approach) can, in general,
+        # UNDER-measure the true maximum -- skimage's medial_axis is a
+        # topology-preserving thinning, not a guarantee that every
+        # global-distance-maximum pixel survives thinning (proven false on
+        # real Fitzroy catchment data and the textbook solid-disk case by
+        # tests/parity/test_medial_axis_vs_edt_max_width.py) -- so this
+        # also fixes a latent underestimate for "blob"-shaped pools, not
+        # only a performance win.
+        dist = distance_transform_edt(mask)
+        width_pixels = float(2.0 * dist.max())
     else:
         width_pixels = float("nan")
     return PatchProperties(
