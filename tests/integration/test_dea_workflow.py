@@ -38,7 +38,7 @@ import hydroseason
 from shapely import wkb
 from shapely.geometry import box, LineString
 
-from hydrofragments.workflow import analyze_from_dea
+from hydrofragments.workflow import _dual_extent_inputs, analyze_from_dea
 
 
 _SHAPE = (4, 4)
@@ -557,3 +557,56 @@ def test_dual_extent_counts_unavailable_skips_dynamics_without_crashing(monkeypa
     extent_contraction_row = coverage.loc[coverage["metric"] == "extent_contraction"]
     assert not extent_contraction_row.empty
     assert extent_contraction_row.iloc[0]["status"] != "computed"
+
+
+# ---------------------------------------------------------------------------
+# Regression: dual-composite APSEC/hydro-year-extent must be denominated by
+# the full-catchment ``aoi_pixel_count``, never the conservative
+# ``analysis_mask_pixel_count`` -- these are two intentionally distinct
+# denominators (see the plan's Global Constraints and
+# ``hydrofragments.metrics.extent``'s module docstring / ``compute_apsec``).
+# The fixtures used everywhere else in this file set both columns to the same
+# value (16), which makes this particular bug invisible; this test uses
+# deliberately different values so a wrong-column read produces a wrong
+# number.
+# ---------------------------------------------------------------------------
+
+
+def test_dual_extent_inputs_denominates_by_aoi_pixel_count_not_analysis_mask():
+    months = 2
+    time = pd.date_range("2020-01-01", periods=months, freq="MS")
+    aoi_pixel_count = 20
+    analysis_mask_pixel_count = 16
+    n_max_water = [8, 10]
+    n_median_water = [6, 7]
+    dual_counts = pd.DataFrame(
+        {
+            "aoi_pixel_count": [aoi_pixel_count] * months,
+            "analysis_mask_pixel_count": [analysis_mask_pixel_count] * months,
+            "n_max_water": n_max_water,
+            "n_median_water": n_median_water,
+            "n_valid_analysis": [analysis_mask_pixel_count] * months,
+        },
+        index=pd.DatetimeIndex(time),
+    )
+
+    hydroyear_extent, max_water_apsec, median_apsec = _dual_extent_inputs(dual_counts)
+
+    # Expected values computed by hand against aoi_pixel_count (20), NOT
+    # analysis_mask_pixel_count (16) -- would fail against the pre-fix code,
+    # which divided by analysis_mask_pixel_count instead.
+    expected_extent_pct = [
+        100.0 * n / aoi_pixel_count for n in n_max_water
+    ]
+    assert hydroyear_extent is not None
+    assert hydroyear_extent.tolist() == pytest.approx(expected_extent_pct)
+
+    assert max_water_apsec is not None
+    for record, n in zip(max_water_apsec, n_max_water):
+        assert record.value == pytest.approx(100.0 * n / aoi_pixel_count)
+        assert record.a_ref_m2 == pytest.approx(float(aoi_pixel_count))
+
+    assert median_apsec is not None
+    for record, n in zip(median_apsec, n_median_water):
+        assert record.value == pytest.approx(100.0 * n / aoi_pixel_count)
+        assert record.a_ref_m2 == pytest.approx(float(aoi_pixel_count))

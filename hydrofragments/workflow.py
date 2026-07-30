@@ -162,17 +162,28 @@ def _dual_extent_inputs(
     return value: ``None`` means "not available this run" (incomplete
     cache, or acquired without ``composite_bundle='hydrofragments_v1'``) --
     treated here as "dynamics/extent_contraction inputs unavailable", never
-    raised. The percentage convention (``100 * n_water /
-    analysis_mask_pixel_count``) matches
-    :func:`hydrofragments.metrics.extent.compute_apsec`'s own
+    raised. The percentage convention (``100 * n_water / aoi_pixel_count``)
+    matches :func:`hydrofragments.metrics.extent.compute_apsec`'s own
     ``wetted_area / a_ref_m2 * 100`` formula, with the fixed reference area
     expressed here in pixel-count terms (both sides share the same
     ``cell_area_m2`` factor, so it cancels).
+
+    ``dual_counts`` carries two distinct denominator columns:
+    ``aoi_pixel_count`` (full catchment) and ``analysis_mask_pixel_count``
+    (the conservative potential-water footprint, a subset of the AOI). Per
+    the plan's Global Constraints, APSEC/LPI/reference-area denominators
+    stay pinned to the full ``aoi_mask`` -- so this function must use
+    ``aoi_pixel_count`` here, never ``analysis_mask_pixel_count``. The
+    latter is reserved for the *monthly coverage* fraction computed
+    elsewhere in this codebase (see ``AnalysisMaskCoverageResult`` in
+    ``hydrofragments.metrics.extent``), which is deliberately denominated
+    by the smaller, conservative footprint -- a different metric with a
+    different denominator by design, not an interchangeable choice.
     """
     if dual_counts is None or dual_counts.empty:
         return None, None, None
 
-    denominator = dual_counts["analysis_mask_pixel_count"].astype(float)
+    denominator = dual_counts["aoi_pixel_count"].astype(float)
     extent_pct = 100.0 * dual_counts["n_max_water"].astype(float) / denominator
     hydroyear_extent = pd.Series(
         extent_pct.to_numpy(), index=dual_counts.index, name="extent_pct"
@@ -182,10 +193,10 @@ def _dual_extent_inputs(
         ApsecRecord(
             date=timestamp.to_pydatetime(),
             value=float(
-                100.0 * row["n_max_water"] / row["analysis_mask_pixel_count"]
+                100.0 * row["n_max_water"] / row["aoi_pixel_count"]
             ),
             n_water_pixels=int(row["n_max_water"]),
-            a_ref_m2=float(row["analysis_mask_pixel_count"]),
+            a_ref_m2=float(row["aoi_pixel_count"]),
             cell_area_m2=1.0,
         )
         for timestamp, row in dual_counts.iterrows()
@@ -194,10 +205,10 @@ def _dual_extent_inputs(
         ApsecRecord(
             date=timestamp.to_pydatetime(),
             value=float(
-                100.0 * row["n_median_water"] / row["analysis_mask_pixel_count"]
+                100.0 * row["n_median_water"] / row["aoi_pixel_count"]
             ),
             n_water_pixels=int(row["n_median_water"]),
-            a_ref_m2=float(row["analysis_mask_pixel_count"]),
+            a_ref_m2=float(row["aoi_pixel_count"]),
             cell_area_m2=1.0,
         )
         for timestamp, row in dual_counts.iterrows()
