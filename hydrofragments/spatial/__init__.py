@@ -17,7 +17,7 @@ from hydrofragments.spatial.windows import (
     create_drainage_windows,
     create_regular_grid_windows,
 )
-from hydrofragments.spatial.zones import ZoneResult, build_zones
+from hydrofragments.spatial.zones import ZoneResult, build_zones, zones_from_wo_statistics
 
 __all__ = [
     "DrainageContractError",
@@ -35,4 +35,5 @@ __all__ = [
     "ordered_reach_paths",
     "reach_wet_any_month",
     "validate_drainage_topology",
+    "zones_from_wo_statistics",
 ]
