@@ -99,9 +99,10 @@ def test_normalization_handles_non_monotonic_raw_ids_across_chunks():
 
     # Proof this scenario is non-vacuous: the raw (pre-normalization) IDs
     # from cross-chunk reconciliation are genuinely out of row-major order.
-    raw = _materialize_global_labels(
+    raw, already_row_major = _materialize_global_labels(
         chunked, structure=_structure(8), local_label_threshold_bytes=0
     )
+    assert already_row_major is False
     flat_raw = raw.reshape(-1)
     raw_ids = np.unique(flat_raw)
     raw_ids = raw_ids[raw_ids != 0]

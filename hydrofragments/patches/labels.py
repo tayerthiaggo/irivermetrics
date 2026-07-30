@@ -50,7 +50,20 @@ def _materialize_global_labels(
     *,
     structure: np.ndarray,
     local_label_threshold_bytes: int | None = None,
-) -> np.ndarray:
+) -> tuple[np.ndarray, bool]:
+    """Return ``(raw_labels, already_row_major)``.
+
+    ``already_row_major`` is ``True`` exactly when ``raw_labels`` came from
+    ``scipy.ndimage.label``, which scans its input in row-major order and
+    assigns the next integer ID the first time it encounters a new
+    component -- so its raw IDs are *always* already in ascending
+    first-occurrence order by construction (proven empirically, not just
+    assumed, in
+    ``tests/parity/test_label_normalization_scipy_bypass_parity.py``).
+    ``dask_image.ndmeasure.label``'s cross-chunk reconciliation can permute
+    raw IDs relative to row-major occurrence order, so that branch reports
+    ``False``.
+    """
     if mask.ndim != 2:
         raise ValueError("patch labeling requires a 2-D mask")
 
@@ -68,18 +81,21 @@ def _materialize_global_labels(
             # branch below produce byte-identical labels for the same mask.
             concrete = np.asarray(mask, dtype=bool)
             labels, _ = ndimage.label(concrete, structure=structure)
-            return labels
+            return labels, True
 
         labels, _ = ndmeasure.label(mask.astype(bool), structure=structure)
-        return np.asarray(labels.compute())
+        return np.asarray(labels.compute()), False
 
     concrete = np.asarray(mask, dtype=bool)
     labels, _ = ndimage.label(concrete, structure=structure)
-    return labels
+    return labels, True
 
 
 def _filter_and_normalize(
-    raw_labels: np.ndarray, *, min_patch_pixels: int
+    raw_labels: np.ndarray,
+    *,
+    min_patch_pixels: int,
+    already_row_major: bool = False,
 ) -> LabelResult:
     flat = raw_labels.reshape(-1)
 
@@ -89,25 +105,41 @@ def _filter_and_normalize(
     max_raw_id = int(flat.max()) if flat.size else 0
     counts = np.bincount(flat, minlength=max_raw_id + 1)
 
-    # First-occurrence index per raw ID, O(P): np.minimum.at accumulates the
-    # smallest (i.e. first, since flat is row-major) position per raw ID with
-    # well-defined, order-independent ufunc.at semantics -- unlike basic
-    # fancy-index assignment, whose behavior on repeated indices is
-    # explicitly documented as unspecified. Raw IDs need not be monotonic
-    # with row-major occurrence order after dask-image's cross-chunk
-    # reconciliation, so this cannot be assumed for free -- it must be
-    # computed explicitly, same as the np.unique(return_index=True) it
-    # replaces.
-    first = np.full(max_raw_id + 1, flat.size, dtype=np.intp)
-    positions = np.arange(flat.size, dtype=np.intp)
-    np.minimum.at(first, flat, positions)
+    if already_row_major:
+        # scipy.ndimage.label's raw IDs are already ascending in row-major
+        # first-occurrence order by construction (see
+        # _materialize_global_labels's docstring and the parity proof in
+        # tests/parity/test_label_normalization_scipy_bypass_parity.py), so
+        # sorting retained IDs by first-occurrence position is equivalent to
+        # sorting them by raw ID -- np.argsort(retained_ids) is already the
+        # identity permutation. Skip the np.minimum.at reorder entirely.
+        raw_ids = np.arange(max_raw_id + 1)
+        foreground = raw_ids != 0
+        retained_ids = np.flatnonzero(
+            foreground & (counts >= min_patch_pixels)
+        )
+    else:
+        # First-occurrence index per raw ID, O(P): np.minimum.at accumulates
+        # the smallest (i.e. first, since flat is row-major) position per
+        # raw ID with well-defined, order-independent ufunc.at semantics --
+        # unlike basic fancy-index assignment, whose behavior on repeated
+        # indices is explicitly documented as unspecified. Raw IDs need not
+        # be monotonic with row-major occurrence order after dask-image's
+        # cross-chunk reconciliation, so this cannot be assumed for free --
+        # it must be computed explicitly, same as the
+        # np.unique(return_index=True) it replaces.
+        first = np.full(max_raw_id + 1, flat.size, dtype=np.intp)
+        positions = np.arange(flat.size, dtype=np.intp)
+        np.minimum.at(first, flat, positions)
 
-    raw_ids = np.arange(max_raw_id + 1)
-    foreground = raw_ids != 0
-    retained_ids = np.flatnonzero(foreground & (counts >= min_patch_pixels))
-    retained_ids = retained_ids[
-        np.argsort(first[retained_ids], kind="stable")
-    ]
+        raw_ids = np.arange(max_raw_id + 1)
+        foreground = raw_ids != 0
+        retained_ids = np.flatnonzero(
+            foreground & (counts >= min_patch_pixels)
+        )
+        retained_ids = retained_ids[
+            np.argsort(first[retained_ids], kind="stable")
+        ]
 
     count = int(retained_ids.size)
     if count > np.iinfo(np.int32).max:
@@ -143,13 +175,15 @@ def label_components(
     if min_patch_pixels < 1:
         raise ValueError("min_patch_pixels must be at least 1")
 
-    raw_labels = _materialize_global_labels(
+    raw_labels, already_row_major = _materialize_global_labels(
         mask,
         structure=_structure(connectivity),
         local_label_threshold_bytes=local_label_threshold_bytes,
     )
     return _filter_and_normalize(
-        raw_labels, min_patch_pixels=min_patch_pixels
+        raw_labels,
+        min_patch_pixels=min_patch_pixels,
+        already_row_major=already_row_major,
     )
 
 

@@ -41,6 +41,62 @@ def _pixel_edge_perimeter(mask: np.ndarray) -> int:
     return int(horizontal + vertical)
 
 
+def _bulk_pixel_edge_perimeters(
+    crops: tuple[ComponentCrop, ...],
+) -> dict[int, int]:
+    """Compute the pixel-edge perimeter for every crop with one bulk call.
+
+    Mirrors ``_bulk_major_axis_lengths``'s batching strategy: every crop's
+    mask is placed into disjoint blocks of one shared boolean composite,
+    stacked down the rows, each block given the widest crop's column
+    extent, so no two crops' bounding boxes can ever touch or overlap. One
+    ``np.pad`` + two diff-and-count calls are then done ONCE on the whole
+    composite instead of once per crop, and the horizontal/vertical edge
+    counts are split back out per crop by its own row range within the
+    composite.
+
+    This reproduces the per-crop ``_pixel_edge_perimeter`` result bit-for-bit
+    because every ``ComponentCrop.mask`` already carries its own 1px false
+    border (``iter_component_crops``'s default padding): stacking blocks
+    with zero gap means the row directly above and below each block is
+    already all-False (that block's own padding), exactly matching what a
+    standalone per-crop ``np.pad`` would produce at those same rows. Extra
+    zero-columns to the right of a narrower block (padding it out to the
+    composite's shared width) are also all-False, contributing no spurious
+    horizontal edges. This identity is proven for randomized shapes and
+    every real component in ``tests/wmask_ts.nc`` by
+    ``tests/parity/test_perimeter_bulk_parity.py`` before this path is
+    trusted.
+    """
+    max_width = max(crop.mask.shape[1] for crop in crops)
+    total_height = sum(crop.mask.shape[0] for crop in crops)
+    composite = np.zeros((total_height, max_width), dtype=bool)
+
+    row_offset = 0
+    offsets: list[tuple[int, int, int]] = []
+    for crop in crops:
+        mask = np.asarray(crop.mask, dtype=bool)
+        height, width = mask.shape
+        composite[row_offset : row_offset + height, 0:width] = mask
+        offsets.append((crop.label, row_offset, row_offset + height))
+        row_offset += height
+
+    padded = np.pad(composite, 1, constant_values=False)
+    horizontal_edges = padded[:, 1:] != padded[:, :-1]
+    vertical_edges = padded[1:, :] != padded[:-1, :]
+
+    perimeters: dict[int, int] = {}
+    for label, row0, row1 in offsets:
+        # composite row r is padded row r + 1. horizontal_edges' row axis
+        # aligns with padded rows directly; vertical_edges' row r represents
+        # the boundary between padded rows r and r + 1, so the block's rows
+        # [row0+1, row1+1) need vertical_edges rows [row0, row1).
+        horizontal = np.count_nonzero(horizontal_edges[row0 + 1 : row1 + 1, :])
+        vertical = np.count_nonzero(vertical_edges[row0:row1, :])
+        perimeters[label] = int(horizontal + vertical)
+    return perimeters
+
+
 def _bulk_major_axis_lengths(
     crops: tuple[ComponentCrop, ...],
 ) -> dict[int, float]:
@@ -82,6 +138,7 @@ def _measure_component(
     pixel_size_m: float,
     include_width: bool,
     major_axis_length_pixels: float,
+    perimeter_pixels: int,
 ) -> PatchProperties:
     mask = np.asarray(crop.mask, dtype=bool)
     area_pixels = int(np.count_nonzero(mask))
@@ -111,7 +168,7 @@ def _measure_component(
         bbox=crop.bbox,
         area_pixels=area_pixels,
         area_m2=float(area_pixels * pixel_size_m**2),
-        perimeter_m=float(_pixel_edge_perimeter(mask) * pixel_size_m),
+        perimeter_m=float(perimeter_pixels * pixel_size_m),
         major_axis_length_m=float(major_axis_length_pixels * pixel_size_m),
         width_m=width_pixels * pixel_size_m,
         width_pixels=width_pixels,
@@ -128,12 +185,14 @@ def measure_components(
     if not materialized:
         return ()
     major_axis_lengths = _bulk_major_axis_lengths(materialized)
+    perimeters = _bulk_pixel_edge_perimeters(materialized)
     return tuple(
         _measure_component(
             crop,
             pixel_size_m=pixel_size_m,
             include_width=include_width,
             major_axis_length_pixels=major_axis_lengths[crop.label],
+            perimeter_pixels=perimeters[crop.label],
         )
         for crop in materialized
     )
