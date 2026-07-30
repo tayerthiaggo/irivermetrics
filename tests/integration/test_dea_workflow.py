@@ -390,14 +390,24 @@ def test_analyze_from_dea_with_drainage_computes_channel_metrics(monkeypatch, tm
 # ---------------------------------------------------------------------------
 
 
-def test_second_call_with_same_inputs_still_calls_acquire_but_no_extra_stats_query(
+def test_second_call_delegates_resume_decision_to_acquire_wofs_cache(
     monkeypatch, tmp_path
 ):
-    """acquire_wofs_cache owns cache-hit short-circuiting internally (its own
-    resumability contract); this orchestrator's job is simply to not add a
-    SECOND, redundant DEA-statistics query of its own on top of hydroseason's
-    single acquisition call -- see test below for the true no-STAC-call proof
-    once acquisition itself reports nothing new to fetch."""
+    """This orchestrator never second-guesses hydroseason's own cache-hit
+    short-circuiting: it always calls ``acquire_wofs_cache`` exactly once per
+    ``analyze_from_dea`` invocation and lets THAT function decide internally
+    whether any STAC/remote work is actually needed (its own documented
+    resumability contract -- "Queries STAC exactly once for the whole
+    interval ... writes one annual Zarr group per calendar year not already
+    completed"). This test proves the orchestrator's half of that contract:
+    it adds no redundant DEA-statistics query of its own across repeated
+    calls, and never bypasses ``acquire_wofs_cache`` on a would-be cache hit
+    (e.g. via some independent "is this cached?" pre-check). The actual
+    "zero STAC calls on a real cache hit" property is hydroseason's own
+    internal behaviour and is exercised by hydroseason's own test suite
+    (``tests/test_io_wofs_acquire.py``) -- it cannot be proven here, since
+    this test's ``acquire_wofs_cache`` is a fake that always returns
+    immediately regardless of cache state."""
     recorder = _Recorder()
     _install_happy_path(monkeypatch, recorder, tmp_path)
 
