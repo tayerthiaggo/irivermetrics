@@ -33,6 +33,21 @@ def guard_persistence_zone(metric_id: str, *, zone: str | None) -> None:
     Zones 1-4 are defined from the RAW persistence surface, so reporting a
     persistence frequency within one is circular. Non-persistence metrics
     (fragmentation, morphology, clustering, connectivity) may stratify freely.
+
+    Provenance-independence: this function's signature accepts only a zone
+    LABEL (``"1"``-``"4"``/``"AOI"``/``"channel"``/``None``), never a
+    ``ZoneResult`` or its ``source`` field, and by construction never
+    inspects provenance. A zone labelled ``"2"`` built locally via
+    ``hydrofragments.spatial.zones.build_zones`` (``ZoneResult.source ==
+    "occurrence"``) and a zone labelled ``"2"`` built from a DEA product via
+    ``zones_from_wo_statistics`` (``ZoneResult.source == stats.product``,
+    e.g. ``"ga_ls_wo_fq_myear_3"``) are refused IDENTICALLY here, because
+    both represent the same occurrence-defined stratification this guard
+    exists to protect against -- a DEA Water Observation Statistics product
+    is external to any given run, but measures the same wet-frequency
+    phenomenon, so its provenance must never silently waive this guard. See
+    ``tests/guards/test_scientific_guards.py::TestPersistenceZoneProvenanceIndependence``
+    for the test proving this with both provenances.
     """
     if metric_id not in _PERSISTENCE_METRICS:
         return
