@@ -208,33 +208,33 @@ def compute_patch_metrics(
     )
 
 
-def analyze_patch_bundle(
+def measure_patch_properties(
     mask: Any,
     *,
     pixel_size_m: float,
-    a_total_m2: float,
     connectivity: int = 8,
     min_patch_pixels: int = 3,
     target_component_pixels: int = 1_000_000,
-    include_mesh: bool = False,
     include_width: bool = False,
-    resolution_floor_pixels: float | None = None,
-) -> tuple[PatchMetricResult, PoolWidthDistribution | None]:
-    """Label, crop, and measure one monthly 2-D mask exactly once.
+    local_label_threshold_bytes: int | None = None,
+) -> Sequence[PatchProperties]:
+    """Label, crop, and measure one 2-D mask exactly once.
 
-    Core patch metrics are always produced. When ``include_width`` is set,
-    the same measured ``properties`` (with EDT width already attached) are
-    also reduced into a ``PoolWidthDistribution`` -- avoiding a second
-    label/crop/measure pass over the same mask (M2).
+    ``local_label_threshold_bytes`` is forwarded verbatim to
+    :func:`label_components` (``None`` preserves its own
+    ``ComputePolicy``-derived default). This is the single point where a
+    mask is labeled; callers that need properties from several independent
+    windows call this once per window and concatenate the results before
+    reducing, rather than reducing per window (see
+    :mod:`hydrofragments.spatial.active_windows`).
     """
     if pixel_size_m <= 0:
         raise ValueError("pixel_size_m must be positive")
-    if a_total_m2 <= 0:
-        raise ValueError("a_total_m2 must be positive")
     labels = label_components(
         mask,
         connectivity=connectivity,
         min_patch_pixels=min_patch_pixels,
+        local_label_threshold_bytes=local_label_threshold_bytes,
     )
     properties: list[PatchProperties] = []
     crops = iter_component_crops(labels.labels)
@@ -246,6 +246,27 @@ def analyze_patch_bundle(
                 bucket, pixel_size_m=pixel_size_m, include_width=include_width
             )
         )
+    return properties
+
+
+def reduce_patch_properties(
+    properties: Sequence[PatchProperties],
+    *,
+    pixel_size_m: float,
+    a_total_m2: float,
+    include_mesh: bool = False,
+    include_width: bool = False,
+    resolution_floor_pixels: float | None = None,
+) -> tuple[PatchMetricResult, PoolWidthDistribution | None]:
+    """Aggregate already-measured properties into one core/width result.
+
+    Callers concatenating properties from multiple independent windows must
+    call this exactly once across the full concatenated sequence -- LPI,
+    AWRe, AWMSI, width distribution, and counts are all computed once over
+    every property, never per-window then combined.
+    """
+    if a_total_m2 <= 0:
+        raise ValueError("a_total_m2 must be positive")
     core = compute_patch_metrics(
         properties, a_total_m2=a_total_m2, include_mesh=include_mesh
     )
@@ -257,6 +278,52 @@ def analyze_patch_bundle(
             resolution_floor_pixels=resolution_floor_pixels,
         )
     return core, width
+
+
+def analyze_patch_bundle(
+    mask: Any,
+    *,
+    pixel_size_m: float,
+    a_total_m2: float,
+    connectivity: int = 8,
+    min_patch_pixels: int = 3,
+    target_component_pixels: int = 1_000_000,
+    include_mesh: bool = False,
+    include_width: bool = False,
+    resolution_floor_pixels: float | None = None,
+    local_label_threshold_bytes: int | None = None,
+) -> tuple[PatchMetricResult, PoolWidthDistribution | None]:
+    """Label, crop, and measure one monthly 2-D mask exactly once.
+
+    Thin wrapper: :func:`measure_patch_properties` then
+    :func:`reduce_patch_properties`, kept as one call for callers that only
+    ever have a single whole-mask window and want the historical one-call
+    shape. Core patch metrics are always produced. When ``include_width`` is
+    set, the same measured ``properties`` (with EDT width already attached)
+    are also reduced into a ``PoolWidthDistribution`` -- avoiding a second
+    label/crop/measure pass over the same mask (M2).
+    """
+    if pixel_size_m <= 0:
+        raise ValueError("pixel_size_m must be positive")
+    if a_total_m2 <= 0:
+        raise ValueError("a_total_m2 must be positive")
+    properties = measure_patch_properties(
+        mask,
+        pixel_size_m=pixel_size_m,
+        connectivity=connectivity,
+        min_patch_pixels=min_patch_pixels,
+        target_component_pixels=target_component_pixels,
+        include_width=include_width,
+        local_label_threshold_bytes=local_label_threshold_bytes,
+    )
+    return reduce_patch_properties(
+        properties,
+        pixel_size_m=pixel_size_m,
+        a_total_m2=a_total_m2,
+        include_mesh=include_mesh,
+        include_width=include_width,
+        resolution_floor_pixels=resolution_floor_pixels,
+    )
 
 
 def analyze_patch_metrics(
@@ -320,4 +387,6 @@ __all__ = [
     "compute_pool_width_distribution",
     "compute_patch_metrics",
     "evaluate_mesh_correlation_gate",
+    "measure_patch_properties",
+    "reduce_patch_properties",
 ]

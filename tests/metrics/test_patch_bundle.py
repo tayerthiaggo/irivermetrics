@@ -123,11 +123,19 @@ def test_section_compat_rows_rejects_water_without_valid_observation():
 
 
 def test_analyze_core_patches_and_pool_width_share_one_bundle(tmp_path):
+    """Core patches and pool width share one measurement pass per month.
+
+    Post-W4.3, ``section_compat_rows`` calls ``measure_patch_properties``/
+    ``reduce_patch_properties`` directly (not ``analyze_patch_bundle``, which
+    is now a thin convenience wrapper unused by the production path), so the
+    "measured once" invariant is proven by spying on
+    ``measure_patch_properties`` -- the actual shared-measurement primitive.
+    """
     cube = _single_month_bundle_cube()
     config = _core_plus_width_config(tmp_path)
 
     with mock.patch.object(
-        patches, "analyze_patch_bundle", wraps=patches.analyze_patch_bundle
+        patches, "measure_patch_properties", wraps=patches.measure_patch_properties
     ) as spy:
         result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=10.0)
 
