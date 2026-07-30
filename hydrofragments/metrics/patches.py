@@ -293,7 +293,7 @@ def analyze_patch_bundle(
     resolution_floor_pixels: float | None = None,
     local_label_threshold_bytes: int | None = None,
 ) -> tuple[PatchMetricResult, PoolWidthDistribution | None]:
-    """Label, crop, and measure one monthly 2-D mask exactly once.
+    """Label, crop, measure, and reduce one monthly 2-D mask in one call.
 
     Thin wrapper: :func:`measure_patch_properties` then
     :func:`reduce_patch_properties`, kept as one call for callers that only

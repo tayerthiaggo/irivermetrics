@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import geopandas as gpd
 import numpy as np
@@ -18,7 +18,7 @@ import hydrofragments.metrics.persistence as persistence
 from hydrofragments.metrics.persistence import compute_refuge_area
 from hydrofragments.metrics.registry import resolve_metrics
 from hydrofragments.schema import MetricDependency
-from hydrofragments.spatial.active_windows import independent_active_windows
+from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
 
 DROPPED_LEGACY_METRICS: dict[str, str] = {
     "PF": (
@@ -182,6 +182,7 @@ def _measure_month_patch_properties(
     water_month: np.ndarray,
     *,
     analysis_mask: np.ndarray | None,
+    windows: Sequence[AnalysisWindow] | None,
     pixel_size_m: float,
     connectivity: int,
     min_patch_pixels: int,
@@ -190,14 +191,20 @@ def _measure_month_patch_properties(
 ):
     """Measure one month's patch properties, windowed when profitable.
 
-    When ``analysis_mask`` is ``None`` or covers the whole grid (the common
-    full-AOI/legacy case -- ``independent_active_windows`` then returns
-    exactly one window spanning the grid), this measures the whole mask in
-    one call, byte-identical to calling ``measure_patch_properties``
-    directly. When ``analysis_mask`` is a real, narrower footprint that
-    splits into multiple independent windows, each window's crop is measured
-    separately and every window's properties are concatenated -- never
-    reduced per window -- so the caller can reduce once across the full set.
+    ``windows`` is the (already-computed) :func:`independent_active_windows`
+    partition of ``analysis_mask``, hoisted by the caller so it is computed
+    ONCE per section rather than once per month -- the window partition is a
+    property of ``analysis_mask`` alone (invariant across every month in a
+    section), never of any per-month data, so recomputing it per month would
+    be pure waste. When ``analysis_mask`` is ``None`` or covers the whole
+    grid (the common full-AOI/legacy case -- ``independent_active_windows``
+    then returns exactly one window spanning the grid), this measures the
+    whole mask in one call, byte-identical to calling
+    ``measure_patch_properties`` directly. When ``analysis_mask`` is a real,
+    narrower footprint that splits into multiple independent windows, each
+    window's crop is measured separately and every window's properties are
+    concatenated -- never reduced per window -- so the caller can reduce
+    once across the full set.
     """
     if analysis_mask is None:
         return patch_metrics.measure_patch_properties(
@@ -209,10 +216,7 @@ def _measure_month_patch_properties(
             local_label_threshold_bytes=local_label_threshold_bytes,
         )
 
-    windows = independent_active_windows(
-        xr.DataArray(analysis_mask, dims=("y", "x")),
-        connectivity=connectivity,
-    )
+    assert windows is not None
     if len(windows) <= 1:
         return patch_metrics.measure_patch_properties(
             water_month,
@@ -395,6 +399,17 @@ def section_compat_rows(
         # exists to avoid.
         analysis_mask_np = np.asarray(analysis_mask.values, dtype=bool)
 
+    # The independent-active-windows partition is a property of
+    # `analysis_mask` alone -- it never depends on any per-month data -- so
+    # it is computed exactly ONCE here per section and reused for every
+    # month in the loop below, rather than recomputed on every iteration.
+    windows: Sequence[AnalysisWindow] | None = None
+    if analysis_mask_np is not None:
+        windows = independent_active_windows(
+            xr.DataArray(analysis_mask_np, dims=("y", "x")),
+            connectivity=config.patches.connectivity_rule,
+        )
+
     local_label_threshold_bytes = _resolve_local_label_threshold_bytes(config)
 
     # `da_feature["time"]` is always a plain (non-Dask) numpy coordinate --
@@ -469,6 +484,7 @@ def section_compat_rows(
             month_properties = _measure_month_patch_properties(
                 water_month,
                 analysis_mask=analysis_mask_np,
+                windows=windows,
                 pixel_size_m=pixel_size_m,
                 connectivity=config.patches.connectivity_rule,
                 min_patch_pixels=config.patches.min_patch_pixels,
