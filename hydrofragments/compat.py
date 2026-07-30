@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, ThreadPoolExecutor, wait
+from dataclasses import dataclass
 import warnings
-from typing import Iterable, Sequence
+from typing import Iterable, Iterator, Literal, Sequence
 
 import geopandas as gpd
 import numpy as np
@@ -244,6 +246,283 @@ def _measure_month_patch_properties(
     return properties
 
 
+@dataclass(frozen=True)
+class _MonthPayload:
+    """Bounded, plain-NumPy input for exactly one month's patch/APSEC/coverage
+    work -- the unit of work dispatched to a serial call, thread, or process
+    worker by :func:`section_compat_rows`.
+
+    Every field here is either a plain NumPy array (already realised by
+    :func:`_monthly_dataset` before this payload is built -- never a Dask
+    graph or xarray object backed by a remote source), a Python primitive, or
+    a frozen dataclass of primitives/tuples (:class:`HydroConfig`,
+    :class:`~hydrofragments.spatial.active_windows.AnalysisWindow`). This is
+    what makes ``_MonthPayload`` safe to pickle across a Windows spawned
+    process boundary -- see the module-level ``ProcessPoolExecutor`` note in
+    :func:`section_compat_rows`.
+
+    ``water_month``/``coverage_valid_obs_month`` are carried on the payload
+    (rather than only on some separate "result") for two reasons: (1)
+    ``_month_row`` needs them to run the patch/APSEC/coverage computation,
+    and (2) the caller needs them back, in ``time_index`` order, to feed the
+    section-level ``_OccurrenceAccumulator`` (a running, order-independent
+    sum -- see its docstring) without re-materialising the month a second
+    time.
+    """
+
+    time_index: int
+    timestamp: pd.Timestamp
+    water_month: np.ndarray
+    coverage_valid_obs_month: np.ndarray | None
+    config: HydroConfig
+    pixel_size_m: float
+    a_ref_m2: float
+    cell_area_m2: float
+    min_valid_fraction: float | None
+    analysis_mask_np: np.ndarray | None
+    windows: Sequence[AnalysisWindow] | None
+    want_patches: bool
+    want_width: bool
+    want_apsec: bool
+    local_label_threshold_bytes: int | None
+
+
+def _build_month_payload(
+    da_feature: xr.DataArray,
+    *,
+    valid_obs: xr.DataArray | None,
+    time_index: int,
+    timestamp: pd.Timestamp,
+    config: HydroConfig,
+    pixel_size_m: float,
+    a_ref_m2: float,
+    cell_area_m2: float,
+    min_valid_fraction: float | None,
+    analysis_mask_np: np.ndarray | None,
+    windows: Sequence[AnalysisWindow] | None,
+    want_patches: bool,
+    want_width: bool,
+    want_apsec: bool,
+    local_label_threshold_bytes: int | None,
+) -> _MonthPayload:
+    """Materialise ONE month's bounded ``water``/``valid_obs`` payload.
+
+    This is the only point where ``time_index`` touches the (possibly
+    Dask-backed) ``da_feature``/``valid_obs`` source -- see
+    ``_monthly_dataset``'s fused, per-month-bounded ``.compute()``. The
+    returned :class:`_MonthPayload` never carries the source array itself,
+    only its already-realised one-month NumPy slice, so it is safe to hand to
+    any executor (serial, thread, or process).
+    """
+    monthly = _monthly_dataset(da_feature, valid_obs=valid_obs, time_index=time_index)
+    water_month = np.asarray(monthly["water"].values, dtype=bool)
+    coverage_valid_obs_month = (
+        np.asarray(monthly["valid_obs"].values, dtype=bool)
+        if valid_obs is not None
+        else None
+    )
+    return _MonthPayload(
+        time_index=time_index,
+        timestamp=timestamp,
+        water_month=water_month,
+        coverage_valid_obs_month=coverage_valid_obs_month,
+        config=config,
+        pixel_size_m=pixel_size_m,
+        a_ref_m2=a_ref_m2,
+        cell_area_m2=cell_area_m2,
+        min_valid_fraction=min_valid_fraction,
+        analysis_mask_np=analysis_mask_np,
+        windows=windows,
+        want_patches=want_patches,
+        want_width=want_width,
+        want_apsec=want_apsec,
+        local_label_threshold_bytes=local_label_threshold_bytes,
+    )
+
+
+def _month_row(payload: _MonthPayload) -> dict[str, object]:
+    """Compute one month's patch/width/APSEC/coverage row from a bounded
+    :class:`_MonthPayload`.
+
+    Module-level (not a closure or method) and picklable so it can be
+    dispatched to a :class:`~concurrent.futures.ProcessPoolExecutor` worker
+    on Windows, where only picklable top-level callables and plain-data
+    arguments can safely cross the spawned process boundary. Reproduces
+    exactly what the inline per-month loop body in ``section_compat_rows``
+    used to compute -- this function's extraction changes only *where* the
+    per-month work runs, never *what* it computes.
+
+    Raises the same ``_WATER_VALIDITY_ERROR`` as before when
+    ``water=True, valid_obs=False`` anywhere in this month's payload.
+
+    Does NOT touch the section-level ``_OccurrenceAccumulator`` -- occurrence
+    is a whole-series aggregate fed by the caller, in deterministic
+    ``time_index`` order, from the ``water_month``/``coverage_valid_obs_month``
+    this function's return value carries back (see ``per_month_row``'s
+    ``"water_month"``/``"coverage_valid_obs_month"`` keys below).
+    """
+    water_month = payload.water_month
+    coverage_valid_obs_month = payload.coverage_valid_obs_month
+    config = payload.config
+    pixel_size_m = payload.pixel_size_m
+
+    if coverage_valid_obs_month is not None:
+        invalid_water = water_month & ~coverage_valid_obs_month
+        if np.any(invalid_water):
+            raise ValueError(_WATER_VALIDITY_ERROR)
+
+    n_patches: object = None
+    awmsi = float("nan")
+    awre = float("nan")
+    lpi = float("nan")
+    width_values: dict[str, float] = {
+        column: float("nan") for column in _POOL_WIDTH_STAT_COLUMNS.values()
+    }
+    width_warning_flags: tuple = ()
+    if payload.want_patches or payload.want_width:
+        month_properties = _measure_month_patch_properties(
+            water_month,
+            analysis_mask=payload.analysis_mask_np,
+            windows=payload.windows,
+            pixel_size_m=pixel_size_m,
+            connectivity=config.patches.connectivity_rule,
+            min_patch_pixels=config.patches.min_patch_pixels,
+            include_width=payload.want_width,
+            local_label_threshold_bytes=payload.local_label_threshold_bytes,
+        )
+        patch_result, width_result = patch_metrics.reduce_patch_properties(
+            month_properties,
+            pixel_size_m=pixel_size_m,
+            a_total_m2=payload.a_ref_m2,
+            include_width=payload.want_width,
+            resolution_floor_pixels=config.patches.width_resolution_floor_pixels,
+        )
+        if payload.want_patches:
+            n_patches = patch_result.number_of_pools
+            awmsi = patch_result.awmsi
+            awre = patch_result.awre
+            lpi = patch_result.lpi
+        if width_result is not None:
+            width_values = {
+                "pool_width_mean": width_result.mean_m,
+                "pool_width_median": width_result.median_m,
+                "pool_width_max": width_result.max_m,
+                "pool_width_cv": width_result.cv,
+            }
+            width_warning_flags = width_result.warning_flags
+
+    apsec_value = float("nan")
+    apsec_n_water_pixels = None
+    if payload.want_apsec:
+        month_ds = xr.Dataset(
+            {
+                "water": (("y", "x"), water_month),
+                "valid_obs": (
+                    ("y", "x"),
+                    coverage_valid_obs_month
+                    if coverage_valid_obs_month is not None
+                    else np.ones_like(water_month, dtype=bool),
+                ),
+            }
+        ).expand_dims(time=[payload.timestamp])
+        month_valid_obs_da = (
+            month_ds["valid_obs"] if coverage_valid_obs_month is not None else None
+        )
+        apsec_record = compute_apsec(
+            month_ds,
+            a_ref_m2=payload.a_ref_m2,
+            cell_area_m2=payload.cell_area_m2,
+            config=config,
+            valid_obs=month_valid_obs_da,
+            min_valid_fraction=payload.min_valid_fraction,
+        )[0]
+        apsec_value = apsec_record.value
+        apsec_n_water_pixels = apsec_record.n_water_pixels
+
+    low_coverage = False
+    valid_fraction = None
+    n_valid_pixels = None
+    if coverage_valid_obs_month is not None:
+        valid_fraction = float(coverage_valid_obs_month.mean())
+        n_valid_pixels = int(coverage_valid_obs_month.sum())
+        low_coverage = valid_fraction < payload.min_valid_fraction
+
+    return {
+        "time_index": payload.time_index,
+        "timestamp": payload.timestamp,
+        "n_patches": n_patches,
+        "awmsi": awmsi,
+        "awre": awre,
+        "lpi": lpi,
+        "width_values": width_values,
+        "width_warning_flags": width_warning_flags,
+        "apsec_value": apsec_value,
+        "apsec_n_water_pixels": apsec_n_water_pixels,
+        "low_coverage": low_coverage,
+        "valid_fraction": valid_fraction,
+        "n_valid_pixels": n_valid_pixels,
+        "has_coverage": coverage_valid_obs_month is not None,
+        "water_month": water_month,
+        "coverage_valid_obs_month": coverage_valid_obs_month,
+    }
+
+
+def _run_month_rows(
+    payloads: Iterator[_MonthPayload],
+    *,
+    workers: int,
+    executor_kind: Literal["thread", "process"],
+) -> list[dict[str, object]]:
+    """Run ``_month_row`` over ``payloads`` with bounded producer/consumer
+    concurrency and return results in deterministic ``time_index`` order.
+
+    ``workers <= 1`` runs serially in-process with no executor at all --
+    this is the exact pre-existing code path (same call, same order, same
+    process), preserving today's behavior and avoiding any executor
+    overhead for the default configuration.
+
+    For ``workers > 1``, at most ``2 * workers`` payloads are ever
+    constructed-but-not-yet-consumed at once: payloads are pulled from the
+    ``payloads`` iterator and submitted lazily, one at a time, only as
+    earlier futures complete, rather than eagerly building/submitting every
+    month up front (a "map everything" approach would defeat the point of
+    bounding in-flight memory at catchment scale). Results are collected as
+    they complete (so a slow month never blocks faster months from
+    finishing) but are sorted back into ``time_index`` order before being
+    returned -- output order must never depend on completion order.
+    """
+    if workers <= 1:
+        return [_month_row(payload) for payload in payloads]
+
+    max_in_flight = 2 * workers
+    executor_cls = ThreadPoolExecutor if executor_kind == "thread" else ProcessPoolExecutor
+
+    results: list[dict[str, object]] = []
+    with executor_cls(max_workers=workers) as executor:
+        in_flight: dict = {}
+        payload_iter = iter(payloads)
+
+        def _fill() -> None:
+            while len(in_flight) < max_in_flight:
+                try:
+                    payload = next(payload_iter)
+                except StopIteration:
+                    return
+                future = executor.submit(_month_row, payload)
+                in_flight[future] = None
+
+        _fill()
+        while in_flight:
+            done, _pending = wait(list(in_flight), return_when=FIRST_COMPLETED)
+            for future in done:
+                del in_flight[future]
+                results.append(future.result())
+            _fill()
+
+    results.sort(key=lambda row: row["time_index"])
+    return results
+
+
 _PATCH_METRIC_IDS = frozenset({"number_of_pools", "lpi", "awre", "awmsi"})
 _PERSISTENCE_METRIC_IDS = frozenset({"occurrence", "refuge_area"})
 _WATER_VALIDITY_ERROR = "water=True requires valid_obs=True for every pixel/month"
@@ -346,6 +625,7 @@ def section_compat_rows(
     selected_ids: set[str] | None = None,
     valid_obs: xr.DataArray | None = None,
     analysis_mask: xr.DataArray | None = None,
+    executor_kind: Literal["thread", "process"] = "thread",
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -428,149 +708,60 @@ def section_compat_rows(
 
     occurrence_acc = _OccurrenceAccumulator() if want_persistence else None
 
-    # Per-month intermediates, collected while iterating so the finalised
-    # (whole-series) quantities -- occurrence/refuge-area, which are
-    # necessarily aggregates over every month -- can be computed once, after
-    # the loop, without ever holding more than one month's `water`/
-    # `valid_obs` payload in memory at a time. Patch/width/APSEC/coverage are
-    # already genuinely per-month, so they are computed directly inside the
-    # loop and simply stored for row assembly below.
-    per_month: list[dict[str, object]] = []
+    # Bounded producer/consumer dispatch (W3.2): each month's payload is
+    # built lazily -- one at a time, from the fused per-month
+    # `_monthly_dataset` compute -- and handed to `_month_row`, either
+    # in-process (workers <= 1, today's exact serial path and default) or
+    # via a bounded thread/process pool (workers > 1, gated by
+    # `config.compute.workers`; see `_run_month_rows`'s
+    # `2 * workers`-in-flight bound). `_month_row` never touches the shared
+    # `_OccurrenceAccumulator` -- that is a whole-series running sum fed
+    # below, in deterministic `time_index` order, from each result's
+    # returned `water_month`/`coverage_valid_obs_month` -- so results may
+    # come back in any completion order and still reproduce byte-identical
+    # occurrence/refuge-area output (the accumulator's sum is
+    # order-independent; see its docstring).
+    def _payloads() -> Iterator[_MonthPayload]:
+        for time_index in range(n_time):
+            yield _build_month_payload(
+                da_feature,
+                valid_obs=valid_obs,
+                time_index=time_index,
+                timestamp=timestamps[time_index],
+                config=config,
+                pixel_size_m=pixel_size_m,
+                a_ref_m2=a_ref_m2,
+                cell_area_m2=cell_area_m2,
+                min_valid_fraction=min_valid_fraction,
+                analysis_mask_np=analysis_mask_np,
+                windows=windows,
+                want_patches=want_patches,
+                want_width=want_width,
+                want_apsec=want_apsec,
+                local_label_threshold_bytes=local_label_threshold_bytes,
+            )
 
-    for time_index in range(n_time):
-        # Fused, per-month materialisation: exactly one month's 2-D
-        # (y, x) `water`/`valid_obs` slice is realised here via
-        # `.isel(time=time_index)` BEFORE the compute -- see
-        # `_monthly_dataset`. No other point in this loop touches the
-        # lazy source again for this month.
-        monthly = _monthly_dataset(da_feature, valid_obs=valid_obs, time_index=time_index)
-        water_month = np.asarray(monthly["water"].values, dtype=bool)
-        coverage_valid_obs_month = (
-            np.asarray(monthly["valid_obs"].values, dtype=bool)
-            if valid_obs is not None
-            else None
-        )
-
-        if coverage_valid_obs_month is not None:
-            # water/valid_obs for this month are already materialised
-            # (fused compute above) -- perform the water=>valid_obs
-            # correctness check directly on that payload rather than
-            # re-reading the source.
-            invalid_water = water_month & ~coverage_valid_obs_month
-            if np.any(invalid_water):
-                raise ValueError(_WATER_VALIDITY_ERROR)
-
-        if occurrence_acc is not None:
-            calendar_month = int(timestamps[time_index].month)
+    per_month = _run_month_rows(
+        _payloads(), workers=config.compute.workers, executor_kind=executor_kind
+    )
+    # `_run_month_rows` already sorts by `time_index`; feeding the
+    # accumulator in that fixed order (rather than whatever order results
+    # happened to be produced/collected in) keeps behavior identical to the
+    # pre-refactor chronological loop even though the sum itself is
+    # order-independent.
+    if occurrence_acc is not None:
+        for month in per_month:
+            calendar_month = int(month["timestamp"].month)
+            water_month = month["water_month"]
             occurrence_acc.add_month(
                 calendar_month=calendar_month,
                 water=water_month,
                 valid_obs=(
-                    coverage_valid_obs_month
-                    if coverage_valid_obs_month is not None
+                    month["coverage_valid_obs_month"]
+                    if month["coverage_valid_obs_month"] is not None
                     else np.ones_like(water_month, dtype=bool)
                 ),
             )
-
-        n_patches: object = None
-        awmsi = float("nan")
-        awre = float("nan")
-        lpi = float("nan")
-        width_values: dict[str, float] = {
-            column: float("nan") for column in _POOL_WIDTH_STAT_COLUMNS.values()
-        }
-        width_warning_flags = ()
-        if want_patches or want_width:
-            month_properties = _measure_month_patch_properties(
-                water_month,
-                analysis_mask=analysis_mask_np,
-                windows=windows,
-                pixel_size_m=pixel_size_m,
-                connectivity=config.patches.connectivity_rule,
-                min_patch_pixels=config.patches.min_patch_pixels,
-                include_width=want_width,
-                local_label_threshold_bytes=local_label_threshold_bytes,
-            )
-            patch_result, width_result = patch_metrics.reduce_patch_properties(
-                month_properties,
-                pixel_size_m=pixel_size_m,
-                a_total_m2=a_ref_m2,
-                include_width=want_width,
-                resolution_floor_pixels=config.patches.width_resolution_floor_pixels,
-            )
-            if want_patches:
-                n_patches = patch_result.number_of_pools
-                awmsi = patch_result.awmsi
-                awre = patch_result.awre
-                lpi = patch_result.lpi
-            if width_result is not None:
-                width_values = {
-                    "pool_width_mean": width_result.mean_m,
-                    "pool_width_median": width_result.median_m,
-                    "pool_width_max": width_result.max_m,
-                    "pool_width_cv": width_result.cv,
-                }
-                width_warning_flags = width_result.warning_flags
-
-        apsec_value = float("nan")
-        apsec_n_water_pixels = None
-        if want_apsec:
-            # `compute_apsec` is already a per-timestamp reduction
-            # internally; feeding it this single already-materialised
-            # month (wrapped back into a length-1 `time` dim, pure
-            # in-memory metadata, no further source read) reuses its
-            # validated math without duplicating it, while keeping this
-            # call scoped to one month.
-            month_ds = xr.Dataset(
-                {
-                    "water": (("y", "x"), water_month),
-                    "valid_obs": (
-                        ("y", "x"),
-                        coverage_valid_obs_month
-                        if coverage_valid_obs_month is not None
-                        else np.ones_like(water_month, dtype=bool),
-                    ),
-                }
-            ).expand_dims(time=[timestamps[time_index]])
-            month_valid_obs_da = (
-                month_ds["valid_obs"] if coverage_valid_obs_month is not None else None
-            )
-            apsec_record = compute_apsec(
-                month_ds,
-                a_ref_m2=a_ref_m2,
-                cell_area_m2=cell_area_m2,
-                config=config,
-                valid_obs=month_valid_obs_da,
-                min_valid_fraction=min_valid_fraction,
-            )[0]
-            apsec_value = apsec_record.value
-            apsec_n_water_pixels = apsec_record.n_water_pixels
-
-        low_coverage = False
-        valid_fraction = None
-        n_valid_pixels = None
-        if coverage_valid_obs_month is not None:
-            valid_fraction = float(coverage_valid_obs_month.mean())
-            n_valid_pixels = int(coverage_valid_obs_month.sum())
-            low_coverage = valid_fraction < min_valid_fraction
-
-        per_month.append(
-            {
-                "timestamp": timestamps[time_index],
-                "n_patches": n_patches,
-                "awmsi": awmsi,
-                "awre": awre,
-                "lpi": lpi,
-                "width_values": width_values,
-                "width_warning_flags": width_warning_flags,
-                "apsec_value": apsec_value,
-                "apsec_n_water_pixels": apsec_n_water_pixels,
-                "low_coverage": low_coverage,
-                "valid_fraction": valid_fraction,
-                "n_valid_pixels": n_valid_pixels,
-                "has_coverage": coverage_valid_obs_month is not None,
-            }
-        )
 
     pp_mean = float("nan")
     refuge = None

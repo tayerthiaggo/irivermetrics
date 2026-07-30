@@ -583,6 +583,8 @@ class HydroConfig:
             )
         if compute.cuda_strict and compute.accelerator != "cuda":
             raise ConfigError("compute.cuda_strict requires accelerator='cuda'")
+        if compute.workers < 1:
+            raise ConfigError("compute.workers must be at least 1")
 
         output_raw = _section(
             source,

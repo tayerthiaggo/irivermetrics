@@ -79,6 +79,29 @@ def test_cuda_strict_requires_cuda_accelerator() -> None:
         )
 
 
+def test_compute_workers_defaults_to_one() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config())
+    assert config.compute.workers == 1
+
+
+@pytest.mark.parametrize("workers", [0, -1, -5])
+def test_compute_workers_below_one_is_rejected(workers: int) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match="compute.workers"):
+        HydroConfig.from_mapping(minimal_config(compute={"workers": workers}))
+
+
+@pytest.mark.parametrize("workers", [1, 2, 4, 8])
+def test_compute_workers_at_least_one_is_accepted(workers: int) -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config(compute={"workers": workers}))
+    assert config.compute.workers == workers
+
+
 def test_compute_accelerator_defaults_to_auto_detection() -> None:
     from hydrofragments.config import HydroConfig
 
