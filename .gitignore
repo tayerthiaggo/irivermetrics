@@ -180,6 +180,12 @@ tmp/
 temp/
 data/wofs_monthly_masks_1986_2026.zarr
 
+# W3.7 end-to-end benchmark scratch: per-candidate WOfS caches and output
+# tables written during a real Fitzroy benchmark run -- raw caches are
+# excluded per the task brief, only the JSON/Markdown summaries are
+# committed (benchmarks/results/end_to_end_workflow.json/.md).
+benchmarks/results/end_to_end_workflow_workdir/
+
 .agents/
 .claude/
 .github/
