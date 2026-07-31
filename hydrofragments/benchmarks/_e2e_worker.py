@@ -50,6 +50,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 # Unsigned-S3/GDAL COG reads at WHOLE-PROCESS scope: hydroseason's own
 # open_wo_statistics() only applies hydroseason._io_geo._configure_cog_read_env()
 # narrowly, inside a try/finally that restores the caller's original env
@@ -80,8 +82,70 @@ def _apply_cog_read_env() -> None:
 _apply_cog_read_env()
 
 
+def planning_footprint_native_wet_pixel_superset_metrics(footprint: Any) -> dict[str, Any]:
+    """Prove (or explicitly decline to prove) the plan's actual coverage gate.
+
+    The plan's Global Constraints require: "count_wet > 0 planning footprint
+    must cover 100% of native wet pixels" -- i.e. every pixel that is
+    genuinely wet in the native DEA statistics grid must fall inside the
+    coarse planning footprint once expanded back to native resolution:
+    ``native_mask <= expand(coarse_mask)``.
+
+    This is the exact superset property W1.5 already proves in the sibling
+    hydroseason repo -- see ``hydroseason._io_dea_stats.build_wet_planning_footprint``'s
+    own docstring and ``tests/test_io_dea_stats.py``, which establish this
+    proof using this exact expansion technique
+    (``coarse.repeat(factor, axis=0).repeat(factor, axis=1)``). This helper
+    intentionally reuses that identical technique rather than inventing a
+    different one, so a divergent implementation here can never silently
+    disagree with what W1.5 already proved.
+
+    ``footprint`` is a ``hydroseason._io_dea_stats.WetPlanningFootprint`` (or
+    any object exposing ``.native_mask``/``.coarse_mask`` xarray DataArrays
+    and an integer ``.factor``), or ``None`` when DEA statistics were
+    unavailable this run and acquisition fell open to full-AOI -- in which
+    case there is no planning footprint to prove anything about, so this
+    returns explicit ``None``s plus a reason rather than a fabricated
+    vacuous pass.
+
+    Returns a dict with keys ``planning_footprint_native_wet_pixel_superset_holds``
+    (bool | None), ``planning_footprint_native_wet_pixel_coverage_fraction``
+    (float | None), and ``planning_footprint_superset_reason`` (str | None).
+    """
+
+    if footprint is None:
+        return {
+            "planning_footprint_native_wet_pixel_superset_holds": None,
+            "planning_footprint_native_wet_pixel_coverage_fraction": None,
+            "planning_footprint_superset_reason": (
+                "footprint is None (DEA statistics were unavailable this run, "
+                "acquisition fell open to full-AOI; no planning footprint "
+                "exists to prove the native-wet-pixel superset property about)"
+            ),
+        }
+
+    native = np.asarray(footprint.native_mask.values, dtype=bool)
+    coarse = np.asarray(footprint.coarse_mask.values, dtype=bool)
+    factor = footprint.factor
+    expanded = coarse.repeat(factor, axis=0).repeat(factor, axis=1)[
+        : native.shape[0], : native.shape[1]
+    ]
+    native_wet_pixel_count = int(native.sum())
+    covered_wet_pixel_count = int(np.count_nonzero(native & expanded))
+    superset_holds = bool(np.all(native <= expanded))
+    coverage_fraction = (
+        float(covered_wet_pixel_count) / float(native_wet_pixel_count)
+        if native_wet_pixel_count > 0
+        else 1.0  # vacuously true: no native wet pixels to cover
+    )
+    return {
+        "planning_footprint_native_wet_pixel_superset_holds": superset_holds,
+        "planning_footprint_native_wet_pixel_coverage_fraction": coverage_fraction,
+        "planning_footprint_superset_reason": None,
+    }
+
+
 def _run(payload: dict[str, Any]) -> dict[str, Any]:
-    import numpy as np
     import pandas as pd
     import rioxarray  # noqa: F401 -- registers xarray's .rio accessor as a side
     # effect of import. hydrofragments.io.dea.open_wo_statistics_for_zoning
@@ -247,10 +311,10 @@ def _run(payload: dict[str, Any]) -> dict[str, Any]:
             if len(values) == 1:
                 n_water_by_month[str(date_value)] = int(values[0])
 
-    # "native-wet mask coverage exactly 100%" -- every AOI pixel-month in the
-    # raw native mask cube hydroseason.open_completed_mask_cache returns must
-    # be a VALID observation. Confirmed by direct inspection of a real
-    # acquired cube (not assumed): this cube's actual convention is
+    # Data-completeness / valid-observation-rate metric: the fraction of AOI
+    # pixel-months in the raw native mask cube hydroseason.open_completed_mask_cache
+    # returns that are a VALID observation. Confirmed by direct inspection of a
+    # real acquired cube (not assumed): this cube's actual convention is
     # {-1, 0, 1, NaN} (see hydroseason._io_wofs_zarr.open_completed_mask_cache's
     # own docstring: "gaps become -1 invalid, not -2 outside" plus a NaN fill
     # from complete_monthly_axis for any calendar month with literally zero
@@ -261,15 +325,39 @@ def _run(payload: dict[str, Any]) -> dict[str, Any]:
     # invalid, matched via ==1 short-circuiting NaN (NaN != NaN and
     # NaN != -1 are both true, so the OR chain below correctly excludes NaN
     # without a separate isnan check).
+    #
+    # NOTE: this is a real Landsat/Sentinel cloud-free-observation-rate signal,
+    # but it is NOT the plan's "count_wet > 0 planning footprint must cover
+    # 100% of native wet pixels" gate -- it never references the planning
+    # footprint at all. See planning_footprint_native_wet_pixel_superset_holds
+    # below for that proof.
     aoi_mask_arr = np.asarray(verified_footprints.aoi_mask)
     native_wet_mask = np.asarray(mask_cube.values) if hasattr(mask_cube, "values") else None
-    coverage_fraction = None
+    analysis_mask_valid_observation_fraction = None
     if native_wet_mask is not None:
         valid_mask = (native_wet_mask == 0) | (native_wet_mask == 1)
         aoi_true = np.count_nonzero(aoi_mask_arr)
         if aoi_true > 0:
             inside_covered = np.count_nonzero(valid_mask & aoi_mask_arr[np.newaxis, :, :])
-            coverage_fraction = float(inside_covered) / float(aoi_true * native_wet_mask.shape[0])
+            analysis_mask_valid_observation_fraction = (
+                float(inside_covered) / float(aoi_true * native_wet_mask.shape[0])
+            )
+
+    # The plan's ACTUAL gate: "count_wet > 0 planning footprint must cover
+    # 100% of native wet pixels" -- i.e. every pixel that is genuinely wet in
+    # the native DEA statistics grid must fall inside the coarse planning
+    # footprint once expanded back to native resolution:
+    # native_mask <= expand(coarse_mask). This is the exact superset property
+    # W1.5 already proves in hydroseason (build_wet_planning_footprint's own
+    # docstring and tests/test_io_dea_stats.py), reusing the identical
+    # expansion technique (coarse.repeat(factor, ...)) so this can't silently
+    # disagree with what W1.5 proved.
+    #
+    # When footprint is None (DEA stats were unavailable this run, fell open
+    # to full-AOI acquisition), there is no planning footprint to prove
+    # anything about -- report None with a reason rather than a fabricated
+    # vacuous pass.
+    superset_metrics = planning_footprint_native_wet_pixel_superset_metrics(footprint)
 
     return {
         "status": "ok",
@@ -279,7 +367,8 @@ def _run(payload: dict[str, Any]) -> dict[str, Any]:
         "metrics_digest": metrics_digest,
         "metrics_row_count": int(len(metrics_table)),
         "n_water_by_month": n_water_by_month,
-        "native_wet_mask_coverage_fraction": coverage_fraction,
+        "analysis_mask_valid_observation_fraction": analysis_mask_valid_observation_fraction,
+        **superset_metrics,
         "footprint_factor": factor,
         "footprint_used": footprint is not None,
         "cache_path": str(getattr(handle, "path", cache_dir)),

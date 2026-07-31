@@ -19,10 +19,17 @@ not belong in the fast offline suite.
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
+xr = pytest.importorskip("xarray")
+
 from hydrofragments.benchmarks import end_to_end_workflow as e2e
+from hydrofragments.benchmarks._e2e_worker import (
+    planning_footprint_native_wet_pixel_superset_metrics,
+)
 
 
 def _fake_case_result(*, candidate_id, mode, total_seconds, peak_rss_bytes, n_water=None):
@@ -41,7 +48,10 @@ def _fake_case_result(*, candidate_id, mode, total_seconds, peak_rss_bytes, n_wa
         "metrics_digest": "digest-" + candidate_id,
         "metrics_row_count": 42,
         "n_water_by_month": n_water,
-        "native_wet_mask_coverage_fraction": 1.0,
+        "analysis_mask_valid_observation_fraction": 0.903,
+        "planning_footprint_native_wet_pixel_superset_holds": True,
+        "planning_footprint_native_wet_pixel_coverage_fraction": 1.0,
+        "planning_footprint_superset_reason": None,
         "footprint_factor": 4,
         "footprint_used": True,
         "cache_path": "/fake/cache",
@@ -244,7 +254,7 @@ def test_cold_warm_equality_gates_use_digest_and_n_water_dict_equality(monkeypat
     # (both built from the same candidate_id-derived digest string).
     assert candidate["cold_warm_metrics_equal"] is True
     assert candidate["cold_warm_n_water_equal"] is True
-    assert candidate["native_wet_mask_coverage_is_100pct"] is True
+    assert candidate["planning_footprint_native_wet_pixel_superset_holds"] is True
 
 
 def test_a_failing_candidate_never_passes_all_measurable_gates(monkeypatch, tmp_path):
@@ -348,3 +358,109 @@ def test_recommendation_reports_no_passing_candidate_when_all_fail_a_gate(monkey
     }
     assert all(c["timing_rss_gates_pass"] is True for c in candidates.values())
     assert all(c["all_measurable_gates_pass"] is False for c in candidates.values())
+
+
+# ---------------------------------------------------------------------------
+# planning_footprint_native_wet_pixel_superset_metrics: proves the real
+# W1.5 superset gate (native_mask <= expand(coarse_mask)), not the old
+# mislabeled data-completeness fraction. Uses a synthetic
+# hydroseason._io_dea_stats.WetPlanningFootprint-shaped object (native_mask/
+# coarse_mask xarray DataArrays + factor), matching the "offline fake
+# hydroseason" convention used in tests/io/test_dea.py -- no live network
+# call needed for this unit-level proof.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _FakeFootprint:
+    """Minimal stand-in for hydroseason._io_dea_stats.WetPlanningFootprint.
+
+    Only exposes the three attributes
+    planning_footprint_native_wet_pixel_superset_metrics actually reads:
+    native_mask, coarse_mask (xarray DataArrays with .values), and factor.
+    """
+
+    native_mask: "xr.DataArray"
+    coarse_mask: "xr.DataArray"
+    factor: int
+
+
+def _make_footprint(native: np.ndarray, coarse: np.ndarray, factor: int) -> _FakeFootprint:
+    return _FakeFootprint(
+        native_mask=xr.DataArray(native.astype(bool)),
+        coarse_mask=xr.DataArray(coarse.astype(bool)),
+        factor=factor,
+    )
+
+
+def test_superset_metrics_returns_none_with_reason_when_footprint_is_none():
+    result = planning_footprint_native_wet_pixel_superset_metrics(None)
+
+    assert result["planning_footprint_native_wet_pixel_superset_holds"] is None
+    assert result["planning_footprint_native_wet_pixel_coverage_fraction"] is None
+    assert isinstance(result["planning_footprint_superset_reason"], str)
+    assert result["planning_footprint_superset_reason"]
+
+
+def test_superset_metrics_passes_when_native_wet_pixel_is_fully_covered():
+    """The defining correctness property (mirrors hydroseason's own
+    test_footprint_isolated_one_pixel_water_survives_round_trip): a single
+    isolated native wet pixel whose coarse cell is marked wet must expand
+    back to cover it exactly -- native <= expand(coarse) holds, factor=4."""
+    native = np.zeros((16, 16), dtype=bool)
+    native[3, 11] = True
+    coarse = np.zeros((4, 4), dtype=bool)
+    coarse[3 // 4, 11 // 4] = True  # the coarse cell containing (3, 11)
+    footprint = _make_footprint(native, coarse, factor=4)
+
+    result = planning_footprint_native_wet_pixel_superset_metrics(footprint)
+
+    assert result["planning_footprint_native_wet_pixel_superset_holds"] is True
+    assert result["planning_footprint_native_wet_pixel_coverage_fraction"] == pytest.approx(1.0)
+    assert result["planning_footprint_superset_reason"] is None
+
+
+def test_superset_metrics_fails_when_a_native_wet_pixel_falls_outside_expanded_coarse_mask():
+    """A native wet pixel whose coarse cell was NOT marked wet (simulating a
+    broken/incomplete planning footprint) must be caught: superset_holds is
+    False and coverage_fraction is strictly less than 1.0."""
+    native = np.zeros((16, 16), dtype=bool)
+    native[3, 11] = True  # coarse cell (0, 2) for factor=4
+    native[9, 1] = True  # coarse cell (2, 0) for factor=4 -- left uncovered below
+    coarse = np.zeros((4, 4), dtype=bool)
+    coarse[0, 2] = True  # covers (3, 11) only; (2, 0) deliberately left False
+    footprint = _make_footprint(native, coarse, factor=4)
+
+    result = planning_footprint_native_wet_pixel_superset_metrics(footprint)
+
+    assert result["planning_footprint_native_wet_pixel_superset_holds"] is False
+    assert result["planning_footprint_native_wet_pixel_coverage_fraction"] == pytest.approx(0.5)
+    assert result["planning_footprint_superset_reason"] is None
+
+
+def test_superset_metrics_vacuously_passes_with_no_native_wet_pixels():
+    native = np.zeros((8, 8), dtype=bool)
+    coarse = np.zeros((2, 2), dtype=bool)
+    footprint = _make_footprint(native, coarse, factor=4)
+
+    result = planning_footprint_native_wet_pixel_superset_metrics(footprint)
+
+    assert result["planning_footprint_native_wet_pixel_superset_holds"] is True
+    assert result["planning_footprint_native_wet_pixel_coverage_fraction"] == pytest.approx(1.0)
+
+
+def test_superset_metrics_matches_hydroseason_expansion_technique_on_partial_edge_block():
+    """Mirrors hydroseason's own
+    test_footprint_partial_edge_block_preserved_not_dropped: a native grid
+    whose size is not a multiple of factor must still round-trip correctly
+    via the identical coarse.repeat(...)[:H, :W] truncation."""
+    native = np.zeros((10, 10), dtype=bool)
+    native[9, 9] = True  # in the partial trailing 2x2 block for factor=4
+    coarse = np.zeros((3, 3), dtype=bool)
+    coarse[2, 2] = True  # trailing partial block marked wet
+    footprint = _make_footprint(native, coarse, factor=4)
+
+    result = planning_footprint_native_wet_pixel_superset_metrics(footprint)
+
+    assert result["planning_footprint_native_wet_pixel_superset_holds"] is True
+    assert result["planning_footprint_native_wet_pixel_coverage_fraction"] == pytest.approx(1.0)

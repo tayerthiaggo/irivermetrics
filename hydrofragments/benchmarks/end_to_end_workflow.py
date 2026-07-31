@@ -290,11 +290,11 @@ def _run_real_candidate(
 
     metrics_equal = None
     n_water_equal = None
-    coverage_100 = None
+    superset_holds = None
     if cold_ok and warm_ok:
         metrics_equal = cold.get("metrics_digest") == warm.get("metrics_digest")
         n_water_equal = cold.get("n_water_by_month") == warm.get("n_water_by_month")
-        coverage_100 = bool(cold.get("native_wet_mask_coverage_fraction") == 1.0)
+        superset_holds = cold.get("planning_footprint_native_wet_pixel_superset_holds")
 
     return {
         "candidate_id": candidate.candidate_id,
@@ -305,7 +305,7 @@ def _run_real_candidate(
         "warm": warm,
         "cold_warm_metrics_equal": metrics_equal,
         "cold_warm_n_water_equal": n_water_equal,
-        "native_wet_mask_coverage_is_100pct": coverage_100,
+        "planning_footprint_native_wet_pixel_superset_holds": superset_holds,
     }
 
 
@@ -412,11 +412,11 @@ def _summarize_fitzroy(candidate_records: list[dict[str, Any]]) -> dict[str, Any
                 warm_speedup_fraction = (cold_seconds - warm_seconds) / cold_seconds
 
         # Timing/RSS-only pass: decoupled from the exact-equality gates below
-        # so a real, honest miss on native_wet_mask_coverage_is_100pct (a
-        # genuine possibility on real wet-season Fitzroy data -- cloud cover
-        # legitimately leaves some pixel-months unobserved, this is not a
-        # code defect, see the report's notes) doesn't also hide otherwise-
-        # useful timing/RSS signal from this report.
+        # so a real, honest miss on planning_footprint_native_wet_pixel_superset_holds
+        # (which would mean the W1.5 superset proof itself failed for this
+        # candidate's footprint -- a genuinely surprising, worth-separating
+        # signal) doesn't also hide otherwise-useful timing/RSS signal from
+        # this report.
         timing_rss_gates_pass = bool(
             cold_ok
             and warm_ok
@@ -427,7 +427,7 @@ def _summarize_fitzroy(candidate_records: list[dict[str, Any]]) -> dict[str, Any
             timing_rss_gates_pass
             and record["cold_warm_metrics_equal"]
             and record["cold_warm_n_water_equal"]
-            and record["native_wet_mask_coverage_is_100pct"]
+            and record["planning_footprint_native_wet_pixel_superset_holds"]
         )
 
         gated_candidates.append(
@@ -457,7 +457,12 @@ def _summarize_fitzroy(candidate_records: list[dict[str, Any]]) -> dict[str, Any
                 "see report notes"
             ),
             "n_water_equality_every_month": "measured per-candidate as cold_warm_n_water_equal",
-            "native_wet_mask_coverage_exactly_100pct": "measured per-candidate",
+            "count_wet_planning_footprint_covers_100pct_of_native_wet_pixels": (
+                "measured per-candidate as "
+                "planning_footprint_native_wet_pixel_superset_holds (native_mask <= "
+                "expand(coarse_mask), the same superset property W1.5 proves in "
+                "hydroseason)"
+            ),
             "cold_gilbert_at_least_30pct_faster_than_full_aoi": None,
             "warm_rerun_at_least_80pct_faster_than_cold_full_aoi": (
                 "Fitzroy's own warm-vs-cold speedup is reported per candidate "
@@ -509,9 +514,10 @@ def _recommendation(fitzroy_result: dict[str, Any]) -> dict[str, Any]:
             ),
         }
 
-    # No candidate passed every gate (e.g. native_wet_mask_coverage_is_100pct
-    # legitimately misses on real wet-season data with genuine cloud cover --
-    # not a code defect). Still surface which candidate would have won on
+    # No candidate passed every gate (e.g.
+    # planning_footprint_native_wet_pixel_superset_holds could be False/None
+    # for a genuinely surprising reason, or footprint was None this run --
+    # see report notes). Still surface which candidate would have won on
     # timing/RSS alone, so this report stays informative rather than a flat
     # "nothing passed" with no further signal.
     timing_rss_passing = [
@@ -584,8 +590,9 @@ def _markdown_report(payload: dict[str, Any]) -> str:
             [
                 "| Candidate | factor | workers | cold total s | warm total s | "
                 "warm speedup | regression vs serial | peak RSS (cold) | RSS vs serial | "
-                "coverage (cold) | timing/RSS gates | all gates |",
-                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | :---: |",
+                "native-wet superset holds (cold) | superset coverage (cold) | "
+                "valid obs. fraction (cold) | timing/RSS gates | all gates |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: | ---: | :---: | :---: |",
             ]
         )
         for c in fitzroy["candidates"]:
@@ -599,7 +606,12 @@ def _markdown_report(payload: dict[str, Any]) -> str:
                 if c["warm"].get("status") == "ok"
                 else None
             )
-            coverage = c["cold"].get("native_wet_mask_coverage_fraction")
+            superset_holds = c["cold"].get("planning_footprint_native_wet_pixel_superset_holds")
+            superset_coverage = c["cold"].get("planning_footprint_native_wet_pixel_coverage_fraction")
+            valid_obs_fraction = c["cold"].get("analysis_mask_valid_observation_fraction")
+            superset_holds_str = (
+                "n/a" if superset_holds is None else ("yes" if superset_holds else "no")
+            )
             lines.append(
                 f"| {c['candidate_id']} | {c['factor']} | {c['workers']} | "
                 f"{_fmt_seconds(cold_total)} | {_fmt_seconds(warm_total)} | "
@@ -607,7 +619,9 @@ def _markdown_report(payload: dict[str, Any]) -> str:
                 f"{_fmt_pct(c['regression_fraction_vs_serial'])} | "
                 f"{_fmt_bytes(c['cold'].get('peak_rss_bytes'))} | "
                 f"{_fmt_pct(c['peak_rss_fraction_of_serial'])} | "
-                f"{_fmt_pct(coverage)} | "
+                f"{superset_holds_str} | "
+                f"{_fmt_pct(superset_coverage)} | "
+                f"{_fmt_pct(valid_obs_fraction)} | "
                 f"{'yes' if c.get('timing_rss_gates_pass') else 'no'} | "
                 f"{'yes' if c['all_measurable_gates_pass'] else 'no'} |"
             )
