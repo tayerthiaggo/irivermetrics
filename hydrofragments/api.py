@@ -893,7 +893,7 @@ def analyze(
     catchment = catchment_id or aoi_id
     crs = cube.crs or config.spatial.target_crs
     section_area_km2 = (
-        float(cube.water.isel(time=0).size) * pixel_size_m**2 / 1_000_000.0
+        float(np.count_nonzero(cube.aoi_mask.values)) * pixel_size_m**2 / 1_000_000.0
     )
     monthly = xr.Dataset(
         {

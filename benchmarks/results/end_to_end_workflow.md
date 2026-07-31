@@ -3,18 +3,18 @@
 Controller-approved reduced scope: only Fitzroy has a local AOI/drainage fixture in this worktree. Gilbert and the large-catchment required cases are explicitly not run -- see their 'skipped' entries below, not omitted from this schema.
 
 - Schema: `1.0.0`
-- Created: `2026-07-31T03:07:00.075301+00:00`
+- Created: `2026-07-31T06:55:37.933392+00:00`
 
 ## Fitzroy (compact) -- real, live-network run
 
 | Candidate | factor | workers | cold total s | warm total s | warm speedup | regression vs serial | peak RSS (cold) | RSS vs serial | native-wet superset holds (cold) | superset coverage (cold) | valid obs. fraction (cold) | timing/RSS gates | all gates |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: | ---: | :---: | :---: |
-| factor4_workers1 | 4 | 1 | 49.058 | 20.193 | 58.8% | 0.0% | 765,169,664 | 100.0% | yes | 100.0% | 90.3% | yes | no |
-| factor4_workers2 | 4 | 2 | 48.055 | 16.668 | 65.3% | -2.0% | 776,990,720 | 101.5% | yes | 100.0% | 90.3% | yes | no |
-| factor4_workers4 | 4 | 4 | 48.468 | 18.393 | 62.1% | -1.2% | 724,590,592 | 94.7% | yes | 100.0% | 90.3% | yes | no |
-| factor3_workers1 | 3 | 1 | 45.806 | 16.386 | 64.2% | -6.6% | 723,955,712 | 94.6% | yes | 100.0% | 90.3% | yes | no |
-| factor3_workers2 | 3 | 2 | 43.127 | 16.291 | 62.2% | -12.1% | 671,944,704 | 87.8% | yes | 100.0% | 90.3% | yes | no |
-| factor3_workers4 | 3 | 4 | 45.877 | 15.915 | 65.3% | -6.5% | 726,306,816 | 94.9% | yes | 100.0% | 90.3% | yes | no |
+| factor4_workers1 | 4 | 1 | 43.521 | 16.359 | 62.4% | 0.0% | 778,051,584 | 100.0% | yes | 100.0% | 90.3% | yes | no |
+| factor4_workers2 | 4 | 2 | 42.985 | 15.048 | 65.0% | -1.2% | 705,294,336 | 90.6% | yes | 100.0% | 90.3% | yes | no |
+| factor4_workers4 | 4 | 4 | 43.765 | 15.890 | 63.7% | 0.6% | 707,088,384 | 90.9% | yes | 100.0% | 90.3% | yes | no |
+| factor3_workers1 | 3 | 1 | 46.128 | 16.520 | 64.2% | 6.0% | 766,173,184 | 98.5% | yes | 100.0% | 90.3% | yes | no |
+| factor3_workers2 | 3 | 2 | 43.655 | 16.436 | 62.4% | 0.3% | 784,420,864 | 100.8% | yes | 100.0% | 90.3% | yes | no |
+| factor3_workers4 | 3 | 4 | 41.935 | 15.567 | 62.9% | -3.6% | 787,730,432 | 101.2% | yes | 100.0% | 90.3% | yes | no |
 
 Promotion gates applied (Fitzroy-only subset -- see module docstring):
 - `exact_metrics_table_and_per_metric_value_equality`: measured per-candidate as cold_warm_metrics_equal (cold vs warm rerun of the SAME candidate); cross-candidate full-AOI-vs-pruned equality was not separately run this session -- see report notes
@@ -29,7 +29,7 @@ Promotion gates applied (Fitzroy-only subset -- see module docstring):
 
 - **verdict**: no_passing_candidate
 - **reason**: No candidate passed every measurable Fitzroy gate. Default settings are left unchanged.
-- **timing_rss_only_note**: candidate=factor3_workers2 was fastest among candidates passing ONLY the timing/RSS gates (regression <=10%, peak RSS <=125%) -- informational, since it did NOT also pass the exact-equality/coverage gates required for all_measurable_gates_pass.
+- **timing_rss_only_note**: candidate=factor3_workers4 was fastest among candidates passing ONLY the timing/RSS gates (regression <=10%, peak RSS <=125%) -- informational, since it did NOT also pass the exact-equality/coverage gates required for all_measurable_gates_pass.
 
 ## Deferred (not run -- no local fixture)
 

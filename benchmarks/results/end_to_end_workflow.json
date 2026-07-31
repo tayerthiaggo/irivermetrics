@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "baseline": "end_to_end_workflow",
-  "created_at": "2026-07-31T03:07:00.075301+00:00",
+  "created_at": "2026-07-31T06:55:37.933392+00:00",
   "scope_note": "Controller-approved reduced scope: only Fitzroy has a local AOI/drainage fixture in this worktree. Gilbert and the large-catchment required cases are explicitly not run -- see their 'skipped' entries below, not omitted from this schema.",
   "environment": {
     "python": "3.14.5",
@@ -24,13 +24,13 @@
             "mode": "cold",
             "candidate_id": "factor4_workers1",
             "timings_seconds": {
-              "dea_planning": 4.311554200015962,
-              "wofs_query_and_acquisition": 40.76215160009451,
-              "metric_processing": 3.8418890999164432,
-              "output_write": 0.14228370017372072,
-              "total": 49.05787860020064
+              "dea_planning": 4.162180199986324,
+              "wofs_query_and_acquisition": 35.66485649999231,
+              "metric_processing": 3.5564305000007153,
+              "output_write": 0.13794839987531304,
+              "total": 43.52141559985466
             },
-            "metrics_digest": "678489874260bbffdb44bb35eaa69639459ccbdbd94989d59ff3a098941f2c3d",
+            "metrics_digest": "862f2e1fe5da542f45e4899f0b756ff6ae8629f42603b569c6e1f2537d9daf1c",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -53,21 +53,21 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers1\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 54.969893499976024,
-            "peak_rss_bytes": 765169664
+            "subprocess_wall_seconds": 48.23009420000017,
+            "peak_rss_bytes": 778051584
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor4_workers1",
             "timings_seconds": {
-              "dea_planning": 5.445925900014117,
-              "wofs_query_and_acquisition": 9.892645100131631,
-              "metric_processing": 4.697760500013828,
-              "output_write": 0.15617089997977018,
-              "total": 20.192502400139347
+              "dea_planning": 4.117864500032738,
+              "wofs_query_and_acquisition": 8.04027789994143,
+              "metric_processing": 4.0683637000620365,
+              "output_write": 0.1324336000252515,
+              "total": 16.358939700061455
             },
-            "metrics_digest": "a078898875d055239ebabc4c31465482fbba1cc0c369367228a2cbbecec4a3af",
+            "metrics_digest": "69506143c86e68752dfc3d3fb34e796ca48f3c9d07edbebb648c4a7c789ef181",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -90,8 +90,8 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers1\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 25.502731600077823,
-            "peak_rss_bytes": 595718144
+            "subprocess_wall_seconds": 21.07450109999627,
+            "peak_rss_bytes": 583561216
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
@@ -100,7 +100,7 @@
           "regression_within_10pct_gate": true,
           "peak_rss_fraction_of_serial": 1.0,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.5883943012558891,
+          "warm_speedup_fraction_vs_own_cold": 0.6241174724078579,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         },
@@ -114,13 +114,13 @@
             "mode": "cold",
             "candidate_id": "factor4_workers2",
             "timings_seconds": {
-              "dea_planning": 4.516626900061965,
-              "wofs_query_and_acquisition": 39.15202550007962,
-              "metric_processing": 4.214603399857879,
-              "output_write": 0.17200680007226765,
-              "total": 48.05526260007173
+              "dea_planning": 4.059018099913374,
+              "wofs_query_and_acquisition": 35.081337299896404,
+              "metric_processing": 3.684343999950215,
+              "output_write": 0.16029549995437264,
+              "total": 42.984994899714366
             },
-            "metrics_digest": "2eba7e4377c8883dd79f94f639f920293b1be27267b0ad42eb63e9c171ac91af",
+            "metrics_digest": "9d2d6b9ab4c0bda8c15c1ac7e9bdf4249f1feed9c5feed05228c6a69301d55f3",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -143,21 +143,21 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers2\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 54.1904457998462,
-            "peak_rss_bytes": 776990720
+            "subprocess_wall_seconds": 47.7589042999316,
+            "peak_rss_bytes": 705294336
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor4_workers2",
             "timings_seconds": {
-              "dea_planning": 3.9925193001981825,
-              "wofs_query_and_acquisition": 8.062807600013912,
-              "metric_processing": 4.424074100097641,
-              "output_write": 0.18845169991254807,
-              "total": 16.667852700222284
+              "dea_planning": 3.9639711000490934,
+              "wofs_query_and_acquisition": 7.157268499955535,
+              "metric_processing": 3.7823538000229746,
+              "output_write": 0.14404379995539784,
+              "total": 15.047637199983
             },
-            "metrics_digest": "aefc7458f421b1ac35176196addbd13bfefc898d0dc19af8220c79a78d940483",
+            "metrics_digest": "a6d4ffe466878d12866a9f28f27e11947dfffe8fb8dcfb7ed56935f3aabbfa30",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -180,17 +180,17 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers2\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 22.109748099930584,
-            "peak_rss_bytes": 615452672
+            "subprocess_wall_seconds": 19.805161600001156,
+            "peak_rss_bytes": 526041088
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
           "planning_footprint_native_wet_pixel_superset_holds": true,
-          "regression_fraction_vs_serial": -0.02043741043716492,
+          "regression_fraction_vs_serial": -0.012325442376972884,
           "regression_within_10pct_gate": true,
-          "peak_rss_fraction_of_serial": 1.0154489344731785,
+          "peak_rss_fraction_of_serial": 0.906487886540952,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.6531523958377577,
+          "warm_speedup_fraction_vs_own_cold": 0.649932790847371,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         },
@@ -204,13 +204,13 @@
             "mode": "cold",
             "candidate_id": "factor4_workers4",
             "timings_seconds": {
-              "dea_planning": 3.52027009986341,
-              "wofs_query_and_acquisition": 40.35090809990652,
-              "metric_processing": 4.42864130018279,
-              "output_write": 0.16867569996975362,
-              "total": 48.46849519992247
+              "dea_planning": 3.9907709998078644,
+              "wofs_query_and_acquisition": 35.75240179989487,
+              "metric_processing": 3.8870584999676794,
+              "output_write": 0.13500430015847087,
+              "total": 43.765235599828884
             },
-            "metrics_digest": "fa964e82bd7b24b7fb468cb4569682de4f6f7dbe77a4d63ff8510ea232525e8e",
+            "metrics_digest": "b683a9b1328546d65f86eb41fece33865e067ff8ff70fb1ff454b92b80b9f35a",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -233,21 +233,21 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers4\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 54.045724499970675,
-            "peak_rss_bytes": 724590592
+            "subprocess_wall_seconds": 48.87833820004016,
+            "peak_rss_bytes": 707088384
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor4_workers4",
             "timings_seconds": {
-              "dea_planning": 4.659399199998006,
-              "wofs_query_and_acquisition": 9.054038200061768,
-              "metric_processing": 4.500477900030091,
-              "output_write": 0.17936619999818504,
-              "total": 18.39328150008805
+              "dea_planning": 4.127539200009778,
+              "wofs_query_and_acquisition": 7.627524799900129,
+              "metric_processing": 4.000820000190288,
+              "output_write": 0.13400889979675412,
+              "total": 15.88989289989695
             },
-            "metrics_digest": "d80857d6ff2206093a9a3f9e4feb4a34c9676034ec9af92fc593047a8a81ae4f",
+            "metrics_digest": "57952d1a9c3dacf22dcf22ca4b56c7b3441aca8cfdc01b95ff6eff4d27d92eb7",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -270,17 +270,17 @@
             "footprint_factor": 4,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor4_workers4\\wofs_cache\\48b233b65c52187ec24b5d601eb2d6fdc6cfcc163940e077eb56d3041d22b4bb.zarr",
-            "subprocess_wall_seconds": 24.177833299851045,
-            "peak_rss_bytes": 645136384
+            "subprocess_wall_seconds": 20.81537349987775,
+            "peak_rss_bytes": 638955520
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
           "planning_footprint_native_wet_pixel_superset_holds": true,
-          "regression_fraction_vs_serial": -0.012014041721644185,
+          "regression_fraction_vs_serial": 0.005602299387868147,
           "regression_within_10pct_gate": true,
-          "peak_rss_fraction_of_serial": 0.9469672232065907,
+          "peak_rss_fraction_of_serial": 0.9087937079503459,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.6205105723992547,
+          "warm_speedup_fraction_vs_own_cold": 0.6369288847159987,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         },
@@ -294,13 +294,13 @@
             "mode": "cold",
             "candidate_id": "factor3_workers1",
             "timings_seconds": {
-              "dea_planning": 4.260223399847746,
-              "wofs_query_and_acquisition": 37.43249469995499,
-              "metric_processing": 3.9523825999349356,
-              "output_write": 0.1609806998167187,
-              "total": 45.80608139955439
+              "dea_planning": 4.283512399997562,
+              "wofs_query_and_acquisition": 38.17060209996998,
+              "metric_processing": 3.541440899949521,
+              "output_write": 0.13238400011323392,
+              "total": 46.1279394000303
             },
-            "metrics_digest": "66492ba7ab0be8cf1fa2bb7b5054829b6a21c2d3de5acac542985c9a784f2879",
+            "metrics_digest": "b683a9b1328546d65f86eb41fece33865e067ff8ff70fb1ff454b92b80b9f35a",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -323,21 +323,21 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers1\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 51.24016589997336,
-            "peak_rss_bytes": 723955712
+            "subprocess_wall_seconds": 51.027459299890324,
+            "peak_rss_bytes": 766173184
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor3_workers1",
             "timings_seconds": {
-              "dea_planning": 5.174489099998027,
-              "wofs_query_and_acquisition": 7.211215800140053,
-              "metric_processing": 3.866986299864948,
-              "output_write": 0.13355670007877052,
-              "total": 16.3862479000818
+              "dea_planning": 4.4685329999774694,
+              "wofs_query_and_acquisition": 7.809168699895963,
+              "metric_processing": 4.088145900052041,
+              "output_write": 0.1540290000848472,
+              "total": 16.51987660001032
             },
-            "metrics_digest": "e3729a3ad3ff2019bf3efa5b58056af42a8328bafaa2f3033edb47d7b66d1a9b",
+            "metrics_digest": "e7892d21ed6282578a0e2ffd31bb3dd4e81e99bd559e81cc987391562edb6d74",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -360,17 +360,17 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers1\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 21.5682312999852,
-            "peak_rss_bytes": 582955008
+            "subprocess_wall_seconds": 21.5429657001514,
+            "peak_rss_bytes": 525484032
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
           "planning_footprint_native_wet_pixel_superset_holds": true,
-          "regression_fraction_vs_serial": -0.06628491270784286,
+          "regression_fraction_vs_serial": 0.05989060245973114,
           "regression_within_10pct_gate": true,
-          "peak_rss_fraction_of_serial": 0.9461374987286479,
+          "peak_rss_fraction_of_serial": 0.9847331459195384,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.642269161661115,
+          "warm_speedup_fraction_vs_own_cold": 0.6418683163636079,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         },
@@ -384,13 +384,13 @@
             "mode": "cold",
             "candidate_id": "factor3_workers2",
             "timings_seconds": {
-              "dea_planning": 3.9495399999432266,
-              "wofs_query_and_acquisition": 35.690260799834505,
-              "metric_processing": 3.404413199983537,
-              "output_write": 0.08253000001423061,
-              "total": 43.1267439997755
+              "dea_planning": 4.1571503998711705,
+              "wofs_query_and_acquisition": 35.52116630016826,
+              "metric_processing": 3.825749599840492,
+              "output_write": 0.15095410007052124,
+              "total": 43.655020399950445
             },
-            "metrics_digest": "f75cc63cf18a4af829b01d8c286937920e95f65874820994fbd265f8734c8296",
+            "metrics_digest": "12955b119df1ae4a40e50cff85da527631d3deb25de1656e1a71b3d940c18910",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -413,21 +413,21 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers2\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 47.698753899894655,
-            "peak_rss_bytes": 671944704
+            "subprocess_wall_seconds": 48.79531479999423,
+            "peak_rss_bytes": 784420864
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor3_workers2",
             "timings_seconds": {
-              "dea_planning": 4.439147399971262,
-              "wofs_query_and_acquisition": 7.9861659000162035,
-              "metric_processing": 3.676317800069228,
-              "output_write": 0.18902610009536147,
-              "total": 16.290657200152054
+              "dea_planning": 4.050157100195065,
+              "wofs_query_and_acquisition": 8.125676300143823,
+              "metric_processing": 4.104865399887785,
+              "output_write": 0.15491209994070232,
+              "total": 16.435610900167376
             },
-            "metrics_digest": "2eba7e4377c8883dd79f94f639f920293b1be27267b0ad42eb63e9c171ac91af",
+            "metrics_digest": "6892f8ed85bd3e4429cb27ea6727fb3406de4c430dc73bb5901d309a82ead61c",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -450,17 +450,17 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers2\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 21.601264600176364,
-            "peak_rss_bytes": 615936000
+            "subprocess_wall_seconds": 21.092753400094807,
+            "peak_rss_bytes": 603439104
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
           "planning_footprint_native_wet_pixel_superset_holds": true,
-          "regression_fraction_vs_serial": -0.12090075579421573,
+          "regression_fraction_vs_serial": 0.0030698633822983427,
           "regression_within_10pct_gate": true,
-          "peak_rss_fraction_of_serial": 0.8781643282711218,
+          "peak_rss_fraction_of_serial": 1.0081861924465922,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.6222609061273706,
+          "warm_speedup_fraction_vs_own_cold": 0.6235115514873054,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         },
@@ -474,13 +474,13 @@
             "mode": "cold",
             "candidate_id": "factor3_workers4",
             "timings_seconds": {
-              "dea_planning": 4.597050999989733,
-              "wofs_query_and_acquisition": 37.71408770000562,
-              "metric_processing": 3.4338027997873724,
-              "output_write": 0.13192200008779764,
-              "total": 45.876863499870524
+              "dea_planning": 3.490464200032875,
+              "wofs_query_and_acquisition": 34.56620760005899,
+              "metric_processing": 3.7403563000261784,
+              "output_write": 0.13832239992916584,
+              "total": 41.93535050004721
             },
-            "metrics_digest": "dec9b38f0ebdfb45bb2ef251156bcd1465bbff6a906cbb2b2da0b2e040a2d170",
+            "metrics_digest": "7c91e4ac59059e095f2cb3b4135a74141027f146ac870adfefc64a271e780134",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -503,21 +503,21 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers4\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 51.45815089996904,
-            "peak_rss_bytes": 726306816
+            "subprocess_wall_seconds": 47.337792499922216,
+            "peak_rss_bytes": 787730432
           },
           "warm": {
             "status": "ok",
             "mode": "warm",
             "candidate_id": "factor3_workers4",
             "timings_seconds": {
-              "dea_planning": 4.224774499889463,
-              "wofs_query_and_acquisition": 7.822389299981296,
-              "metric_processing": 3.733273900114,
-              "output_write": 0.13481259997934103,
-              "total": 15.9152502999641
+              "dea_planning": 4.380624599987641,
+              "wofs_query_and_acquisition": 7.044622899964452,
+              "metric_processing": 3.979194700019434,
+              "output_write": 0.16280180006287992,
+              "total": 15.567244000034407
             },
-            "metrics_digest": "0de8bfc892dfe337ffb9fb2403a192b1633a9e95d0b6b641c24c3e13a04de57d",
+            "metrics_digest": "c49c62c9e7cf0341e16b4703086e65e865673b51dbaf0a4d6113fa26b71ae99d",
             "metrics_row_count": 148,
             "n_water_by_month": {
               "2020-01-01 00:00:00": 3438,
@@ -540,17 +540,17 @@
             "footprint_factor": 3,
             "footprint_used": true,
             "cache_path": "benchmarks\\results\\end_to_end_workflow_workdir\\factor3_workers4\\wofs_cache\\14bf94a7a4b135bad06007d8dcd080915dc4360c81a668f0bb37aed01514766b.zarr",
-            "subprocess_wall_seconds": 20.393354200059548,
-            "peak_rss_bytes": 574291968
+            "subprocess_wall_seconds": 20.526837999932468,
+            "peak_rss_bytes": 664633344
           },
           "cold_warm_metrics_equal": false,
           "cold_warm_n_water_equal": true,
           "planning_footprint_native_wet_pixel_superset_holds": true,
-          "regression_fraction_vs_serial": -0.06484208431134861,
+          "regression_fraction_vs_serial": -0.036443325152611825,
           "regression_within_10pct_gate": true,
-          "peak_rss_fraction_of_serial": 0.94921015582761,
+          "peak_rss_fraction_of_serial": 1.0124398538593555,
           "peak_rss_within_125pct_gate": true,
-          "warm_speedup_fraction_vs_own_cold": 0.6530876549568604,
+          "warm_speedup_fraction_vs_own_cold": 0.6287799239923634,
           "timing_rss_gates_pass": true,
           "all_measurable_gates_pass": false
         }
@@ -593,6 +593,6 @@
   "recommendation": {
     "verdict": "no_passing_candidate",
     "reason": "No candidate passed every measurable Fitzroy gate. Default settings are left unchanged.",
-    "timing_rss_only_note": "candidate=factor3_workers2 was fastest among candidates passing ONLY the timing/RSS gates (regression <=10%, peak RSS <=125%) -- informational, since it did NOT also pass the exact-equality/coverage gates required for all_measurable_gates_pass."
+    "timing_rss_only_note": "candidate=factor3_workers4 was fastest among candidates passing ONLY the timing/RSS gates (regression <=10%, peak RSS <=125%) -- informational, since it did NOT also pass the exact-equality/coverage gates required for all_measurable_gates_pass."
   }
 }

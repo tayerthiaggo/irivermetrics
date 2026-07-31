@@ -443,8 +443,14 @@ def _month_row(payload: _MonthPayload) -> dict[str, object]:
     valid_fraction = None
     n_valid_pixels = None
     if coverage_valid_obs_month is not None:
-        valid_fraction = float(coverage_valid_obs_month.mean())
-        n_valid_pixels = int(coverage_valid_obs_month.sum())
+        analysis_mask_np = payload.analysis_mask_np
+        coverage_selection = (
+            coverage_valid_obs_month
+            if analysis_mask_np is None
+            else coverage_valid_obs_month[analysis_mask_np]
+        )
+        valid_fraction = float(coverage_selection.mean())
+        n_valid_pixels = int(coverage_selection.sum())
         low_coverage = valid_fraction < payload.min_valid_fraction
 
     return {
