@@ -53,12 +53,12 @@ def test_manifest_records_hydroseason_version_when_supplied():
     manifest = build_run_manifest(
         _config(),
         **_base_arguments(),
-        dependency_versions={"hydroseason": "0.1.1"},
+        dependency_versions={"hydroseason": hydroseason.__version__},
     )
     assert manifest["versions"] == {
         "package_version": "1.2.0",
         "git_sha": "abc123",
-        "hydroseason": "0.1.1",
+        "hydroseason": hydroseason.__version__,
     }
 
 
