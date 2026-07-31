@@ -347,6 +347,43 @@ def test_analyze_from_dea_records_phase_timings(monkeypatch, tmp_path):
     ) - 1e-6
 
 
+def test_analyze_from_dea_returned_result_manifest_is_dea_enriched(monkeypatch, tmp_path):
+    """``result.manifest`` in memory must match the DEA-enriched manifest
+    write_run_metadata() writes to disk -- not analyze()'s own
+    pre-enrichment manifest.
+
+    A caller who reads ``result.manifest`` directly (rather than reopening
+    ``run_manifest.json`` from disk, as the two tests above both do) must
+    see the same ``timings_seconds``/``dea_provenance`` this module's own
+    docstring promises ("Phase timings recorded in the run manifest's
+    timings_seconds"). Regression test for a real bug: analyze_from_dea()
+    called write_run_metadata() to write the enriched manifest, then
+    returned analyze()'s original ``result`` object unchanged, so
+    ``result.manifest`` in memory silently lacked both fields even though
+    the on-disk file was correct.
+    """
+    import json
+
+    recorder = _Recorder()
+    _install_happy_path(monkeypatch, recorder, tmp_path)
+
+    result = analyze_from_dea(
+        _aoi(),
+        "2020-01-01",
+        "2020-04-30",
+        aoi_id="test_aoi",
+        cache_dir=tmp_path / "wofs_cache",
+    )
+
+    assert "timings_seconds" in result.manifest
+    assert "dea_planning" in result.manifest["timings_seconds"]
+    assert "dea_provenance" in result.manifest
+    assert result.manifest["dea_provenance"]["product"] == "ga_ls_wo_fq_myear_3"
+
+    on_disk = json.loads((Path(result.output_dir) / "run_manifest.json").read_text())
+    assert result.manifest == on_disk
+
+
 def test_analyze_from_dea_without_drainage_skips_channel_metrics(monkeypatch, tmp_path):
     recorder = _Recorder()
     _install_happy_path(monkeypatch, recorder, tmp_path)

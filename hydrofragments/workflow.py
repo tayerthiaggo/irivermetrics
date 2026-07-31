@@ -30,6 +30,7 @@ Phase timings recorded in the run manifest's ``timings_seconds``:
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +47,11 @@ from hydrofragments.io.cache_footprints import open_verified_cache_footprints
 from hydrofragments.io.dea import open_wo_statistics_for_zoning
 from hydrofragments.metrics import ApsecRecord
 from hydrofragments.models import AnalysisInputs, HydroResult
-from hydrofragments.output.manifest import build_dea_provenance, write_run_metadata
+from hydrofragments.output.manifest import (
+    build_dea_provenance,
+    build_run_manifest,
+    write_run_metadata,
+)
 from hydrofragments.output.tables import write_metric_coverage, write_output_tables
 from hydrofragments.spatial import (
     SpatialContext,
@@ -395,22 +400,34 @@ def analyze_from_dea(
     timings["output_write"] = time.perf_counter() - t0
     timings["total"] = sum(timings.values())
 
-    write_run_metadata(
-        result.output_dir,
-        resolved_config,
-        run_id=result.run_id,
-        package_version=result.manifest.get("package_version", ""),
-        git_sha="unknown",
-        input_fingerprint={
+    manifest_arguments: dict[str, Any] = {
+        "run_id": result.run_id,
+        "package_version": result.manifest.get("package_version", ""),
+        "git_sha": "unknown",
+        "input_fingerprint": {
             "source": cube.source,
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
         },
-        planned_backend="cpu",
-        actual_backend_by_stage={"analyze": "cpu"},
-        timings_seconds=timings,
-        dea_provenance=dea_provenance,
-    )
+        "planned_backend": "cpu",
+        "actual_backend_by_stage": {"analyze": "cpu"},
+        "timings_seconds": timings,
+        "dea_provenance": dea_provenance,
+    }
+    write_run_metadata(result.output_dir, resolved_config, **manifest_arguments)
+
+    # write_run_metadata() writes the DEA-enriched manifest (timings_seconds,
+    # dea_provenance) to disk but returns only file paths, not the manifest
+    # dict itself -- build the identical dict here (same config, same
+    # arguments) so the HydroResult this function returns to the caller
+    # carries the SAME enriched manifest that was just written, not
+    # analyze()'s own pre-enrichment manifest. Without this, a caller reading
+    # result.manifest in-memory (as opposed to reopening run_manifest.json
+    # from disk) would silently see neither timings_seconds nor
+    # dea_provenance, contradicting this module's own docstring contract
+    # ("Phase timings recorded in the run manifest's timings_seconds").
+    enriched_manifest = build_run_manifest(resolved_config, **manifest_arguments)
+    result = replace(result, manifest=enriched_manifest)
 
     return result
 
