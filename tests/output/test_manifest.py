@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
+import hydroseason
 import numpy as np
 import pytest
 import xarray as xr
@@ -86,7 +87,7 @@ def test_build_manifest_contains_complete_reproducibility_context() -> None:
     assert manifest["versions"] == {
         "package_version": "1.2.0",
         "git_sha": "abc123",
-        "hydroseason": "0.1.1",
+        "hydroseason": hydroseason.__version__,
     }
     assert manifest["backend"] == {
         "planned": "cpu",
