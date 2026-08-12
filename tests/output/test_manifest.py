@@ -69,13 +69,16 @@ def manifest_arguments() -> dict[str, object]:
 
 
 def test_build_manifest_contains_complete_reproducibility_context() -> None:
-    from hydrofragments.output.manifest import build_run_manifest
+    from hydrofragments.output.manifest import (
+        LEGACY_MANIFEST_SCHEMA_VERSION,
+        build_run_manifest,
+    )
     from hydrofragments.schema import SCHEMA_VERSION
 
     resolved = config()
     manifest = build_run_manifest(resolved, **manifest_arguments())
 
-    assert manifest["manifest_schema_version"] == "1.0.0"
+    assert manifest["manifest_schema_version"] == LEGACY_MANIFEST_SCHEMA_VERSION
     assert manifest["output_schema_version"] == SCHEMA_VERSION
     assert manifest["run_id"] == "run-001"
     assert manifest["created_at"] == "2026-07-15T01:02:03Z"
@@ -381,3 +384,52 @@ def test_manifest_without_dea_provenance_round_trips_with_no_section(
     manifest = validate_result_bundle(tmp_path)
 
     assert "dea_provenance" not in manifest
+
+
+def test_legacy_manifest_1_0_0_validates_without_inventory(tmp_path: Path) -> None:
+    from hydrofragments.output.manifest import (
+        LEGACY_MANIFEST_SCHEMA_VERSION,
+        validate_result_bundle,
+        write_run_metadata,
+    )
+
+    (tmp_path / "metrics").mkdir()
+    arguments = manifest_arguments()
+    arguments["artifacts"] = {"metrics": "metrics"}
+    write_run_metadata(tmp_path, config(), **arguments)
+
+    manifest = validate_result_bundle(tmp_path)
+
+    assert manifest["manifest_schema_version"] == LEGACY_MANIFEST_SCHEMA_VERSION
+    assert "artifact_inventory" not in manifest
+
+
+def test_manifest_1_1_0_includes_artifact_inventory(tmp_path: Path) -> None:
+    from hydrofragments.output.bundle import ArtifactRegistration, open_bundle_transaction
+    from hydrofragments.output.manifest import MANIFEST_SCHEMA_VERSION
+
+    output_dir = tmp_path / "bundle"
+    resolved = config()
+    transaction = open_bundle_transaction(output_dir, run_id="run-001", config=resolved)
+    (transaction.root / "metrics").mkdir()
+    transaction.write_config()
+    transaction.register_artifact(
+        ArtifactRegistration(name="metrics", relative_path="metrics")
+    )
+    transaction.finalize(
+        package_version="0.1.0",
+        git_sha="abc123",
+        input_fingerprint={"digest": "sha256:input"},
+        planned_backend="cpu",
+        actual_backend_by_stage={"monthly": "cpu"},
+    )
+
+    manifest = __import__(
+        "hydrofragments.output.manifest", fromlist=["validate_result_bundle"]
+    ).validate_result_bundle(output_dir)
+
+    assert manifest["manifest_schema_version"] == MANIFEST_SCHEMA_VERSION
+    entry = manifest["artifact_inventory"][0]
+    assert {"relative_path", "media_type", "byte_size", "sha256"} <= set(entry)
+    assert entry["scientific_config_hash"] == resolved.config_hash
+    assert entry["execution_config_hash"] == resolved.execution_hash

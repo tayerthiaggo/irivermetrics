@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import mimetypes
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
 
@@ -15,7 +16,11 @@ from hydrofragments.config import HydroConfig
 from hydrofragments.schema import SCHEMA_VERSION
 
 
-MANIFEST_SCHEMA_VERSION = "1.0.0"
+LEGACY_MANIFEST_SCHEMA_VERSION = "1.0.0"
+MANIFEST_SCHEMA_VERSION = "1.1.0"
+SUPPORTED_MANIFEST_SCHEMA_VERSIONS = frozenset(
+    {LEGACY_MANIFEST_SCHEMA_VERSION, MANIFEST_SCHEMA_VERSION}
+)
 
 
 class ManifestError(ValueError):
@@ -26,6 +31,17 @@ class ManifestError(ValueError):
 class RunMetadataArtifacts:
     config_path: Path
     manifest_path: Path
+
+
+_MEDIA_TYPE_OVERRIDES = {
+    ".gpkg": "application/geopackage+sqlite3",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".nc": "application/netcdf",
+    ".parquet": "application/vnd.apache.parquet",
+    ".csv": "text/csv",
+    ".json": "application/json",
+}
 
 
 def _json_bytes(value: object) -> bytes:
@@ -43,6 +59,50 @@ def _json_bytes(value: object) -> bytes:
 
 def _hash_json(value: object) -> str:
     return hashlib.sha256(_json_bytes(value).rstrip(b"\n")).hexdigest()
+
+
+def hash_file(path: Path) -> str:
+    """Return the SHA-256 digest of one regular file."""
+
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def hash_directory_tree(root: Path) -> tuple[int, str]:
+    """Return total byte size and a deterministic tree digest for one directory."""
+
+    base = Path(root)
+    files = sorted(
+        path
+        for path in base.rglob("*")
+        if path.is_file() and path.name != ".bundle_transaction.json"
+    )
+    total_bytes = 0
+    tree = hashlib.sha256()
+    for path in files:
+        relative = path.relative_to(base).as_posix()
+        file_digest = hash_file(path)
+        total_bytes += path.stat().st_size
+        tree.update(relative.encode("utf-8"))
+        tree.update(b"\0")
+        tree.update(file_digest.encode("utf-8"))
+        tree.update(b"\0")
+    return total_bytes, tree.hexdigest()
+
+
+def guess_media_type(path: Path) -> str:
+    """Infer a stable media type for one artifact path."""
+
+    suffix = Path(path).suffix.lower()
+    if suffix in _MEDIA_TYPE_OVERRIDES:
+        return _MEDIA_TYPE_OVERRIDES[suffix]
+    if Path(path).is_dir():
+        return "application/vnd.directory"
+    guessed, _ = mimetypes.guess_type(str(path))
+    return guessed or "application/octet-stream"
 
 
 def _utc_text(value: datetime) -> str:
@@ -71,6 +131,72 @@ def _relative_artifacts(
             )
         resolved[str(name)] = PurePosixPath(*path.parts).as_posix()
     return dict(sorted(resolved.items()))
+
+
+def _artifact_size_and_digest(root: Path, relative_path: str) -> tuple[int, str]:
+    path = root / relative_path
+    if path.is_dir():
+        return hash_directory_tree(path)
+    if not path.is_file():
+        raise ManifestError(f"artifact path is not a file or directory: {relative_path}")
+    return path.stat().st_size, hash_file(path)
+
+
+def build_artifact_inventory(
+    bundle_root: str | Path,
+    registrations: Sequence[Any],
+    *,
+    config: HydroConfig,
+) -> list[dict[str, object]]:
+    """Build the manifest 1.1.0 artifact inventory for one staged bundle."""
+
+    root = Path(bundle_root)
+    entries: list[dict[str, object]] = []
+
+    def _append_entry(
+        *,
+        name: str,
+        relative_path: str,
+        media_type: str | None = None,
+        algorithm_version: str | None = None,
+        scientific_config_hash: str | None = None,
+        execution_config_hash: str | None = None,
+        spatial: Mapping[str, object] | None = None,
+    ) -> None:
+        byte_size, digest = _artifact_size_and_digest(root, relative_path)
+        entry: dict[str, object] = {
+            "name": name,
+            "relative_path": PurePosixPath(*Path(relative_path).parts).as_posix(),
+            "media_type": media_type or guess_media_type(root / relative_path),
+            "byte_size": byte_size,
+            "sha256": digest,
+            "scientific_config_hash": scientific_config_hash or config.config_hash,
+            "execution_config_hash": execution_config_hash or config.execution_hash,
+        }
+        if algorithm_version is not None:
+            entry["algorithm_version"] = algorithm_version
+        if spatial:
+            entry["spatial"] = dict(spatial)
+        entries.append(entry)
+
+    for registration in registrations:
+        _append_entry(
+            name=registration.name,
+            relative_path=registration.relative_path,
+            media_type=registration.media_type,
+            algorithm_version=registration.algorithm_version,
+            scientific_config_hash=registration.scientific_config_hash,
+            execution_config_hash=registration.execution_config_hash,
+            spatial=registration.spatial,
+        )
+
+    _append_entry(
+        name="config",
+        relative_path="config.json",
+        media_type="application/json",
+    )
+    entries.sort(key=lambda item: str(item["name"]))
+    return entries
 
 
 def _hash_array(mask: Any) -> str:
@@ -104,29 +230,7 @@ def build_dea_provenance(
     zone_mask: Any,
     planning_footprint: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    """Build the ``dea_provenance`` manifest section for a DEA-zoned run.
-
-    Records the DEA product id/version/STAC item IDs/CRS/resolution/
-    time_span (from ``WoStatistics``/its ``provenance`` mapping), the zone
-    thresholds actually used (``config.zones.t_persist``/``t_season`` --
-    the SAME ``config`` object ``build_run_manifest`` already receives), and
-    a content digest of the DEA zone mask itself (``ZoneResult.mask``,
-    hashed via :func:`_hash_array`, this module's own hashing convention --
-    the digest is computed here rather than added as a field on
-    ``ZoneResult``, which is out of scope for this call site).
-
-    ``time_span`` is recorded distinctly under ``dea_provenance`` and is
-    never merged into or reconciled against any other run-level date range
-    already present in the manifest (DEA's multi-year coverage and the
-    local cube's own date range can legitimately differ -- see the plan's
-    temporal-mismatch risk note).
-
-    ``planning_footprint``, when supplied, carries a ``WetPlanningFootprint``
-    (W1.5)'s own ``digest``/``factor``/``safety_cells``/``covered_years``/
-    ``source_collection``/``source_version``/``source_lineage`` through
-    byte-for-byte unchanged -- this function never re-derives or reformats
-    that digest, only passes it through.
-    """
+    """Build the ``dea_provenance`` manifest section for a DEA-zoned run."""
     section: dict[str, object] = {
         "product": product,
         "version": version,
@@ -168,28 +272,15 @@ def build_run_manifest(
     timings_seconds: Mapping[str, float] | None = None,
     comparison_context: Mapping[str, object] | None = None,
     artifacts: Mapping[str, str | Path] | None = None,
+    artifact_inventory: Sequence[Mapping[str, object]] | None = None,
     created_at: datetime | None = None,
     dependency_versions: Mapping[str, str] | None = None,
     backend_capabilities: Mapping[str, object] | None = None,
     dea_provenance: Mapping[str, object] | None = None,
+    manifest_schema_version: str | None = None,
+    peak_rss_bytes: int | None = None,
 ) -> dict[str, object]:
-    """Build complete machine-readable provenance for one immutable run.
-
-    ``dependency_versions`` records pinned external packages whose version
-    affects scientific output but that are not HydroFragments itself -- e.g.
-    ``{"hydroseason": "0.1.0"}`` for any run using HY-dependent metrics
-    (spec M9: "record hydroseason version ... in run config/manifest").
-
-    ``dea_provenance``, when supplied (build it with
-    :func:`build_dea_provenance`), is recorded verbatim as the manifest's
-    ``dea_provenance`` section for a run that used DEA Water Observation
-    Statistics for zoning. A run that never touched DEA statistics (the
-    common local-cube-only case) omits the argument entirely and the
-    manifest has no ``dea_provenance`` key at all -- not a present section
-    full of ``null``s -- following the same optional/additive pattern
-    ``backend_capabilities``/``comparison_context`` already establish here.
-    """
-
+    """Build complete machine-readable provenance for one immutable run."""
     for name, value in {
         "run_id": run_id,
         "package_version": package_version,
@@ -201,12 +292,20 @@ def build_run_manifest(
     if not input_fingerprint:
         raise ManifestError("input_fingerprint cannot be empty")
 
+    schema_version = manifest_schema_version
+    if schema_version is None:
+        schema_version = (
+            MANIFEST_SCHEMA_VERSION
+            if artifact_inventory is not None
+            else LEGACY_MANIFEST_SCHEMA_VERSION
+        )
+    if schema_version not in SUPPORTED_MANIFEST_SCHEMA_VERSIONS:
+        raise ManifestError(f"unsupported manifest_schema_version: {schema_version}")
+
     versions: dict[str, object] = {
         "package_version": package_version,
         "git_sha": git_sha,
     }
-    # HY settings are resolved into HydroConfig, so every manifest can record
-    # the pinned provider version without relying on callers to remember it.
     try:
         import hydroseason
 
@@ -238,7 +337,7 @@ def build_run_manifest(
         backend["capabilities"] = dict(backend_capabilities)
 
     manifest: dict[str, object] = {
-        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "manifest_schema_version": schema_version,
         "output_schema_version": SCHEMA_VERSION,
         "run_id": run_id,
         "created_at": _utc_text(created_at or datetime.now(timezone.utc)),
@@ -257,6 +356,10 @@ def build_run_manifest(
         "comparison": comparison,
         "artifacts": _relative_artifacts(artifacts or {}),
     }
+    if artifact_inventory is not None:
+        manifest["artifact_inventory"] = [dict(item) for item in artifact_inventory]
+    if peak_rss_bytes is not None:
+        manifest["peak_rss_bytes"] = int(peak_rss_bytes)
     if dea_provenance is not None:
         manifest["dea_provenance"] = dict(dea_provenance)
     return manifest
@@ -273,7 +376,11 @@ def write_run_metadata(
     root.mkdir(parents=True, exist_ok=True)
     config_path = root / "config.json"
     manifest_path = root / "run_manifest.json"
-    manifest = build_run_manifest(config, **manifest_arguments)  # type: ignore[arg-type]
+    manifest = build_run_manifest(
+        config,
+        manifest_schema_version=LEGACY_MANIFEST_SCHEMA_VERSION,
+        **manifest_arguments,  # type: ignore[arg-type]
+    )
     config_path.write_bytes(_json_bytes(config.scientific_config()))
     manifest_path.write_bytes(_json_bytes(manifest))
     return RunMetadataArtifacts(config_path, manifest_path)
@@ -294,16 +401,7 @@ def read_run_manifest(source: str | Path) -> dict[str, object]:
     return value
 
 
-def validate_result_bundle(output_dir: str | Path) -> dict[str, object]:
-    """Validate bundle integrity without reopening any source dataset."""
-
-    root = Path(output_dir)
-    manifest = read_run_manifest(root)
-    if manifest.get("manifest_schema_version") != MANIFEST_SCHEMA_VERSION:
-        raise ManifestError("unsupported manifest_schema_version")
-    if manifest.get("output_schema_version") != SCHEMA_VERSION:
-        raise ManifestError("unsupported output_schema_version")
-
+def _validate_legacy_artifacts(root: Path, manifest: Mapping[str, object]) -> None:
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, dict):
         raise ManifestError("manifest artifacts must be an object")
@@ -313,6 +411,114 @@ def validate_result_bundle(output_dir: str | Path) -> dict[str, object]:
     for name, relative_path in relative.items():
         if not (root / relative_path).exists():
             raise ManifestError(f"missing bundle artifact {name}: {relative_path}")
+
+
+def _validate_inventory_entry(root: Path, entry: Mapping[str, object]) -> None:
+    relative_path = str(entry.get("relative_path", ""))
+    if not relative_path:
+        raise ManifestError("artifact_inventory entry missing relative_path")
+    path = root / relative_path
+    if not path.exists():
+        raise ManifestError(f"missing inventory artifact: {relative_path}")
+
+    if path.is_dir():
+        byte_size, digest = hash_directory_tree(path)
+    else:
+        byte_size = path.stat().st_size
+        digest = hash_file(path)
+
+    expected_size = entry.get("byte_size")
+    if expected_size is not None and int(expected_size) != byte_size:
+        raise ManifestError(f"byte_size mismatch for {relative_path}")
+    expected_digest = entry.get("sha256")
+    if expected_digest is not None and str(expected_digest) != digest:
+        raise ManifestError(f"sha256 mismatch for {relative_path}")
+
+    spatial = entry.get("spatial")
+    if spatial is None or not isinstance(spatial, Mapping):
+        return
+
+    if path.suffix.lower() in {".tif", ".tiff"}:
+        _validate_geotiff_spatial_metadata(path, spatial)
+    elif path.suffix.lower() == ".gpkg":
+        _validate_gpkg_spatial_metadata(path, spatial)
+
+
+def _crs_equal(left: object, right: object) -> bool:
+    from rasterio.crs import CRS
+
+    try:
+        left_crs = CRS.from_user_input(left)
+        right_crs = CRS.from_user_input(right)
+    except Exception:
+        return str(left) == str(right)
+    left_epsg = left_crs.to_epsg()
+    right_epsg = right_crs.to_epsg()
+    if left_epsg is not None and right_epsg is not None:
+        return left_epsg == right_epsg
+    try:
+        return bool(left_crs.equals(right_crs))
+    except Exception:
+        return str(left_crs) == str(right_crs)
+
+
+def _validate_geotiff_spatial_metadata(
+    path: Path,
+    spatial: Mapping[str, object],
+) -> None:
+    import rasterio
+
+    with rasterio.open(path) as dataset:
+        if spatial.get("crs") and not _crs_equal(dataset.crs, spatial["crs"]):
+            raise ManifestError(f"CRS mismatch for {path.name}")
+        if spatial.get("shape") and list(dataset.shape) != list(spatial["shape"]):
+            raise ManifestError(f"shape mismatch for {path.name}")
+        if spatial.get("dtype") and str(dataset.dtypes[0]) != str(spatial["dtype"]):
+            raise ManifestError(f"dtype mismatch for {path.name}")
+        if spatial.get("band_count") and dataset.count != int(spatial["band_count"]):
+            raise ManifestError(f"band_count mismatch for {path.name}")
+
+
+def _validate_gpkg_spatial_metadata(path: Path, spatial: Mapping[str, object]) -> None:
+    import pyogrio
+
+    info = pyogrio.read_info(path)
+    layers = spatial.get("layers")
+    if layers is not None:
+        expected_layers = {str(layer) for layer in layers}
+        actual_layers = set(info["layer_names"])
+        if expected_layers != actual_layers:
+            raise ManifestError(f"layer mismatch for {path.name}")
+
+
+def validate_result_bundle(output_dir: str | Path) -> dict[str, object]:
+    """Validate bundle integrity without reopening any source dataset."""
+
+    root = Path(output_dir)
+    manifest = read_run_manifest(root)
+    schema_version = manifest.get("manifest_schema_version")
+    if schema_version not in SUPPORTED_MANIFEST_SCHEMA_VERSIONS:
+        raise ManifestError("unsupported manifest_schema_version")
+    if manifest.get("output_schema_version") != SCHEMA_VERSION:
+        raise ManifestError("unsupported output_schema_version")
+
+    if schema_version == MANIFEST_SCHEMA_VERSION:
+        inventory = manifest.get("artifact_inventory")
+        if not isinstance(inventory, list):
+            raise ManifestError("manifest artifact_inventory must be a list")
+        for entry in inventory:
+            if not isinstance(entry, Mapping):
+                raise ManifestError("artifact_inventory entries must be objects")
+            _validate_inventory_entry(root, entry)
+    else:
+        _validate_legacy_artifacts(root, manifest)
+
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        raise ManifestError("manifest artifacts must be an object")
+    relative = _relative_artifacts(
+        {str(name): str(path) for name, path in artifacts.items()}
+    )
 
     config_path = root / str(relative["config"])
     try:
@@ -329,11 +535,17 @@ def validate_result_bundle(output_dir: str | Path) -> dict[str, object]:
 
 
 __all__ = [
+    "LEGACY_MANIFEST_SCHEMA_VERSION",
     "MANIFEST_SCHEMA_VERSION",
     "ManifestError",
     "RunMetadataArtifacts",
+    "SUPPORTED_MANIFEST_SCHEMA_VERSIONS",
+    "build_artifact_inventory",
     "build_dea_provenance",
     "build_run_manifest",
+    "guess_media_type",
+    "hash_directory_tree",
+    "hash_file",
     "read_run_manifest",
     "validate_result_bundle",
     "write_run_metadata",

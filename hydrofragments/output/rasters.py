@@ -550,11 +550,6 @@ def _align_dataarray_to_grid(data: xr.DataArray, grid: SpatialGrid) -> xr.DataAr
     aligned = data.copy()
     aligned = aligned.assign_coords({grid.y_dim: grid.y, grid.x_dim: grid.x})
     return aligned.rio.write_crs(grid.crs)
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def preflight_raster_artifacts(

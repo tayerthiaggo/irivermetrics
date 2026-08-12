@@ -97,3 +97,27 @@ def test_manifest_rejects_hydroseason_version_mismatch():
             **_base_arguments(),
             dependency_versions={"hydroseason": "9.9.9"},
         )
+
+
+def test_manifest_1_1_0_records_peak_rss_bytes():
+    from hydrofragments.output.manifest import MANIFEST_SCHEMA_VERSION
+
+    manifest = build_run_manifest(
+        _config(),
+        **_base_arguments(),
+        artifact_inventory=[
+            {
+                "name": "metrics",
+                "relative_path": "metrics",
+                "media_type": "application/vnd.directory",
+                "byte_size": 0,
+                "sha256": "0" * 64,
+                "scientific_config_hash": _config().config_hash,
+                "execution_config_hash": _config().execution_hash,
+            }
+        ],
+        peak_rss_bytes=2048,
+        manifest_schema_version=MANIFEST_SCHEMA_VERSION,
+    )
+    assert manifest["manifest_schema_version"] == MANIFEST_SCHEMA_VERSION
+    assert manifest["peak_rss_bytes"] == 2048
