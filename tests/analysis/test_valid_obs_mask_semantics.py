@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from hydrofragments.compat import _WATER_VALIDITY_ERROR, section_compat_rows
+from hydrofragments.section_analysis import _WATER_VALIDITY_ERROR, analyze_section_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.patches import analyze_patch_metrics
 
@@ -68,11 +68,11 @@ def _config():
     )
 
 
-def test_section_compat_rows_rejects_water_without_valid_obs():
+def test_analyze_section_rows_rejects_water_without_valid_obs():
     """water=True, valid_obs=False anywhere in the input must raise, not be masked out.
 
     Reachable state: water=True, valid_obs=False at (1,1) inside an otherwise
-    2x2 water patch. `section_compat_rows` must refuse this input outright
+    2x2 water patch. `analyze_section_rows` must refuse this input outright
     (`_WATER_VALIDITY_ERROR`) rather than silently intersecting the mask and
     computing patch metrics over the remaining 3-pixel L-shape.
     """
@@ -82,7 +82,7 @@ def test_section_compat_rows_rejects_water_without_valid_obs():
     section_area_km2 = float(water[0].size) * pixel_size_m**2 / 1_000_000.0
 
     with pytest.raises(ValueError, match=_WATER_VALIDITY_ERROR):
-        section_compat_rows(
+        analyze_section_rows(
             da_feature,
             section="AOI",
             section_area_km2=section_area_km2,
@@ -93,12 +93,12 @@ def test_section_compat_rows_rejects_water_without_valid_obs():
         )
 
 
-def test_section_compat_rows_defaults_to_all_true_valid_obs_when_omitted():
+def test_analyze_section_rows_defaults_to_all_true_valid_obs_when_omitted():
     """Legacy callers (no valid_obs) keep today's water-only behavior.
 
     hydrofragments.compat.calculate_metrics_compat() has no separate
     valid_obs concept -- it only ever had a single water-mask array. Passing
-    no ``valid_obs`` to section_compat_rows() must preserve that -- mask ==
+    no ``valid_obs`` to analyze_section_rows() must preserve that -- mask ==
     water, exactly like before this task's change.
     """
     da_feature, _valid_da, water, _valid = _feature_and_valid()
@@ -106,7 +106,7 @@ def test_section_compat_rows_defaults_to_all_true_valid_obs_when_omitted():
     pixel_size_m = 30.0
     section_area_km2 = float(water[0].size) * pixel_size_m**2 / 1_000_000.0
 
-    rows = section_compat_rows(
+    rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,

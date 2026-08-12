@@ -51,7 +51,7 @@ import numpy as np
 import xarray as xr
 import dask.array as da
 
-from hydrofragments.compat import _monthly_dataset, _OccurrenceAccumulator, section_compat_rows
+from hydrofragments.section_analysis import _monthly_dataset, _OccurrenceAccumulator, analyze_section_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics import persistence
 
@@ -195,7 +195,7 @@ def test_monthly_dataset_materializes_water_and_valid_obs_in_one_fused_compute()
     already-materialised `water` via `xr.ones_like`, so pre-fix code only
     shows ONE top-level compute here too. This test pins that baseline. The
     two-vs-one distinction becomes adversarial once a real dask-backed
-    `valid_obs` is supplied by the caller -- see the `section_compat_rows`
+    `valid_obs` is supplied by the caller -- see the `analyze_section_rows`
     test below, which is where the pre-fix code's separate
     `valid_obs.astype(bool).load()` shows up as a second, independent
     top-level compute.
@@ -216,8 +216,8 @@ def test_monthly_dataset_materializes_water_and_valid_obs_in_one_fused_compute()
     assert not hasattr(monthly["valid_obs"].data, "dask")
 
 
-def test_section_compat_rows_fuses_water_and_valid_obs_into_one_compute():
-    """`section_compat_rows` must materialise `water` and its caller-supplied
+def test_analyze_section_rows_fuses_water_and_valid_obs_into_one_compute():
+    """`analyze_section_rows` must materialise `water` and its caller-supplied
     `valid_obs` together in ONE top-level Dask compute PER MONTH, not two
     separate computes per month, and never more than one month's worth of
     both arrays in a single compute call.
@@ -255,7 +255,7 @@ def test_section_compat_rows_fuses_water_and_valid_obs_into_one_compute():
     section_area_km2 = float(n_y * n_x) * pixel_size_m**2 / 1_000_000.0
 
     with _DaskComputeCallCounter() as counter:
-        section_compat_rows(
+        analyze_section_rows(
             da_feature,
             section="AOI",
             section_area_km2=section_area_km2,
@@ -287,7 +287,7 @@ def test_section_compat_rows_fuses_water_and_valid_obs_into_one_compute():
     )
 
 
-def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute():
+def test_analyze_section_rows_no_separate_cube_wide_prepass_beyond_fused_compute():
     """No independent cube-wide `.any()`-style reachability pre-pass exists,
     and no family (patches/persistence/apsec) triggers its own extra
     top-level compute beyond the one fused per-month compute already
@@ -296,7 +296,7 @@ def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute(
     For ``n_time`` months with every family requested (patches + width +
     persistence + apsec all computed against the same per-month
     materialised payload), the total top-level compute count for the WHOLE
-    `section_compat_rows` call must be exactly ``n_time`` -- one per month,
+    `analyze_section_rows` call must be exactly ``n_time`` -- one per month,
     never a whole-cube pre-pass and never a per-family re-read.
     """
     n_time, n_y, n_x = 3, 8, 8
@@ -312,7 +312,7 @@ def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute(
     section_area_km2 = float(n_y * n_x) * pixel_size_m**2 / 1_000_000.0
 
     with _DaskComputeCallCounter() as counter:
-        section_compat_rows(
+        analyze_section_rows(
             da_feature,
             section="AOI",
             section_area_km2=section_area_km2,
@@ -329,7 +329,7 @@ def test_section_compat_rows_no_separate_cube_wide_prepass_beyond_fused_compute(
 
     assert counter.n_top_level_computes == n_time, (
         "expected exactly one top-level compute PER MONTH "
-        f"({n_time} months total) across the whole section_compat_rows "
+        f"({n_time} months total) across the whole analyze_section_rows "
         "call (patches + persistence + apsec all reusing the same "
         f"per-month materialised payload); got "
         f"{counter.n_top_level_computes}: {counter.calls} -- an extra call "
@@ -439,7 +439,7 @@ def test_monthly_dataset_oom_regression_large_cube_bounded_by_chunk():
     quadratic/duplicate blowup as size grows). This alone only proves each
     *source chunk* is read once -- it says nothing about whether all months
     are held in memory simultaneously during materialisation. See
-    `test_section_compat_rows_bounds_materialization_to_one_month_at_a_time`
+    `test_analyze_section_rows_bounds_materialization_to_one_month_at_a_time`
     below for the actual bounded-materialization proof (Important #2 review
     finding: this test was previously mislabeled as an OOM regression test
     when it only demonstrated chunk-count scaling).
@@ -456,7 +456,7 @@ def test_monthly_dataset_oom_regression_large_cube_bounded_by_chunk():
     assert monthly["water"].shape == (n_time, n_y, n_x)
 
 
-def test_section_compat_rows_bounds_materialization_to_one_month_at_a_time():
+def test_analyze_section_rows_bounds_materialization_to_one_month_at_a_time():
     """The actual OOM-bounding proof (Important #2 review finding).
 
     Builds a synthetic section with MANY months (150) where each month's 2-D
@@ -500,7 +500,7 @@ def test_section_compat_rows_bounds_materialization_to_one_month_at_a_time():
     section_area_km2 = float(n_y * n_x) * pixel_size_m**2 / 1_000_000.0
 
     with _DaskComputeCallCounter() as counter:
-        rows = section_compat_rows(
+        rows = analyze_section_rows(
             da_feature,
             section="AOI",
             section_area_km2=section_area_km2,
@@ -544,8 +544,8 @@ def test_section_compat_rows_bounds_materialization_to_one_month_at_a_time():
     assert valid_counter["n_calls"] == n_time
 
 
-def test_section_compat_rows_output_byte_identical_lazy_vs_eager():
-    """End-to-end output parity: `section_compat_rows` on a Dask-backed
+def test_analyze_section_rows_output_byte_identical_lazy_vs_eager():
+    """End-to-end output parity: `analyze_section_rows` on a Dask-backed
     input must produce byte-identical rows to the same input built eagerly
     (plain numpy), proving the lazy-materialization fix changes only HOW/WHEN
     data is realised, never the metric values themselves.
@@ -571,7 +571,7 @@ def test_section_compat_rows_output_byte_identical_lazy_vs_eager():
 
     eager_feature = xr.DataArray(water.copy(), dims=("time", "y", "x"), coords=coords)
     eager_valid = xr.DataArray(valid.copy(), dims=("time", "y", "x"), coords=coords)
-    eager_rows = section_compat_rows(
+    eager_rows = analyze_section_rows(
         eager_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -591,7 +591,7 @@ def test_section_compat_rows_output_byte_identical_lazy_vs_eager():
         dims=("time", "y", "x"),
         coords=coords,
     )
-    lazy_rows = section_compat_rows(
+    lazy_rows = analyze_section_rows(
         lazy_feature,
         section="AOI",
         section_area_km2=section_area_km2,

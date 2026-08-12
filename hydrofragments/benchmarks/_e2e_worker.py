@@ -13,15 +13,15 @@ result line to stdout.
 
 ``executor_kind`` is accepted in the payload for schema completeness but is
 NOT actually threaded into :func:`hydrofragments.api.analyze` below: that
-function calls ``section_compat_rows`` with no ``executor_kind`` override,
+function calls ``analyze_section_rows`` with no ``executor_kind`` override,
 so it is always ``"thread"`` on this call path regardless of what a
 candidate requests (confirmed by reading ``hydrofragments/api.py``'s call
 site directly, not assumed) -- reaching ``"process"`` would require calling
-``section_compat_rows`` directly instead of ``analyze()``, which would
+``analyze_section_rows`` directly instead of ``analyze()``, which would
 duplicate ``analyze()``'s own orchestration (metric-plan resolution, other
 metric records, output assembly) well beyond what this benchmark needs.
 W3.2's own benchmark already gated serial-vs-thread-vs-process at the
-``section_compat_rows`` level directly on synthetic data (see its report);
+``analyze_section_rows`` level directly on synthetic data (see its report);
 this benchmark's ``workers`` axis is ``config.compute.workers`` in
 ``{1, 2, 4}`` through the real, only-reachable-from-``analyze()`` thread
 pool, not a second process-pool re-test.

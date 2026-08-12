@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 
 from hydrofragments._version import __version__
-from hydrofragments.compat import section_compat_rows
+from hydrofragments.section_analysis import analyze_section_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.compute import resolve_execution_plan
 from hydrofragments.guards import ComparisonGuardError, guard_comparison
@@ -417,7 +417,7 @@ def _channel_profile_records(
 # sync with the "mapping" table inside _records_from_compat_rows -- used to
 # skip the whole compat-row compute path when a narrow profile selects none
 # of these (B1).
-_COMPAT_ROW_METRIC_IDS = frozenset(
+_SECTION_ROW_METRIC_IDS = frozenset(
     {
         "apsec",
         "number_of_pools",
@@ -431,7 +431,7 @@ _COMPAT_ROW_METRIC_IDS = frozenset(
 )
 
 
-def _records_from_compat_rows(
+def _records_from_section_rows(
     rows: list[dict[str, object]],
     *,
     run_id: str,
@@ -929,8 +929,8 @@ def analyze(
     coverage_plan = registry_wide_plan(available_dependencies=available_dependencies)
 
     records: list[MetricRecord] = []
-    if selected_ids & _COMPAT_ROW_METRIC_IDS:
-        rows = section_compat_rows(
+    if selected_ids & _SECTION_ROW_METRIC_IDS:
+        rows = analyze_section_rows(
             monthly["water"],
             section=aoi_id,
             section_area_km2=section_area_km2,
@@ -940,7 +940,7 @@ def analyze(
             valid_obs=monthly["valid_obs"],
             analysis_mask=cube.analysis_mask,
         )
-        records = _records_from_compat_rows(
+        records = _records_from_section_rows(
             rows,
             run_id=run_id,
             config=config,

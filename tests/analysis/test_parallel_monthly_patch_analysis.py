@@ -30,11 +30,11 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from hydrofragments.compat import (
+from hydrofragments.section_analysis import (
     _month_row,
     _MonthPayload,
     _build_month_payload,
-    section_compat_rows,
+    analyze_section_rows,
 )
 from hydrofragments.config import HydroConfig
 
@@ -106,7 +106,7 @@ def test_month_row_is_a_top_level_picklable_function():
     protocol multiprocessing relies on."""
     import pickle
 
-    assert _month_row.__module__ == "hydrofragments.compat"
+    assert _month_row.__module__ == "hydrofragments.section_analysis"
     assert _month_row.__qualname__ == "_month_row"
     pickle.dumps(_month_row)
 
@@ -141,7 +141,7 @@ def test_month_payload_is_picklable_and_carries_plain_numpy_only():
     pickle.dumps(payload)  # must round-trip cleanly through pickle
 
 
-def test_section_compat_rows_workers_one_matches_pre_refactor_snapshot():
+def test_analyze_section_rows_workers_one_matches_pre_refactor_snapshot():
     """Pinned snapshot: `workers=1` (today's default) must produce exactly
     the same rows as the pre-refactor inline-loop implementation. Values
     below were captured from the extracted-but-still-serial implementation
@@ -156,7 +156,7 @@ def test_section_compat_rows_workers_one_matches_pre_refactor_snapshot():
     config = _config(workers=1)
     section_area_km2 = float(n_y * n_x) * 900.0 / 1_000_000.0
 
-    rows = section_compat_rows(
+    rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -182,7 +182,7 @@ def test_section_compat_rows_workers_one_matches_pre_refactor_snapshot():
 
 
 @pytest.mark.parametrize("workers", [1, 2, 4])
-def test_section_compat_rows_byte_identical_across_worker_counts(workers: int):
+def test_analyze_section_rows_byte_identical_across_worker_counts(workers: int):
     """The Global Constraint: same input, byte-identical output regardless of
     `config.compute.workers`. Compares every worker count against the
     `workers=1` serial reference.
@@ -193,7 +193,7 @@ def test_section_compat_rows_byte_identical_across_worker_counts(workers: int):
     )
     section_area_km2 = float(n_y * n_x) * 900.0 / 1_000_000.0
 
-    reference_rows = section_compat_rows(
+    reference_rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -202,7 +202,7 @@ def test_section_compat_rows_byte_identical_across_worker_counts(workers: int):
         valid_obs=valid_da,
         selected_ids=SELECTED_IDS,
     )
-    candidate_rows = section_compat_rows(
+    candidate_rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -229,7 +229,7 @@ def test_section_compat_rows_byte_identical_across_worker_counts(workers: int):
                 )
 
 
-def test_section_compat_rows_workers_four_matches_workers_one_process_pool():
+def test_analyze_section_rows_workers_four_matches_workers_one_process_pool():
     """Explicit process-pool parity check (not just thread pool): forces the
     process executor path and re-asserts byte-identical output against the
     workers=1 serial reference, satisfying the brief's literal
@@ -241,7 +241,7 @@ def test_section_compat_rows_workers_four_matches_workers_one_process_pool():
     )
     section_area_km2 = float(n_y * n_x) * 900.0 / 1_000_000.0
 
-    reference_rows = section_compat_rows(
+    reference_rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -250,7 +250,7 @@ def test_section_compat_rows_workers_four_matches_workers_one_process_pool():
         valid_obs=valid_da,
         selected_ids=SELECTED_IDS,
     )
-    process_rows = section_compat_rows(
+    process_rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -275,7 +275,7 @@ def test_section_compat_rows_workers_four_matches_workers_one_process_pool():
                 )
 
 
-def test_section_compat_rows_order_is_deterministic_not_completion_order():
+def test_analyze_section_rows_order_is_deterministic_not_completion_order():
     """Rows must come back sorted by `time_index`/date, not by whichever
     worker happened to finish first. Uses a deliberately uneven per-month
     workload (varying patch counts) so a naive as-completed collection would
@@ -305,7 +305,7 @@ def test_section_compat_rows_order_is_deterministic_not_completion_order():
     valid_da = xr.DataArray(valid, dims=("time", "y", "x"), coords=coords)
     section_area_km2 = float(n_y * n_x) * 900.0 / 1_000_000.0
 
-    rows = section_compat_rows(
+    rows = analyze_section_rows(
         da_feature,
         section="AOI",
         section_area_km2=section_area_km2,
@@ -336,7 +336,7 @@ def test_bounded_in_flight_payloads_never_exceed_two_times_workers():
     """
     import threading
 
-    from hydrofragments import compat as compat_module
+    from hydrofragments import section_analysis as compat_module
 
     n_time, n_y, n_x = 12, 10, 10
     da_feature, valid_da = _catchment_shaped_cube(
@@ -371,7 +371,7 @@ def test_bounded_in_flight_payloads_never_exceed_two_times_workers():
     compat_module._build_month_payload = counting_build
     compat_module._month_row = counting_row
     try:
-        rows = section_compat_rows(
+        rows = analyze_section_rows(
             da_feature,
             section="AOI",
             section_area_km2=section_area_km2,

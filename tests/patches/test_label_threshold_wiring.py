@@ -20,7 +20,7 @@ import dask.array as da
 import numpy as np
 
 from hydrofragments.compute.policy import ComputePolicy
-from hydrofragments.compat import _resolve_local_label_threshold_bytes
+from hydrofragments.section_analysis import _resolve_local_label_threshold_bytes
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics import patches as patches_module
 from hydrofragments.metrics.patches import measure_patch_properties
@@ -165,7 +165,7 @@ def test_section_compat_rows_threads_configured_threshold_end_to_end(tmp_path):
     import pandas as pd
     import xarray as xr
 
-    from hydrofragments.compat import section_compat_rows
+    from hydrofragments.section_analysis import analyze_section_rows
 
     water_np = np.zeros((1, 40, 40), dtype=bool)
     water_np[0, 5:9, 5:9] = True
@@ -181,7 +181,7 @@ def test_section_compat_rows_threads_configured_threshold_end_to_end(tmp_path):
         "label_components",
         wraps=patches_module.label_components,
     ) as spy:
-        section_compat_rows(
+        analyze_section_rows(
             water,
             section="demo",
             section_area_km2=0.36,

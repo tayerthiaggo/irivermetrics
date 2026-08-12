@@ -9,7 +9,7 @@ import pytest
 import xarray as xr
 
 from hydrofragments import HydroConfig, analyze, open_water_cube
-from hydrofragments.compat import section_compat_rows
+from hydrofragments.section_analysis import analyze_section_rows
 from hydrofragments.metrics import patches
 from tests.fixtures.analytic_masks import (
     invalid_water_observation_fixture,
@@ -96,7 +96,7 @@ def test_open_water_cube_rejects_water_without_valid_observation():
         open_water_cube(water, valid_obs=valid_obs, input_kind="generic_binary")
 
 
-def test_section_compat_rows_rejects_water_without_valid_observation():
+def test_analyze_section_rows_rejects_water_without_valid_observation():
     water_np, valid_np, times = invalid_water_observation_fixture()
     water = xr.DataArray(
         water_np.astype(bool),
@@ -111,7 +111,7 @@ def test_section_compat_rows_rejects_water_without_valid_observation():
     config = _core_plus_width_config("unused")
 
     with pytest.raises(ValueError, match="water=True requires valid_obs=True"):
-        section_compat_rows(
+        analyze_section_rows(
             water,
             section="demo",
             section_area_km2=0.0004,
