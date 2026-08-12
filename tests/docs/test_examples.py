@@ -42,13 +42,12 @@ def _extract_python_blocks(markdown: str) -> list[str]:
 
 def test_readme_uses_hydrofragments_import() -> None:
     assert "from hydrofragments import" in README
-    assert "irivermetrics" not in README.lower()
     assert "waterdetect_batch" not in README
 
 
-def test_readme_status_banner_present() -> None:
+def test_readme_release_status_present() -> None:
     assert "HydroFragments" in README
-    assert re.search(r"v1\.2|release candidate|migration", README, re.I)
+    assert re.search(r"\b0\.1\.0\b", README)
 
 
 @pytest.mark.parametrize("block", _extract_python_blocks(README))

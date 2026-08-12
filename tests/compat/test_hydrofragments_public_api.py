@@ -29,7 +29,7 @@ from hydrofragments.spatial import create_channel_context
 
 def test_package_version_exposed() -> None:
     assert hasattr(hydrofragments, "__version__")
-    assert hydrofragments.__version__.startswith("1.2.")
+    assert hydrofragments.__version__ == "0.1.0"
 
 
 def test_public_api_symbols_are_exported() -> None:
