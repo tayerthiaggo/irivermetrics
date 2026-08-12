@@ -11,18 +11,24 @@ HydroFragments derives surface-water landscape metrics across seven metric famil
 - **Persistence:** Season-stratified water occurrence frequency and refuge area.
 - **Fragmentation:** Pool count (number of pools), largest patch index (LPI), and patch size distributions.
 - **Morphology:** Area-weighted relative edge (AWRe), area-weighted mean shape index (AWMSI), and pool width statistics.
-- **Dynamics:** Wetting and drying transition rates and temporal persistence classes.
+- **Dynamics:** Extent contraction, reconnection timing after end-dry, and refuge spatial stability.
 - **Channel:** Channel-aligned wet reach profile and pool spacing along drainage centrelines.
 - **Connectivity:** Structural river connectivity indices (RC, TCF, DCI).
 
 ## Installation
 
-CI-tested on Python 3.10 and 3.11.
+CI-tested on Python 3.10–3.13.
 
 ```bash
 git clone https://github.com/tayerthiaggo/HydroFragments.git
 cd HydroFragments
 python -m pip install -e ".[test]"
+```
+
+Optional NetCDF spatial export:
+
+```bash
+python -m pip install -e ".[netcdf]"
 ```
 
 ## Quickstart
@@ -58,19 +64,38 @@ config = HydroConfig.from_mapping(
             "monthly_composite": "supplied",
             "composite_owner": "caller",
         },
-        "output": {"output_dir": "hydrofragments_out"},
     }
 )
 result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
 print(result.metrics_table[["date", "metric", "value"]].head())
 ```
 
+Without `output.output_dir`, `analyze()` performs no filesystem writes and returns `result.output_dir is None` with an in-memory manifest dictionary.
+
 ## Outputs
 
-`analyze()` writes reproducible tidy tables and JSON manifests to `config.output.output_dir`:
-- `metrics.parquet` / `metrics.csv`: Tidy metric values with timestamps, AOI IDs, and unit attributes.
-- `metric_coverage.parquet` / `metric_coverage.csv`: Observation validity and coverage fraction records.
-- `manifest.json`: Full run provenance, hash digest, software environment, and input configuration snapshot.
+When `output.output_dir` is set, `analyze()` (or `analyze_from_dea()`) writes a complete result bundle to that directory. The path names one final run directory; it must be absent or empty before the run starts.
+
+Default layout (only selected products are created):
+
+```text
+<output_dir>/
+  config.json
+  metrics/                    partitioned canonical Parquet dataset
+  metrics.csv                 only when CSV is selected
+  metric_coverage.csv
+  vectors/spatial.gpkg        optional GeoPackage layers
+  rasters/*.tif               optional GeoTIFF products
+  rasters/spatial.nc          optional consolidated NetCDF (requires [netcdf])
+  run_manifest.json           written last; full artifact inventory
+```
+
+- **`metrics/`** — Hive-partitioned Parquet dataset (`metric_family`, `value_type`); there is no single-file `metrics.parquet` at the bundle root.
+- **`metric_coverage.csv`** — Per-metric runtime status and skip reasons (CSV only; no coverage Parquet).
+- **`run_manifest.json`** — Provenance, config hashes, and SHA-256 digests for every artifact. Not `manifest.json`.
+- **Spatial products** — Off by default. Enable with `output.spatial_products` in config schema `1.1.0`. See [Spatial exports](docs/spatial_exports.md).
+
+`HydroResult.write(path, formats=("parquet",))` writes metric tables and coverage only. It does not export spatial products; request those in `OutputConfig` before calling `analyze()`.
 
 ## Scientific scope and limitations
 
@@ -83,6 +108,8 @@ HydroFragments quantifies surface-water patch geometry and landscape structure i
 - [Architecture](docs/architecture.md)
 - [Input Format](docs/input_format.md)
 - [Metric Specification](docs/metric_specification.md)
+- [Dynamics metrics](docs/metrics/dynamics.md)
+- [Spatial exports](docs/spatial_exports.md)
 - [Scientific Foundation](docs/scientific-foundation.md)
 - [Validation Status](docs/validation_status.md)
 - [Testing Guide](docs/testing.md)

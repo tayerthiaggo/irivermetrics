@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +15,7 @@ import xarray as xr
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 README = Path("README.md").read_text(encoding="utf-8")
+SPATIAL_EXPORTS_EXAMPLE = REPO_ROOT / "examples" / "spatial_exports.py"
 
 # M13 audience-facing docs are optional-code: they may contain zero python
 # blocks (prose/tables only), but any block present must execute cleanly.
@@ -48,6 +51,37 @@ def test_readme_uses_hydrofragments_import() -> None:
 def test_readme_release_status_present() -> None:
     assert "HydroFragments" in README
     assert re.search(r"\b0\.1\.0\b", README)
+
+
+def test_readme_documents_actual_output_paths() -> None:
+    assert "metrics/" in README
+    assert "run_manifest.json" in README
+    assert "no single-file" in README or "no single `metrics.parquet`" in README
+    assert "`manifest.json`" in README or "Not `manifest.json`" in README
+
+
+@pytest.mark.timeout(120)
+def test_spatial_exports_example_runs_offline(tmp_path: Path) -> None:
+    assert SPATIAL_EXPORTS_EXAMPLE.is_file()
+    output_dir = tmp_path / "o"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SPATIAL_EXPORTS_EXAMPLE),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert completed.returncode == 0, (
+        "spatial_exports.py failed:\n"
+        f"--- stdout ---\n{completed.stdout}\n--- stderr ---\n{completed.stderr}"
+    )
+    assert (output_dir / "run_manifest.json").is_file()
+    assert (output_dir / "rasters" / "occurrence.tif").is_file()
 
 
 @pytest.mark.parametrize("block", _extract_python_blocks(README))

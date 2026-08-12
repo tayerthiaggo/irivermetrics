@@ -8,6 +8,8 @@ HydroFragments `0.1.0` quantifies surface-water patch dynamics in intermittent r
 - **[Architecture](architecture.md):** Package layout, public API entrypoints, compute engine, and output pipeline.
 - **[Input Format](input_format.md):** Input kinds, coordinate alignment, validity masks, CRS, and cadence rules.
 - **[Metric Specification](metric_specification.md):** Mathematical formulas, metric families, and definitions for all computed metrics.
+- **[Dynamics metrics](metrics/dynamics.md):** Reconnection timing, refuge stability, and extent contraction.
+- **[Spatial exports](spatial_exports.md):** Optional GeoTIFF, GeoPackage, and NetCDF products.
 - **[Scientific Foundation](scientific-foundation.md):** Literature context and core paper summaries.
 - **[Validation Status](validation_status.md):** Empirical test coverage, catchment validation, and verification evidence.
 - **[Testing Guide](testing.md):** Pytest suite organization, marker categories, and verification commands.
