@@ -412,7 +412,7 @@ def test_one_label_components_call_per_window_regardless_of_metric_families(
     config = _config(tmp_path, profiles=("contracts_core", "secondary"))
 
     with mock.patch.object(
-        labels_module, "label_components", wraps=labels_module.label_components
+        patches_module, "label_components", wraps=patches_module.label_components
     ) as spy:
         analyze(cube, aoi_id="windowed", config=config, pixel_size_m=30.0)
 

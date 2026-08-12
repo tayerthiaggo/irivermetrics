@@ -20,6 +20,7 @@ from hydrofragments.output.checkpoints import (
     CheckpointError,
     SpatialRasterCheckpointAccumulator,
     grid_from_dataarray,
+    needs_spatial_raster_checkpoint,
     try_open_completed_checkpoint,
 )
 from hydrofragments.output.rasters import (
@@ -407,3 +408,24 @@ def test_large_spatial_fixture_retains_bounded_live_arrays(tmp_path) -> None:
     assert weak() is None
     assert checkpoint.metadata.chunk_inventory
     assert len(checkpoint.metadata.chunk_inventory) < 24
+
+
+def test_needs_spatial_raster_checkpoint_skips_export_off_scalar_only() -> None:
+    assert needs_spatial_raster_checkpoint(
+        selected_metric_ids={"occurrence", "refuge_area", "recurrence", "hydroperiod"},
+        spatial_products=(),
+        export_enabled=False,
+        checkpoint_path=None,
+    ) is False
+    assert needs_spatial_raster_checkpoint(
+        selected_metric_ids={"occurrence", "refuge_area"},
+        spatial_products=("persistence_rasters",),
+        export_enabled=True,
+        checkpoint_path=None,
+    ) is True
+    assert needs_spatial_raster_checkpoint(
+        selected_metric_ids={"occurrence"},
+        spatial_products=(),
+        export_enabled=False,
+        checkpoint_path="/tmp/checkpoints",
+    ) is True

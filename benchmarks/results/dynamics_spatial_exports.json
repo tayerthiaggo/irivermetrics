@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "baseline": "dynamics_spatial_exports",
-  "created_at": "2026-08-12T13:42:32.261257+00:00",
-  "baseline_commit": "6230b31",
+  "created_at": "2026-08-12T14:01:55.983733+00:00",
+  "baseline_commit": "c59bc4b",
   "true_baseline_commit": "12a6dbd",
   "scope_note": "Repository-owned synthetic fixtures and an optional read-only local monthly Zarr subset. Network-dependent DEA acquisition numbers from end_to_end_workflow are excluded from this gate.",
   "environment": {
@@ -10,7 +10,7 @@
     "platform": "Windows-10-10.0.19045-SP0"
   },
   "parameters": {
-    "repeats": 5,
+    "repeats": 3,
     "warmup": 1,
     "zarr_fixture_available": true
   },
@@ -25,7 +25,7 @@
       ],
       "workers": 1,
       "role": "baseline",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -36,15 +36,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 0.6688791999768,
+            "core_analysis": 0.6723265000036918,
             "bundle_validation": 0.0,
-            "total": 0.6688791999768
+            "total": 0.6723265000036918
           },
           "source_materializations": null,
           "label_passes": null,
           "code_commit": "12a6dbd",
-          "peak_rss_bytes": 500895744,
-          "subprocess_wall_seconds": 5.636777299980167
+          "peak_rss_bytes": 501035008,
+          "subprocess_wall_seconds": 5.576593999983743
         },
         {
           "status": "ok",
@@ -53,15 +53,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 0.6615032000117935,
+            "core_analysis": 0.6661107999971136,
             "bundle_validation": 0.0,
-            "total": 0.6615032000117935
+            "total": 0.6661107999971136
           },
           "source_materializations": null,
           "label_passes": null,
           "code_commit": "12a6dbd",
-          "peak_rss_bytes": 500736000,
-          "subprocess_wall_seconds": 5.894942200015066
+          "peak_rss_bytes": 501141504,
+          "subprocess_wall_seconds": 5.521117099997355
         },
         {
           "status": "ok",
@@ -70,49 +70,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 0.6406738999939989,
+            "core_analysis": 0.6213665999821387,
             "bundle_validation": 0.0,
-            "total": 0.6406738999939989
+            "total": 0.6213665999821387
           },
           "source_materializations": null,
           "label_passes": null,
           "code_commit": "12a6dbd",
-          "peak_rss_bytes": 500916224,
-          "subprocess_wall_seconds": 5.949640900013037
-        },
-        {
-          "status": "ok",
-          "scenario_id": "baseline_export_off",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [],
-          "timings_seconds": {
-            "core_analysis": 0.64225250002346,
-            "bundle_validation": 0.0,
-            "total": 0.64225250002346
-          },
-          "source_materializations": null,
-          "label_passes": null,
-          "code_commit": "12a6dbd",
-          "peak_rss_bytes": 500887552,
-          "subprocess_wall_seconds": 5.686291599995457
-        },
-        {
-          "status": "ok",
-          "scenario_id": "baseline_export_off",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [],
-          "timings_seconds": {
-            "core_analysis": 0.713259799988009,
-            "bundle_validation": 0.0,
-            "total": 0.713259799988009
-          },
-          "source_materializations": null,
-          "label_passes": null,
-          "code_commit": "12a6dbd",
-          "peak_rss_bytes": 501125120,
-          "subprocess_wall_seconds": 5.819084999995539
+          "peak_rss_bytes": 501153792,
+          "subprocess_wall_seconds": 5.373121500015259
         }
       ]
     },
@@ -126,7 +92,7 @@
       ],
       "workers": 1,
       "role": "candidate",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -137,18 +103,18 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.4840392000041902,
-            "core_analysis": 1.5317447999841534,
-            "bundle_validation": 0.004167300008703023,
-            "total": 1.5359120999928564
+            "parity_off_seconds": 0.6935785000096075,
+            "core_analysis": 0.6516704000241589,
+            "bundle_validation": 0.004126600018935278,
+            "total": 0.6557970000430942
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 0,
+          "label_passes": 24,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -157,15 +123,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/e25ee64450b944c8a7ad8085c670acdd-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/e25ee64450b944c8a7ad8085c670acdd-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/e25ee64450b944c8a7ad8085c670acdd-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/e25ee64450b944c8a7ad8085c670acdd-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526856192,
-          "subprocess_wall_seconds": 8.264054900006158
+          "peak_rss_bytes": 526622720,
+          "subprocess_wall_seconds": 6.474866100004874
         },
         {
           "status": "ok",
@@ -174,18 +140,18 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.654717500001425,
-            "core_analysis": 1.5065824999765027,
-            "bundle_validation": 0.004409200017107651,
-            "total": 1.5109916999936104
+            "parity_off_seconds": 0.7072163999837358,
+            "core_analysis": 0.6901375000015832,
+            "bundle_validation": 0.004221699986374006,
+            "total": 0.6943591999879573
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 0,
+          "label_passes": 24,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -194,15 +160,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/dde09e3e89654afcbf34250affd41a11-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/b27c265a157e4e389d65b6e35d018b5b-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/b27c265a157e4e389d65b6e35d018b5b-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/b27c265a157e4e389d65b6e35d018b5b-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/b27c265a157e4e389d65b6e35d018b5b-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526544896,
-          "subprocess_wall_seconds": 8.57052089998615
+          "peak_rss_bytes": 525971456,
+          "subprocess_wall_seconds": 6.4577456999977585
         },
         {
           "status": "ok",
@@ -211,18 +177,18 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.6114394000032917,
-            "core_analysis": 1.515727899997728,
-            "bundle_validation": 0.005298100004438311,
-            "total": 1.5210260000021663
+            "parity_off_seconds": 0.7105453999829479,
+            "core_analysis": 0.6553465999895707,
+            "bundle_validation": 0.004469699983019382,
+            "total": 0.6598162999725901
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 0,
+          "label_passes": 24,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -231,89 +197,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/aaec134a197e4eab86da13d767185d1f-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/91d0111bf6744873af15abb3b3bc3d90-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/91d0111bf6744873af15abb3b3bc3d90-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/91d0111bf6744873af15abb3b3bc3d90-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/91d0111bf6744873af15abb3b3bc3d90-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526938112,
-          "subprocess_wall_seconds": 8.573999999993248
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_export_off",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [],
-          "timings_seconds": {
-            "parity_off_seconds": 1.6116694000083953,
-            "core_analysis": 1.6885260000126436,
-            "bundle_validation": 0.008327400020789355,
-            "total": 1.696853400033433
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 29703,
-            "run_manifest.json": 6191
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 527073280,
-          "subprocess_wall_seconds": 8.835389000014402
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_export_off",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [],
-          "timings_seconds": {
-            "parity_off_seconds": 1.5954112999897916,
-            "core_analysis": 1.5238871999899857,
-            "bundle_validation": 0.0042181000171694905,
-            "total": 1.5281053000071552
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 29703,
-            "run_manifest.json": 6193
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526958592,
-          "subprocess_wall_seconds": 8.590229599998565
+          "peak_rss_bytes": 527314944,
+          "subprocess_wall_seconds": 6.489812600018922
         }
       ]
     },
@@ -329,7 +221,7 @@
       ],
       "workers": 1,
       "role": "candidate",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -342,18 +234,18 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.6474255000066478,
-            "core_analysis": 1.6393196000135504,
-            "bundle_validation": 0.008725899999262765,
-            "total": 1.6480455000128131
+            "parity_off_seconds": 0.7285203000064939,
+            "core_analysis": 1.6187486000126228,
+            "bundle_validation": 0.008506199985276908,
+            "total": 1.6272547999978997
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -362,10 +254,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/c455c48e376944f496a329d5e0d4b580-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/c455c48e376944f496a329d5e0d4b580-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/c455c48e376944f496a329d5e0d4b580-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/c455c48e376944f496a329d5e0d4b580-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -376,8 +268,8 @@
             "run_manifest.json": 9277
           },
           "checkpoint_state": {
-            "run_id": "3b167b8e6c1b436eb50d54b4be6551f8",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "f19e5af0c7a14fa2b9910559b4779f3e",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -457,8 +349,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 540692480,
-          "subprocess_wall_seconds": 8.714121299999533
+          "peak_rss_bytes": 540372992,
+          "subprocess_wall_seconds": 7.501617400004761
         },
         {
           "status": "ok",
@@ -469,18 +361,18 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5207695999997668,
-            "core_analysis": 1.8048849999904633,
-            "bundle_validation": 0.007863799983169883,
-            "total": 1.8127487999736331
+            "parity_off_seconds": 0.6939789000025485,
+            "core_analysis": 1.6121692000015173,
+            "bundle_validation": 0.006802000018069521,
+            "total": 1.6189712000195868
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -489,10 +381,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/0c362617b97e438994117243fda794c6-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/3a9fcd19d21c4a7facfad26f5a381013-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/3a9fcd19d21c4a7facfad26f5a381013-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/3a9fcd19d21c4a7facfad26f5a381013-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/3a9fcd19d21c4a7facfad26f5a381013-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -500,11 +392,11 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9277
+            "run_manifest.json": 9273
           },
           "checkpoint_state": {
-            "run_id": "87bbb70513754ff2859b7491302f9ff2",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "f127cc87c2dc4741a461056cb62b0888",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -584,8 +476,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 540291072,
-          "subprocess_wall_seconds": 8.633302200003527
+          "peak_rss_bytes": 538710016,
+          "subprocess_wall_seconds": 7.413653399999021
         },
         {
           "status": "ok",
@@ -596,18 +488,18 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.584815800015349,
-            "core_analysis": 1.7020277999981772,
-            "bundle_validation": 0.009345300000859424,
-            "total": 1.7113730999990366
+            "parity_off_seconds": 0.708898400014732,
+            "core_analysis": 1.6741384000051767,
+            "bundle_validation": 0.007907599996542558,
+            "total": 1.6820460000017192
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -616,10 +508,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/5b77331d83504437989e9647b7793fbc-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/1b5b83f319c348929b4600e49c899064-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/1b5b83f319c348929b4600e49c899064-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/1b5b83f319c348929b4600e49c899064-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/1b5b83f319c348929b4600e49c899064-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -630,8 +522,8 @@
             "run_manifest.json": 9275
           },
           "checkpoint_state": {
-            "run_id": "7f3888daf16647b4a1e053fdf93cd665",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "b61c536a3d504ac09b851a003da6b655",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -711,262 +603,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 539045888,
-          "subprocess_wall_seconds": 8.666873000009218
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_persistence_rasters",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "persistence_rasters"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.527617999992799,
-            "core_analysis": 1.7945436000009067,
-            "bundle_validation": 0.007426600001053885,
-            "total": 1.8019702000019606
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/e379861273e24b33b611f44ac2b078e8-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9277
-          },
-          "checkpoint_state": {
-            "run_id": "76ee05f60fa342e3bb28de2c64ce2547",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": null,
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 540782592,
-          "subprocess_wall_seconds": 8.561592000012752
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_persistence_rasters",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "persistence_rasters"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.5712340000027325,
-            "core_analysis": 1.7920745999726932,
-            "bundle_validation": 0.013291700015543029,
-            "total": 1.8053662999882363
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9275
-          },
-          "checkpoint_state": {
-            "run_id": "d4126b1a731640ebbfcbd7e49e36c90e",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": null,
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 540078080,
-          "subprocess_wall_seconds": 8.606183399999281
+          "peak_rss_bytes": 539992064,
+          "subprocess_wall_seconds": 7.454952300002333
         }
       ]
     },
@@ -982,7 +620,7 @@
       ],
       "workers": 1,
       "role": "candidate",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -995,18 +633,18 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.54867170000216,
-            "core_analysis": 2.147838300006697,
-            "bundle_validation": 0.005681499984348193,
-            "total": 2.153519799991045
+            "parity_off_seconds": 0.688586199976271,
+            "core_analysis": 1.9276330000138842,
+            "bundle_validation": 0.00508780000382103,
+            "total": 1.9327208000177052
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1015,16 +653,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/93bd309842fd4468815111f64222b20f-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/93bd309842fd4468815111f64222b20f-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/93bd309842fd4468815111f64222b20f-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/93bd309842fd4468815111f64222b20f-0.parquet": 29703,
             "run_manifest.json": 6639,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "c3756cac7c004080a0c72ca56e5fca4c",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "74f515a9890e4492a8272647dc675b92",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -1104,8 +742,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 553689088,
-          "subprocess_wall_seconds": 8.93873250001343
+          "peak_rss_bytes": 553934848,
+          "subprocess_wall_seconds": 7.833348100015428
         },
         {
           "status": "ok",
@@ -1116,18 +754,18 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.642782899987651,
-            "core_analysis": 2.023410399997374,
-            "bundle_validation": 0.007570600020699203,
-            "total": 2.0309810000180732
+            "parity_off_seconds": 0.7259805999929085,
+            "core_analysis": 1.9757734999875538,
+            "bundle_validation": 0.005872199981240556,
+            "total": 1.9816456999687944
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1136,16 +774,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/f4f75d6096c24957b81dc66838b7f8c1-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/f4f75d6096c24957b81dc66838b7f8c1-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/f4f75d6096c24957b81dc66838b7f8c1-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/f4f75d6096c24957b81dc66838b7f8c1-0.parquet": 29703,
             "run_manifest.json": 6639,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "413ad8c3975a48a6b5c6bada6a2f1c36",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "548727da7679403fbe703f3779f89e57",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -1225,8 +863,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 554266624,
-          "subprocess_wall_seconds": 9.03695089998655
+          "peak_rss_bytes": 554905600,
+          "subprocess_wall_seconds": 7.893764200009173
         },
         {
           "status": "ok",
@@ -1237,18 +875,18 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.482517900003586,
-            "core_analysis": 1.9552021999843419,
-            "bundle_validation": 0.008142000006046146,
-            "total": 1.963344199990388
+            "parity_off_seconds": 0.7261096000147518,
+            "core_analysis": 1.9338879999995697,
+            "bundle_validation": 0.006123300001490861,
+            "total": 1.9400113000010606
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1257,16 +895,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 29703,
-            "run_manifest.json": 6637,
+            "metrics/metric_family=extent/value_type=monthly/0a29703647874c82b5df9ac933c18c4d-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/0a29703647874c82b5df9ac933c18c4d-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/0a29703647874c82b5df9ac933c18c4d-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/0a29703647874c82b5df9ac933c18c4d-0.parquet": 29703,
+            "run_manifest.json": 6639,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "ca64875b3d9a4f898afb1fbc612acf89",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "6fd3133da015487783ec7a5a35271bd2",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -1346,250 +984,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 555106304,
-          "subprocess_wall_seconds": 8.695238599990262
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_monthly_pools",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "monthly_pools"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.557163199991919,
-            "core_analysis": 1.969272499991348,
-            "bundle_validation": 0.006046700000297278,
-            "total": 1.9753191999916453
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 29703,
-            "run_manifest.json": 6641,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "ed88ed7548c945139a3feb169732941c",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 555487232,
-          "subprocess_wall_seconds": 8.89779630000703
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_monthly_pools",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "monthly_pools"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.6305145999940578,
-            "core_analysis": 2.12321280001197,
-            "bundle_validation": 0.00931179997860454,
-            "total": 2.1325245999905746
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/d9b6720268004b059dad7fca02168462-0.parquet": 29703,
-            "run_manifest.json": 6641,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "19062743b8a8488dad0a3f21028211e9",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 555032576,
-          "subprocess_wall_seconds": 9.032819199986989
+          "peak_rss_bytes": 554160128,
+          "subprocess_wall_seconds": 7.686973799980478
         }
       ]
     },
@@ -1607,7 +1003,7 @@
       ],
       "workers": 1,
       "role": "candidate",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -1622,18 +1018,18 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.4831452000071295,
-            "core_analysis": 2.237050299998373,
-            "bundle_validation": 0.009389399987412617,
-            "total": 2.2464396999857854
+            "parity_off_seconds": 0.7096938000177033,
+            "core_analysis": 2.1763200999994297,
+            "bundle_validation": 0.00883919998886995,
+            "total": 2.1851592999882996
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1642,10 +1038,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/3d15412f2cc7433298a6e3db7b145386-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/ff792ca3c988478fb2c70ad7ac69fb73-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/ff792ca3c988478fb2c70ad7ac69fb73-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/ff792ca3c988478fb2c70ad7ac69fb73-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/ff792ca3c988478fb2c70ad7ac69fb73-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -1657,8 +1053,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "6bd7a517f6ac487498f67cb077484180",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "c2e402330e0947699d4ca4f9be472645",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -1738,8 +1134,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 557015040,
-          "subprocess_wall_seconds": 9.114564299990889
+          "peak_rss_bytes": 557420544,
+          "subprocess_wall_seconds": 7.9426777999906335
         },
         {
           "status": "ok",
@@ -1752,18 +1148,18 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.661653999995906,
-            "core_analysis": 2.194931899983203,
-            "bundle_validation": 0.008745600003749132,
-            "total": 2.203677499986952
+            "parity_off_seconds": 0.7005621000134852,
+            "core_analysis": 2.1045316999952774,
+            "bundle_validation": 0.00947789999190718,
+            "total": 2.1140095999871846
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1772,10 +1168,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/e81385134e794674b455d1a85a0d37c7-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/01fc2425433447228e9f05e91808fd3f-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/01fc2425433447228e9f05e91808fd3f-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/01fc2425433447228e9f05e91808fd3f-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/01fc2425433447228e9f05e91808fd3f-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -1783,12 +1179,12 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9733,
+            "run_manifest.json": 9735,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "5b4a745d1b6e430c949e5415f7458efa",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "89f4024bb9b344f7a55a04d52d9a0d83",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -1868,8 +1264,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556785664,
-          "subprocess_wall_seconds": 9.403774899983546
+          "peak_rss_bytes": 556851200,
+          "subprocess_wall_seconds": 8.042681299994001
         },
         {
           "status": "ok",
@@ -1882,18 +1278,18 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.666220399987651,
-            "core_analysis": 2.309218600013992,
-            "bundle_validation": 0.009399500006111339,
-            "total": 2.318618100020103
+            "parity_off_seconds": 0.713658900000155,
+            "core_analysis": 2.1183199000079185,
+            "bundle_validation": 0.01195949999964796,
+            "total": 2.1302794000075664
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest_off": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
+          "source_materializations": 12,
+          "label_passes": 12,
           "cube_shape": {
             "time": 12,
             "y": 65,
@@ -1902,10 +1298,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/600841648d9c4c01a4d20f4b4f523dc9-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/600841648d9c4c01a4d20f4b4f523dc9-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/600841648d9c4c01a4d20f4b4f523dc9-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/600841648d9c4c01a4d20f4b4f523dc9-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -1913,12 +1309,12 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9731,
+            "run_manifest.json": 9735,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "bc081d246c2c47a7b193b764ac638a6b",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "616b87bf85104f88974edf978d2646ce",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -1998,268 +1394,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556400640,
-          "subprocess_wall_seconds": 9.471315999981016
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_all_products",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "monthly_pools",
-            "persistence_rasters",
-            "temporal_rasters"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.5903489000047557,
-            "core_analysis": 2.279383899993263,
-            "bundle_validation": 0.011056300019845366,
-            "total": 2.2904402000131086
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9733,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "b5158caa9e7b422991b8ba355154d29b",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 556724224,
-          "subprocess_wall_seconds": 9.272607799997786
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_all_products",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "monthly_pools",
-            "persistence_rasters",
-            "temporal_rasters"
-          ],
-          "timings_seconds": {
-            "parity_off_seconds": 1.587359999975888,
-            "core_analysis": 2.281555199995637,
-            "bundle_validation": 0.013369799999054521,
-            "total": 2.2949249999946915
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9733,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "7a1d72fe118e4f9892a96e209c79cd6a",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15789457408,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 557731840,
-          "subprocess_wall_seconds": 9.279421699990053
+          "peak_rss_bytes": 556007424,
+          "subprocess_wall_seconds": 7.934739399992395
         }
       ]
     },
@@ -2292,17 +1428,17 @@
           "fixture_id": "long_480_small",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 46.95396109999274,
-            "bundle_validation": 0.004603599983965978,
-            "total": 46.958564699976705
+            "core_analysis": 3.7077756999933627,
+            "bundle_validation": 0.010443499981192872,
+            "total": 3.7182191999745555
           },
-          "metrics_digest": "fb6cedbea458a491cb602fdc6f4b153ec79b1757c2b250f7daac700d24631a5e",
+          "metrics_digest": "186213131b6ce036444e82b3837a27fce0b64141d0bfa87a33b5e62a29e494eb",
           "coverage_digest": "99a154f0fb06bb9ebdc13bc6fa62aa250f2237a091bc4cd366a19799bf4ac204",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
           "metric_parity_holds": null,
-          "source_materializations": 480,
-          "label_passes": 0,
+          "source_materializations": 0,
+          "label_passes": 480,
           "cube_shape": {
             "time": 480,
             "y": 16,
@@ -2311,15 +1447,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1215,
-            "metrics/metric_family=extent/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 35612,
-            "metrics/metric_family=fragmentation/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 36517,
-            "metrics/metric_family=morphology/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 39500,
-            "metrics/metric_family=persistence/value_type=raster_summary/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 35134,
+            "metrics/metric_family=extent/value_type=monthly/1c35f149c9f9414a98a8d7fe9465d4a2-0.parquet": 35612,
+            "metrics/metric_family=fragmentation/value_type=monthly/1c35f149c9f9414a98a8d7fe9465d4a2-0.parquet": 36517,
+            "metrics/metric_family=morphology/value_type=monthly/1c35f149c9f9414a98a8d7fe9465d4a2-0.parquet": 39500,
+            "metrics/metric_family=persistence/value_type=raster_summary/1c35f149c9f9414a98a8d7fe9465d4a2-0.parquet": 35134,
             "run_manifest.json": 6189
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 555208704,
-          "subprocess_wall_seconds": 52.377434599999106
+          "peak_rss_bytes": 556130304,
+          "subprocess_wall_seconds": 8.815620799985481
         }
       ]
     },
@@ -2344,17 +1480,17 @@
           "fixture_id": "large_spatial_sparse",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 1.0558312000066508,
-            "bundle_validation": 0.004494699998758733,
-            "total": 1.0603259000054095
+            "core_analysis": 0.6450947000121232,
+            "bundle_validation": 0.00410109999938868,
+            "total": 0.6491958000115119
           },
-          "metrics_digest": "11af91932b2a7f328e042dc37938cce9828850f5b73eb54020a65c85f1f75575",
+          "metrics_digest": "791344c5c71bf36151401cdf47494dd77edd81c226705c4f13370054031323c2",
           "coverage_digest": "ccf02d78ec4ed233715cb73fd351c400d1246b17ef7e9109ae9df20d90239e94",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
           "metric_parity_holds": null,
-          "source_materializations": 4,
-          "label_passes": 0,
+          "source_materializations": 0,
+          "label_passes": 4,
           "cube_shape": {
             "time": 4,
             "y": 128,
@@ -2363,15 +1499,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1221,
-            "metrics/metric_family=extent/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 29947,
-            "metrics/metric_family=fragmentation/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 30000,
-            "metrics/metric_family=morphology/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 29875,
-            "metrics/metric_family=persistence/value_type=raster_summary/91976823a9074f2686a573da7036f80d-0.parquet": 29600,
+            "metrics/metric_family=extent/value_type=monthly/077de36fa6d245898a292a8afa0348e2-0.parquet": 29947,
+            "metrics/metric_family=fragmentation/value_type=monthly/077de36fa6d245898a292a8afa0348e2-0.parquet": 30000,
+            "metrics/metric_family=morphology/value_type=monthly/077de36fa6d245898a292a8afa0348e2-0.parquet": 29875,
+            "metrics/metric_family=persistence/value_type=raster_summary/077de36fa6d245898a292a8afa0348e2-0.parquet": 29600,
             "run_manifest.json": 6194
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 525819904,
-          "subprocess_wall_seconds": 6.423778799973661
+          "peak_rss_bytes": 527204352,
+          "subprocess_wall_seconds": 5.714558100007707
         }
       ]
     },
@@ -2390,12 +1526,40 @@
       "status": "ok",
       "runs": [
         {
-          "status": "expected_failure",
+          "status": "ok",
           "scenario_id": "large_spatial_single_component",
-          "error_type": "MemoryBudgetExceeded",
-          "error_message": "component crop for label=1 in window='window-0001' requires 32400 live bytes but worker budget is 512",
-          "subprocess_wall_seconds": 6.000005099980626,
-          "peak_rss_bytes": null
+          "phase": "full",
+          "fixture_id": "large_spatial_single_component",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 0.7284168000041973,
+            "bundle_validation": 0.004834199993638322,
+            "total": 0.7332509999978356
+          },
+          "metrics_digest": "b9a54d68bab5383880042ce7311c74b179b0c850a83963b76c5e38753b6329f3",
+          "coverage_digest": "16ce9ef9d1ba7b9e997f200110d349401f9b9ae2e3f8112840dabc36b5bc0fc4",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 0,
+          "label_passes": 2,
+          "cube_shape": {
+            "time": 2,
+            "y": 96,
+            "x": 96
+          },
+          "output_bytes_by_product": {
+            "config.json": 1419,
+            "metric_coverage.csv": 1125,
+            "metrics/metric_family=extent/value_type=monthly/92502757e22c428d9ed1ecd40df5233c-0.parquet": 29888,
+            "metrics/metric_family=fragmentation/value_type=monthly/92502757e22c428d9ed1ecd40df5233c-0.parquet": 29935,
+            "metrics/metric_family=morphology/value_type=monthly/92502757e22c428d9ed1ecd40df5233c-0.parquet": 29985,
+            "metrics/metric_family=persistence/value_type=raster_summary/92502757e22c428d9ed1ecd40df5233c-0.parquet": 29573,
+            "run_manifest.json": 6130
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 545230848,
+          "subprocess_wall_seconds": 6.071291000000201
         }
       ]
     },
@@ -2412,7 +1576,7 @@
       ],
       "workers": 1,
       "role": "checkpoint_retry",
-      "repeats": 5,
+      "repeats": 3,
       "warmup": 1,
       "status": "ok",
       "runs": [
@@ -2426,11 +1590,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.5693254999932833,
-            "bundle_validation": 0.010171500005526468,
-            "total": 2.5794969999988098
+            "core_analysis": 2.3226180999772623,
+            "bundle_validation": 0.008337900013430044,
+            "total": 2.3309559999906924
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2445,10 +1609,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/cab25baf138346f4a62f3a500a83683b-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/bcef7ae5d6204680b84e6ed6e0c5fc21-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/bcef7ae5d6204680b84e6ed6e0c5fc21-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/bcef7ae5d6204680b84e6ed6e0c5fc21-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/bcef7ae5d6204680b84e6ed6e0c5fc21-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2460,8 +1624,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "79f466a64b814dbeb1570e8bde790850",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "4b0c2e0420824cac9f2ee3ac76fb914a",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -2541,27 +1705,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556486656,
-          "subprocess_wall_seconds": 7.854292200005148,
+          "peak_rss_bytes": 555675648,
+          "subprocess_wall_seconds": 7.385338499996578,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.6619140999973752,
-              "total": 0.6619140999973752
+              "output_finalize": 0.6772281000157818,
+              "total": 0.6772281000157818
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+            "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/db706582ce9243308ef1a50a2ad98688-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/db706582ce9243308ef1a50a2ad98688-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/db706582ce9243308ef1a50a2ad98688-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/db706582ce9243308ef1a50a2ad98688-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2572,8 +1736,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 455258112,
-            "subprocess_wall_seconds": 6.093820800015237
+            "peak_rss_bytes": 456601600,
+            "subprocess_wall_seconds": 5.768986000010045
           }
         },
         {
@@ -2586,11 +1750,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.5146735000016633,
-            "bundle_validation": 0.01658200001111254,
-            "total": 2.531255500012776
+            "core_analysis": 2.2891362000082154,
+            "bundle_validation": 0.009516499994788319,
+            "total": 2.2986527000030037
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2605,10 +1769,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/89636758542d42bebc9455be249ab8a6-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/3d5b41ef01114510b6ff95b7a9560bc4-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/3d5b41ef01114510b6ff95b7a9560bc4-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/3d5b41ef01114510b6ff95b7a9560bc4-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/3d5b41ef01114510b6ff95b7a9560bc4-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2620,8 +1784,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "9b2f771940bd489b94ccd8c5aceb7c42",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "5b0fe979c7274658a5ba318446c1231e",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -2701,27 +1865,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556711936,
-          "subprocess_wall_seconds": 7.939631200017175,
+          "peak_rss_bytes": 555720704,
+          "subprocess_wall_seconds": 7.383764600002905,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.6855642999871634,
-              "total": 0.6855642999871634
+              "output_finalize": 0.6908812000183389,
+              "total": 0.6908812000183389
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+            "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/0b5d1c0518e84234a486297320c96a65-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/955f8aa8be944dcca473874f219acfc7-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/955f8aa8be944dcca473874f219acfc7-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/955f8aa8be944dcca473874f219acfc7-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/955f8aa8be944dcca473874f219acfc7-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2732,8 +1896,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 456761344,
-            "subprocess_wall_seconds": 6.087780500005465
+            "peak_rss_bytes": 457089024,
+            "subprocess_wall_seconds": 5.746650999994017
           }
         },
         {
@@ -2746,11 +1910,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.498394599999301,
-            "bundle_validation": 0.00993259999086149,
-            "total": 2.5083271999901626
+            "core_analysis": 2.399914399982663,
+            "bundle_validation": 0.01014299999224022,
+            "total": 2.410057399974903
           },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2765,10 +1929,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/fb0a96af9ca84d09acba7f8435da357d-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/fb0a96af9ca84d09acba7f8435da357d-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/fb0a96af9ca84d09acba7f8435da357d-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/fb0a96af9ca84d09acba7f8435da357d-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2780,8 +1944,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "7f78c8fe4989431d9bc1d2e82c1d2d86",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
+            "run_id": "253942b06e58437bb421570c84f2dd3e",
+            "git_sha": "c59bc4b5a149c85cc4a9a9ef3d660b878c784ce5",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -2861,27 +2025,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 557830144,
-          "subprocess_wall_seconds": 7.866512100008549,
+          "peak_rss_bytes": 555896832,
+          "subprocess_wall_seconds": 7.461473200004548,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.7314819000021089,
-              "total": 0.7314819000021089
+              "output_finalize": 0.6569128000119235,
+              "total": 0.6569128000119235
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+            "metrics_digest": "4ed0add52e0f799a0530bd3ebfc7f2e344be5400c82f4ce769238e94fa18d887",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/9889fce600884d9aab87d103ab40a862-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/1e71eff790024cc98d978866dcb673dd-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/1e71eff790024cc98d978866dcb673dd-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/1e71eff790024cc98d978866dcb673dd-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/1e71eff790024cc98d978866dcb673dd-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2892,328 +2056,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 458809344,
-            "subprocess_wall_seconds": 6.229242900008103
-          }
-        },
-        {
-          "status": "ok",
-          "scenario_id": "checkpoint_export_retry",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "persistence_rasters",
-            "monthly_pools"
-          ],
-          "timings_seconds": {
-            "core_analysis": 2.5421639000123832,
-            "bundle_validation": 0.00811469997279346,
-            "total": 2.5502785999851767
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/cb07f68b61654721a18bcae89805399e-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9713,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "6dfabc2133344dc2955e276cefa26d8f",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15793651712,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 557367296,
-          "subprocess_wall_seconds": 7.762308699981077,
-          "export_retry": {
-            "status": "ok",
-            "scenario_id": "checkpoint_export_retry",
-            "phase": "export_retry",
-            "timings_seconds": {
-              "output_finalize": 0.6431398999993689,
-              "total": 0.6431398999993689
-            },
-            "source_materializations": 0,
-            "label_passes": 0,
-            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-            "output_bytes_by_product": {
-              "config.json": 1420,
-              "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 29703,
-              "rasters/hydroperiod_by_year.tif": 7332,
-              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-              "rasters/occurrence.tif": 1213,
-              "rasters/recurrence.tif": 7480,
-              "rasters/recurrence_valid_year_count.tif": 980,
-              "rasters/refuge_mask.tif": 885,
-              "rasters/valid_observation_count.tif": 1099,
-              "run_manifest.json": 9722,
-              "vectors/spatial.gpkg": 876544
-            },
-            "peak_rss_bytes": 455053312,
-            "subprocess_wall_seconds": 6.129283300018869
-          }
-        },
-        {
-          "status": "ok",
-          "scenario_id": "checkpoint_export_retry",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [
-            "persistence_rasters",
-            "monthly_pools"
-          ],
-          "timings_seconds": {
-            "core_analysis": 2.5361544999759644,
-            "bundle_validation": 0.013496100000338629,
-            "total": 2.549650599976303
-          },
-          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/a1a95649c0814623ace8a0a7dd694815-0.parquet": 29703,
-            "rasters/hydroperiod_by_year.tif": 7332,
-            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-            "rasters/occurrence.tif": 1213,
-            "rasters/recurrence.tif": 7480,
-            "rasters/recurrence_valid_year_count.tif": 980,
-            "rasters/refuge_mask.tif": 885,
-            "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9715,
-            "vectors/spatial.gpkg": 876544
-          },
-          "checkpoint_state": {
-            "run_id": "36756e9faa7343deb9b88ac648c95b70",
-            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
-            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metrics",
-            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metric_coverage.csv",
-            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05.spatial_checkpoints\\spatial_rasters",
-            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05.spatial_checkpoints\\pool_vectors",
-            "report_warnings": [
-              "some requested metrics are unavailable with current inputs",
-              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
-            ],
-            "skipped_metrics": [
-              {
-                "metric_id": "extent_contraction",
-                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
-              },
-              {
-                "metric_id": "reconnection_timing",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "refuge_spatial_stability",
-                "reason": "missing dependencies: requires_HY_anchor"
-              },
-              {
-                "metric_id": "lpsec",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "inter_pool_gap",
-                "reason": "missing dependencies: requires_channel"
-              },
-              {
-                "metric_id": "pool_width",
-                "reason": "missing dependencies: requires_width_floor"
-              }
-            ],
-            "execution_plan_mapping": {
-              "planned_backend": "cpu",
-              "actual_backend_by_stage": {
-                "analyze": "cpu",
-                "graph": "cpu",
-                "masks": "cpu",
-                "monthly_reduction": "cpu",
-                "occurrence": "cpu",
-                "sentinel_normalization": "cpu",
-                "skeleton": "cpu",
-                "valid_counts": "cpu",
-                "vector": "cpu"
-              },
-              "backend_capabilities": {
-                "cuda_available": true,
-                "cuda_runtime_version": 12090,
-                "cupy_available": true,
-                "cupy_version": "14.1.1",
-                "device_count": 1,
-                "enabled_cuda_stages": [],
-                "free_memory_bytes": 15793651712,
-                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
-                "total_memory_bytes": 17170956288
-              }
-            },
-            "input_fingerprint": {
-              "cadence": "monthly",
-              "chunks": "none",
-              "shape": {
-                "time": 12,
-                "x": 65,
-                "y": 65
-              },
-              "source": "generic_binary"
-            },
-            "comparison_context": {
-              "aoi_id": "benchmark",
-              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
-              "hydroseason_hy_count": 0,
-              "monthly_composite": "supplied",
-              "resolution_m": 30.0,
-              "source": "generic_binary",
-              "validity_policy": "p_native_season_stratified_v1"
-            }
-          },
-          "peak_rss_bytes": 556605440,
-          "subprocess_wall_seconds": 7.8797448000113945,
-          "export_retry": {
-            "status": "ok",
-            "scenario_id": "checkpoint_export_retry",
-            "phase": "export_retry",
-            "timings_seconds": {
-              "output_finalize": 0.6739774000016041,
-              "total": 0.6739774000016041
-            },
-            "source_materializations": 0,
-            "label_passes": 0,
-            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
-            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-            "output_bytes_by_product": {
-              "config.json": 1420,
-              "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/2769cb4eb256489f9e27377cecddbd79-0.parquet": 29703,
-              "rasters/hydroperiod_by_year.tif": 7332,
-              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
-              "rasters/occurrence.tif": 1213,
-              "rasters/recurrence.tif": 7480,
-              "rasters/recurrence_valid_year_count.tif": 980,
-              "rasters/refuge_mask.tif": 885,
-              "rasters/valid_observation_count.tif": 1099,
-              "run_manifest.json": 9722,
-              "vectors/spatial.gpkg": 876544
-            },
-            "peak_rss_bytes": 455069696,
-            "subprocess_wall_seconds": 6.1656386999820825
+            "peak_rss_bytes": 455553024,
+            "subprocess_wall_seconds": 5.75681690001511
           }
         }
       ]
@@ -3229,26 +2073,26 @@
   ],
   "gates": {
     "true_baseline_commit": "12a6dbd",
-    "export_off_median_seconds_baseline": 0.6615032000117935,
-    "export_off_median_seconds_candidate": 1.5281053000071552,
-    "export_off_regression_fraction": 1.3100497472724417,
-    "export_off_within_10pct_gate": false,
-    "export_off_peak_rss_bytes_baseline_median": 500895744,
-    "export_off_peak_rss_bytes_candidate_median": 526938112,
+    "export_off_median_seconds_baseline": 0.6661107999971136,
+    "export_off_median_seconds_candidate": 0.6598162999725901,
+    "export_off_regression_fraction": -0.009449629137601223,
+    "export_off_within_10pct_gate": true,
+    "export_off_peak_rss_bytes_baseline_median": 501141504,
+    "export_off_peak_rss_bytes_candidate_median": 526622720,
     "export_off_peak_rss_tolerance_bytes": 5242880,
     "export_off_peak_rss_within_gate": false,
-    "all_products_peak_rss_bytes_median": 556785664,
-    "all_products_peak_rss_fraction_of_core": 1.0566433729507878,
+    "all_products_peak_rss_bytes_median": 556851200,
+    "all_products_peak_rss_fraction_of_core": 1.0574006377848644,
     "all_products_peak_rss_within_125pct_gate": true,
-    "long_480_peak_rss_bytes_median": 555208704,
-    "long_480_peak_rss_fraction_of_compact": 1.0536506875403235,
+    "long_480_peak_rss_bytes_median": 556130304,
+    "long_480_peak_rss_fraction_of_compact": 1.05603173368593,
     "long_480_peak_rss_documented_tolerance_bytes": 33554432,
     "long_480_memory_within_gate": true,
     "large_spatial_admission_budget_bytes": 64000,
-    "large_spatial_peak_rss_increment_bytes": 24924160,
+    "large_spatial_peak_rss_increment_bytes": 26062848,
     "large_spatial_rss_documented_tolerance_bytes": 33554432,
     "large_spatial_rss_within_125pct_admission_gate": true,
-    "large_spatial_single_component_fail_fast": true,
+    "large_spatial_single_component_fail_fast": false,
     "metric_parity_on_off_holds": true,
     "checkpoint_retry_skips_source_reads": true
   }

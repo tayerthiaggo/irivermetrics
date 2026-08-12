@@ -59,7 +59,7 @@ def test_compute_apsec_called_once_per_month(synthetic_cube, tmp_path):
     """
     config = _contracts_core_config(tmp_path)
     with mock.patch(
-        "hydrofragments.analysis.window_stream.compute_apsec", wraps=real_compute_apsec
+        "hydrofragments.section_analysis.compute_apsec", wraps=real_compute_apsec
     ) as spy:
         result = analyze(
             synthetic_cube, aoi_id="demo", config=config, pixel_size_m=30.0

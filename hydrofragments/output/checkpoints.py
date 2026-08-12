@@ -222,13 +222,26 @@ def needs_spatial_raster_checkpoint(
     *,
     selected_metric_ids: set[str] | frozenset[str] | None,
     spatial_products: Sequence[str],
+    export_enabled: bool = False,
+    checkpoint_path: str | Path | None = None,
 ) -> bool:
-    if selected_metric_ids is None:
-        return True
-    return bool(checkpoint_products_for_run(
-        selected_metric_ids=selected_metric_ids,
+    """Return whether the monthly pass must spill spatial rasters to Zarr.
+
+    Export-off scalar-only runs use lightweight in-memory accumulators for
+    persistence/temporal scalars. Zarr spill is required when spatial export
+    is enabled or when a durable checkpoint path is configured for retry.
+    """
+    effective_selected = (
+        selected_metric_ids
+        if selected_metric_ids is not None
+        else _PERSISTENCE_METRIC_IDS | _TEMPORAL_METRIC_IDS
+    )
+    if not checkpoint_products_for_run(
+        selected_metric_ids=effective_selected,
         spatial_products=spatial_products,
-    ))
+    ):
+        return False
+    return export_enabled or bool(checkpoint_path)
 
 
 def _grids_equal(left: SpatialGrid, right: SpatialGrid) -> bool:

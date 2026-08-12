@@ -125,15 +125,15 @@ def test_analyze_section_rows_rejects_water_without_valid_observation():
 def test_analyze_core_patches_and_pool_width_share_one_bundle(tmp_path):
     """Core patches and pool width share one measurement pass per month.
 
-    Post-window-stream, ``stream_section_month_rows`` calls
-    ``label_and_measure_window`` once per admitted window -- the shared
-    measurement primitive for both patch metrics and pool width.
+    Export-off analysis uses the lightweight ``_run_month_rows`` path, which
+    labels through :func:`measure_patch_properties`. Spatial-export runs use
+    ``label_and_measure_window`` via ``stream_section_month_rows``.
     """
     cube = _single_month_bundle_cube()
     config = _core_plus_width_config(tmp_path)
 
     with mock.patch.object(
-        patches, "label_and_measure_window", wraps=patches.label_and_measure_window
+        patches, "label_components", wraps=patches.label_components
     ) as spy:
         result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=10.0)
 

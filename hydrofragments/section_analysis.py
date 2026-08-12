@@ -26,6 +26,7 @@ from hydrofragments.output.checkpoints import (
     SpatialRasterCheckpointAccumulator,
     checkpoint_products_for_run,
     grid_from_dataarray,
+    needs_spatial_raster_checkpoint,
 )
 from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
 
@@ -712,7 +713,12 @@ def analyze_section_rows(
         selected_metric_ids=effective_selected,
         spatial_products=config.output.spatial_products,
     )
-    want_raster_checkpoint = bool(checkpoint_products)
+    want_raster_checkpoint = needs_spatial_raster_checkpoint(
+        selected_metric_ids=effective_selected,
+        spatial_products=config.output.spatial_products,
+        export_enabled=export_enabled,
+        checkpoint_path=config.compute.checkpoint_path,
+    )
     raster_checkpoint: SpatialRasterCheckpointAccumulator | None = None
     pool_consumer: PoolCheckpointConsumer | None = None
     extra_consumers: list[object] = []
@@ -742,29 +748,77 @@ def analyze_section_rows(
         _OccurrenceAccumulator() if want_persistence and raster_checkpoint is None else None
     )
 
-    per_month = stream_section_month_rows(
-        da_feature,
-        valid_obs=valid_obs,
-        timestamps=timestamps,
-        config=config,
-        pixel_size_m=pixel_size_m,
-        a_ref_m2=a_ref_m2,
-        cell_area_m2=cell_area_m2,
-        min_valid_fraction=min_valid_fraction,
-        analysis_mask_np=analysis_mask_np,
-        windows=windows,
-        want_patches=want_patches,
-        want_width=want_width,
-        want_apsec=want_apsec,
-        local_label_threshold_bytes=local_label_threshold_bytes,
-        workers=config.compute.workers,
-        executor_kind=executor_kind,
-        export_enabled=export_enabled,
-        extra_consumers=extra_consumers,
-        raster_feeder=raster_checkpoint,
-        occurrence_feeder=occurrence_acc,
-        dynamics_feeder=dynamics_collector,
+    needs_window_stream = (
+        export_enabled
+        or want_raster_checkpoint
+        or bool(extra_consumers)
+        or dynamics_collector is not None
     )
+
+    if needs_window_stream:
+        per_month = stream_section_month_rows(
+            da_feature,
+            valid_obs=valid_obs,
+            timestamps=timestamps,
+            config=config,
+            pixel_size_m=pixel_size_m,
+            a_ref_m2=a_ref_m2,
+            cell_area_m2=cell_area_m2,
+            min_valid_fraction=min_valid_fraction,
+            analysis_mask_np=analysis_mask_np,
+            windows=windows,
+            want_patches=want_patches,
+            want_width=want_width,
+            want_apsec=want_apsec,
+            local_label_threshold_bytes=local_label_threshold_bytes,
+            workers=config.compute.workers,
+            executor_kind=executor_kind,
+            export_enabled=export_enabled,
+            extra_consumers=extra_consumers,
+            raster_feeder=raster_checkpoint,
+            occurrence_feeder=occurrence_acc,
+            dynamics_feeder=dynamics_collector,
+        )
+    else:
+
+        def _payloads() -> Iterator[_MonthPayload]:
+            for time_index in range(n_time):
+                yield _build_month_payload(
+                    da_feature,
+                    valid_obs=valid_obs,
+                    time_index=time_index,
+                    timestamp=timestamps[time_index],
+                    config=config,
+                    pixel_size_m=pixel_size_m,
+                    a_ref_m2=a_ref_m2,
+                    cell_area_m2=cell_area_m2,
+                    min_valid_fraction=min_valid_fraction,
+                    analysis_mask_np=analysis_mask_np,
+                    windows=windows,
+                    want_patches=want_patches,
+                    want_width=want_width,
+                    want_apsec=want_apsec,
+                    local_label_threshold_bytes=local_label_threshold_bytes,
+                )
+
+        per_month = _run_month_rows(
+            _payloads(),
+            workers=config.compute.workers,
+            executor_kind=executor_kind,
+        )
+        if occurrence_acc is not None:
+            for month in per_month:
+                calendar_month = int(month["timestamp"].month)
+                water_month = month["water_month"]
+                occurrence_acc.add_month(
+                    calendar_month=calendar_month,
+                    water=water_month,
+                    valid_obs=(
+                        month["coverage_valid_obs_month"]
+                        if month["coverage_valid_obs_month"] is not None
+                        else np.ones_like(water_month, dtype=bool)
+                    ),
+                )
 
     if spatial_collector is not None and pool_consumer is not None:
         spatial_collector.grid = pool_consumer.grid

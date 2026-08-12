@@ -24,7 +24,7 @@ import pandas as pd
 import xarray as xr
 
 from hydrofragments import HydroConfig, analyze, open_water_cube
-from hydrofragments.patches import labels as labels_module
+from hydrofragments.metrics import patches as patches_module
 
 
 def _cube_two_months():
@@ -61,7 +61,7 @@ def test_patch_family_and_pool_width_share_one_bundle_call_per_month(tmp_path):
     cube = _cube_two_months()
     config = _config(tmp_path)
     with mock.patch.object(
-        labels_module, "label_components", wraps=labels_module.label_components
+        patches_module, "label_components", wraps=patches_module.label_components
     ) as spy:
         result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
     # 2 months in the fixture -> exactly one label_components call per month,
@@ -94,7 +94,7 @@ def test_pool_width_alone_still_works_without_patch_family(tmp_path):
         }
     )
     with mock.patch.object(
-        labels_module, "label_components", wraps=labels_module.label_components
+        patches_module, "label_components", wraps=patches_module.label_components
     ) as spy:
         result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
     assert spy.call_count == 2  # one per month, standalone pool_width path
