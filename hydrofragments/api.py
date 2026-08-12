@@ -37,7 +37,8 @@ from hydrofragments.models import (
     ValidationReport,
     WaterCube,
 )
-from hydrofragments.output import records_to_frame, write_run_metadata
+from hydrofragments.output import build_run_manifest, records_to_frame, write_run_metadata
+from hydrofragments.output.tables import resolve_git_sha
 from hydrofragments.schema import (
     EdgeFlag,
     MetricDependency,
@@ -266,6 +267,7 @@ def _metric_record(
     *,
     run_id: str,
     config: HydroConfig,
+    git_sha: str,
     catchment_id: str,
     aoi_id: str,
     metric: str,
@@ -297,7 +299,7 @@ def _metric_record(
         run_id=run_id,
         config_hash=config.config_hash,
         package_version=__version__,
-        git_sha="unknown",
+        git_sha=git_sha,
         catchment_id=catchment_id,
         aoi_id=aoi_id,
         zone=zone,
@@ -343,6 +345,7 @@ def _channel_profile_records(
     resolution_m: float,
     crs: str,
     source: str,
+    git_sha: str,
 ) -> list[MetricRecord]:
     wet = np.asarray(wet_profiles, dtype=bool)
     lengths = np.asarray(segment_lengths_m, dtype=float)
@@ -364,6 +367,7 @@ def _channel_profile_records(
             _metric_record(
                 run_id=run_id,
                 config=config,
+                git_sha=git_sha,
                 catchment_id=catchment_id,
                 aoi_id=aoi_id,
                 metric="lpsec",
@@ -393,6 +397,7 @@ def _channel_profile_records(
                 _metric_record(
                     run_id=run_id,
                     config=config,
+                    git_sha=git_sha,
                     catchment_id=catchment_id,
                     aoi_id=aoi_id,
                     metric="inter_pool_gap",
@@ -441,6 +446,7 @@ def _records_from_section_rows(
     resolution_m: float,
     crs: str,
     source: str,
+    git_sha: str,
 ) -> list[MetricRecord]:
     mapping = {
         "APSEC": (MetricFamily.EXTENT, "apsec", "percent", ValueType.MONTHLY, None),
@@ -534,6 +540,7 @@ def _records_from_section_rows(
                 _metric_record(
                     run_id=run_id,
                     config=config,
+                    git_sha=git_sha,
                     catchment_id=catchment_id,
                     aoi_id=aoi_id,
                     metric=metric_id,
@@ -605,6 +612,7 @@ def _temporal_profile_records(
     source: str,
     resolution_m: float,
     crs: str,
+    git_sha: str,
 ) -> list[MetricRecord]:
     """Emit AOI summaries for pixel-temporal kernels through canonical schema."""
     records: list[MetricRecord] = []
@@ -631,6 +639,7 @@ def _temporal_profile_records(
             _metric_record(
                 run_id=run_id,
                 config=config,
+                git_sha=git_sha,
                 catchment_id=catchment_id,
                 aoi_id=aoi_id,
                 metric="recurrence",
@@ -652,6 +661,7 @@ def _temporal_profile_records(
             _metric_record(
                 run_id=run_id,
                 config=config,
+                git_sha=git_sha,
                 catchment_id=catchment_id,
                 aoi_id=aoi_id,
                 metric="hydroperiod",
@@ -680,6 +690,7 @@ def _extent_contraction_records(
     source: str,
     resolution_m: float,
     crs: str,
+    git_sha: str,
 ) -> list[MetricRecord]:
     records: list[MetricRecord] = []
     for anchor in anchors.to_dict(orient="records"):
@@ -700,7 +711,7 @@ def _extent_contraction_records(
                     run_id=run_id,
                     config_hash=config.config_hash,
                     package_version=__version__,
-                    git_sha="unknown",
+                    git_sha=git_sha,
                     catchment_id=catchment_id,
                     aoi_id=aoi_id,
                     zone="AOI",
@@ -889,6 +900,7 @@ def analyze(
     if not report.is_valid:
         raise ValueError("; ".join(report.errors))
 
+    git_sha = resolve_git_sha()
     run_id = uuid4().hex
     catchment = catchment_id or aoi_id
     crs = cube.crs or config.spatial.target_crs
@@ -949,6 +961,7 @@ def analyze(
             resolution_m=pixel_size_m,
             crs=crs,
             source=cube.source,
+            git_sha=git_sha,
         )
     records = [record for record in records if record.metric in selected_ids]
     if {"lpsec", "inter_pool_gap"} & selected_ids:
@@ -972,6 +985,7 @@ def analyze(
                 resolution_m=pixel_size_m,
                 crs=crs,
                 source=cube.source,
+                git_sha=git_sha,
             )
         )
     if {"recurrence", "hydroperiod"} & selected_ids:
@@ -985,6 +999,7 @@ def analyze(
                 source=cube.source,
                 resolution_m=pixel_size_m,
                 crs=crs,
+                git_sha=git_sha,
             )
         )
     if (
@@ -1005,6 +1020,7 @@ def analyze(
                 source=cube.source,
                 resolution_m=pixel_size_m,
                 crs=crs,
+                git_sha=git_sha,
             )
         )
     frame = records_to_frame(records)
@@ -1012,8 +1028,7 @@ def analyze(
         frame, coverage_plan, selected_ids=selected_ids
     )
 
-    output_dir = Path(config.output.output_dir or ".")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    configured_output_dir = config.output.output_dir
     backend_warnings = list(report.warnings)
     if (
         config.compute.accelerator == "auto"
@@ -1022,30 +1037,29 @@ def analyze(
         backend_warnings.append(
             f"accelerator_fallback: {execution_plan.fallback_reason}"
         )
-    manifest = write_run_metadata(
-        output_dir,
-        config,
-        run_id=run_id,
-        package_version=__version__,
-        git_sha="unknown",
-        input_fingerprint={
+    created_at = datetime.now(timezone.utc)
+    manifest_arguments = {
+        "run_id": run_id,
+        "package_version": __version__,
+        "git_sha": git_sha,
+        "input_fingerprint": {
             "source": cube.source,
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
             "chunks": _describe_chunks(cube.water),
         },
-        planned_backend=execution_plan.planned_backend,
-        actual_backend_by_stage={
+        "planned_backend": execution_plan.planned_backend,
+        "actual_backend_by_stage": {
             "analyze": "cpu",
             **execution_plan.actual_backend_by_stage,
         },
-        backend_capabilities=execution_plan.capabilities.to_mapping(),
-        skipped_metrics=[
+        "backend_capabilities": execution_plan.capabilities.to_mapping(),
+        "skipped_metrics": [
             {"metric_id": metric_id, "reason": reason}
             for metric_id, reason in report.skipped_metrics
         ],
-        warnings=backend_warnings,
-        comparison_context={
+        "warnings": backend_warnings,
+        "comparison_context": {
             "aoi_id": aoi_id,
             "source": cube.source,
             "resolution_m": pixel_size_m,
@@ -1054,12 +1068,25 @@ def analyze(
                 0 if hydroyear_result is None else len(hydroyear_result.anchors)
             ),
         },
-        created_at=datetime.now(timezone.utc),
-    )
+        "created_at": created_at,
+    }
+
+    if configured_output_dir is None:
+        manifest_dict = dict(build_run_manifest(config, **manifest_arguments))
+        manifest_dict["manifest_path"] = None
+        result_output_dir = None
+    else:
+        output_dir = Path(configured_output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        write_run_metadata(output_dir, config, **manifest_arguments)
+        manifest_dict = dict(build_run_manifest(config, **manifest_arguments))
+        manifest_dict["manifest_path"] = str(output_dir / "run_manifest.json")
+        result_output_dir = output_dir
+
     return HydroResult(
         metrics_table=frame,
-        manifest={"run_manifest": str(manifest.manifest_path), "package_version": __version__},
-        output_dir=output_dir,
+        manifest=manifest_dict,
+        output_dir=result_output_dir,
         run_id=run_id,
         metric_coverage=metric_coverage,
     )

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.metadata
+import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Mapping
+from typing import Callable, Iterable, Mapping, Sequence
 
 import pandas as pd
 
@@ -15,6 +18,14 @@ from hydrofragments.schema import (
     SchemaError,
     validate_metric_id,
 )
+
+_GIT_SHA_ENV = "HYDROFRAGMENTS_GIT_SHA"
+_PACKAGE_METADATA_REVISION_KEYS = (
+    "Source-Revision-Id",
+    "Revision-Id",
+    "Git-Commit",
+)
+_SUPPORTED_TABLE_FORMATS = frozenset({"parquet", "csv"})
 
 
 PARQUET_PARTITION_COLUMNS = ("metric_family", "value_type")
@@ -61,6 +72,58 @@ _METRIC_COVERAGE_COLUMNS = (
 
 Row = MetricRecord | Mapping[str, object]
 VectorExporter = Callable[[Path, Path], Path]
+
+
+def resolve_git_sha() -> str:
+    """Resolve one git revision for an entire analysis run.
+
+    Precedence: CI environment variable, installed package metadata, local
+    Git ``HEAD``, then the literal ``unknown``.
+    """
+
+    env_value = os.environ.get(_GIT_SHA_ENV, "").strip()
+    if env_value:
+        return env_value
+
+    try:
+        metadata = importlib.metadata.metadata("hydrofragments")
+        for key in _PACKAGE_METADATA_REVISION_KEYS:
+            value = metadata.get(key, "").strip()
+            if value:
+                return value
+    except importlib.metadata.PackageNotFoundError:
+        pass
+
+    repo_root = Path(__file__).resolve().parents[2]
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        if completed.returncode == 0:
+            head = completed.stdout.strip()
+            if head:
+                return head
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    return "unknown"
+
+
+def validate_table_formats(formats: Sequence[str]) -> tuple[str, ...]:
+    """Validate public table export format literals."""
+
+    if not formats:
+        raise ValueError("formats cannot be empty")
+    normalized = tuple(formats)
+    for format_name in normalized:
+        if format_name not in _SUPPORTED_TABLE_FORMATS:
+            raise ValueError(f"unknown table format: {format_name}")
+    return normalized
 
 
 def _row_mapping(row: Row) -> dict[str, object]:
@@ -212,6 +275,7 @@ def write_output_tables(
     records: Iterable[Row] | pd.DataFrame,
     output_dir: str | Path,
     *,
+    formats: Sequence[str] = ("parquet",),
     export_csv: bool = False,
     include_vectors: bool = False,
     patch_geometries: Iterable[object] | None = None,
@@ -220,16 +284,32 @@ def write_output_tables(
 ) -> TableArtifacts:
     """Write tables once and optionally run a checkpoint-only vector export.
 
+    ``formats`` selects canonical table products. Parquet is the schema
+    authority; CSV is an optional flattened export. Spatial vectors are never
+    accepted as in-memory patch geometries.
+
     When vectors are disabled, ``patch_geometries`` is deliberately untouched.
     When enabled, vector work receives only a durable checkpoint path and its
     destination, keeping metric records and metric computation outside its DAG.
     """
 
+    validated_formats = validate_table_formats(formats)
+    export_csv = export_csv or "csv" in validated_formats
+    write_parquet = "parquet" in validated_formats
+
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     frame = records_to_frame(records)
-    metrics_dir = write_tidy_parquet(frame, root / "metrics")
-    csv_path = write_tidy_csv(frame, root / "metrics.csv") if export_csv else None
+
+    metrics_dir = root / "metrics"
+    if write_parquet:
+        metrics_dir = write_tidy_parquet(frame, metrics_dir)
+    else:
+        metrics_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_path = (
+        write_tidy_csv(frame, root / "metrics.csv") if export_csv else None
+    )
 
     vectors_path = None
     if include_vectors:
@@ -257,6 +337,8 @@ __all__ = [
     "read_tidy_csv",
     "read_tidy_parquet",
     "records_to_frame",
+    "resolve_git_sha",
+    "validate_table_formats",
     "write_metric_coverage",
     "write_output_tables",
     "write_tidy_csv",

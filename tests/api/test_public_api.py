@@ -440,6 +440,147 @@ def test_analyze_flags_low_coverage_month_on_apsec_record(tmp_path) -> None:
     assert apsec_rows["value"].nunique() == 1
 
 
+def _minimal_analyze_config(tmp_path, *, output_dir: str | None = None) -> HydroConfig:
+    output: dict[str, object] = {}
+    if output_dir is not None:
+        output["output_dir"] = output_dir
+    return HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.0.0",
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "output": output,
+        }
+    )
+
+
+def test_analyze_without_output_dir_is_side_effect_free(tmp_path) -> None:
+    times = pd.to_datetime(["2020-01-01", "2020-02-01"])
+    water = xr.DataArray(
+        np.ones((2, 2, 2), dtype=bool),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    cube = open_water_cube(water, input_kind="generic_binary")
+    config = _minimal_analyze_config(tmp_path)
+
+    result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
+
+    assert result.output_dir is None
+    assert not any(tmp_path.iterdir())
+    assert result.manifest["manifest_path"] is None
+    assert "manifest_schema_version" in result.manifest
+    assert "git_sha" in result.manifest
+
+
+def test_analyze_with_output_dir_returns_full_manifest_dictionary(tmp_path) -> None:
+    times = pd.to_datetime(["2020-01-01", "2020-02-01"])
+    water = xr.DataArray(
+        np.ones((2, 2, 2), dtype=bool),
+        dims=("time", "y", "x"),
+        coords={"time": times},
+    )
+    cube = open_water_cube(water, input_kind="generic_binary")
+    config = _minimal_analyze_config(tmp_path, output_dir=str(tmp_path))
+
+    result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
+
+    assert result.output_dir == tmp_path
+    assert result.manifest["manifest_path"] == str(tmp_path / "run_manifest.json")
+    assert result.manifest["manifest_schema_version"] == "1.0.0"
+    assert "artifacts" in result.manifest
+    assert (tmp_path / "run_manifest.json").exists()
+
+
+def test_hydro_result_write_creates_parquet_table_layout(tmp_path) -> None:
+    from datetime import datetime
+
+    from hydrofragments.models import MetricRecord
+    from hydrofragments.schema import MetricDependency, MetricFamily, ValueType, WarningFlag
+
+    record = MetricRecord(
+        run_id="run-001",
+        config_hash="a" * 64,
+        package_version="0.1.0",
+        git_sha="abc123",
+        catchment_id="fitzroy",
+        aoi_id="reach-01",
+        zone="AOI",
+        date=datetime(2026, 1, 1),
+        metric="apsec",
+        metric_family=MetricFamily.EXTENT,
+        value=12.5,
+        unit="percent",
+        value_type=ValueType.MONTHLY,
+        warning_flags=(WarningFlag.LENGTH_CRS_CAVEAT,),
+        is_reportable=True,
+        source="wofs",
+        resolution_m=30.0,
+        crs="EPSG:3577",
+        area_unit="m2",
+        length_unit="m",
+        monthly_composite="supplied",
+        min_patch_pixels=3,
+        min_patch_area_m2=2700.0,
+        connectivity_rule=8,
+        metric_dependency=MetricDependency.NONE,
+    )
+    coverage = pd.DataFrame(
+        [
+            {
+                "metric": "apsec",
+                "runtime_wired": True,
+                "status": "computed",
+                "rows": 1,
+                "reportable_rows": 1,
+                "reason": "",
+            }
+        ]
+    )
+    result = HydroResult(
+        metrics_table=pd.DataFrame([record.to_mapping()]),
+        manifest={},
+        output_dir=None,
+        run_id="run-001",
+        metric_coverage=coverage,
+    )
+
+    written = result.write(tmp_path / "tables", formats=("parquet",))
+
+    metrics_dir = written / "metrics"
+    assert metrics_dir.is_dir()
+    assert any(metrics_dir.rglob("*.parquet"))
+    assert (written / "metric_coverage.csv").exists()
+
+
+def test_hydro_result_write_rejects_unknown_table_formats(tmp_path) -> None:
+    result = HydroResult(
+        metrics_table=pd.DataFrame(),
+        manifest={},
+        output_dir=None,
+        run_id="run-001",
+    )
+
+    with pytest.raises(ValueError, match="unknown table format"):
+        result.write(tmp_path, formats=("geopackage",))
+
+
+def test_hydro_result_write_never_accepts_patch_geometries(tmp_path) -> None:
+    result = HydroResult(
+        metrics_table=pd.DataFrame(),
+        manifest={},
+        output_dir=None,
+        run_id="run-001",
+    )
+
+    with pytest.raises(TypeError):
+        result.write(tmp_path, formats=("parquet",), patch_geometries=gpd.GeoDataFrame())
+
+
 def test_compare_results_rejects_mismatched_validity_policy() -> None:
     from hydrofragments.guards.comparison import ComparisonGuardError
 

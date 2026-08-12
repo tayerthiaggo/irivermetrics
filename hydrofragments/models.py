@@ -293,16 +293,26 @@ class HydroResult:
 
     metrics_table: pd.DataFrame
     manifest: Mapping[str, object]
-    output_dir: Path
+    output_dir: Path | None
     run_id: str
     metric_coverage: pd.DataFrame = field(default_factory=_empty_metric_coverage)
 
     def write(self, path: str | Path, *, formats: Sequence[str] = ("parquet",)) -> Path:
-        from hydrofragments.output.tables import write_output_tables
+        from hydrofragments.output.tables import (
+            validate_table_formats,
+            write_metric_coverage,
+            write_output_tables,
+        )
 
+        validated_formats = validate_table_formats(formats)
         target = Path(path)
-        rows = self.metrics_table.to_dict(orient="records")
-        write_output_tables(rows, target, formats=formats)
+        write_output_tables(
+            self.metrics_table,
+            target,
+            formats=validated_formats,
+            include_vectors=False,
+        )
+        write_metric_coverage(self.metric_coverage, target)
         return target
 
 

@@ -215,6 +215,27 @@ def test_vector_export_is_checkpoint_only_and_does_not_receive_metrics(
     assert artifacts.vectors_path == tmp_path / "bundle" / "vectors"
 
 
+def test_validate_table_formats_rejects_unknown_literals() -> None:
+    from hydrofragments.output.tables import validate_table_formats
+
+    with pytest.raises(ValueError, match="unknown table format"):
+        validate_table_formats(("parquet", "gpkg"))
+
+
+def test_write_output_tables_accepts_formats_tuple(tmp_path: Path) -> None:
+    from hydrofragments.output.tables import write_output_tables
+
+    artifacts = write_output_tables(
+        [metric_record()],
+        tmp_path,
+        formats=("parquet", "csv"),
+    )
+
+    assert artifacts.metrics_dir.is_dir()
+    assert artifacts.csv_path is not None
+    assert artifacts.csv_path.exists()
+
+
 def test_pyarrow_is_declared_for_canonical_parquet_output() -> None:
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
 
