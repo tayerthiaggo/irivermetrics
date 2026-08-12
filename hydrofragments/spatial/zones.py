@@ -6,7 +6,12 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import xarray as xr
 from scipy import ndimage
+
+import rioxarray  # noqa: F401 — registers the .rio accessor for DataArray
+
+from hydrofragments.output.spatial import SpatialGrid
 
 if TYPE_CHECKING:
     from hydrofragments.io.dea import WoStatistics
@@ -18,6 +23,35 @@ class ZoneResult:
     emitted_zones: tuple[int, ...]
     has_zone_1: bool
     source: str = "occurrence"
+    grid: SpatialGrid | None = None
+
+    def as_dataarray(self) -> xr.DataArray:
+        """Return the zone mask as a georeferenced ``DataArray``."""
+        if self.grid is None:
+            raise ValueError("ZoneResult has no spatial grid contract")
+        data = xr.DataArray(
+            self.mask,
+            dims=(self.grid.y_dim, self.grid.x_dim),
+            coords={self.grid.y_dim: self.grid.y, self.grid.x_dim: self.grid.x},
+            attrs={"source": self.source},
+        )
+        return data.rio.write_crs(self.grid.crs)
+
+
+def _attach_grid(
+    result: ZoneResult,
+    template: xr.DataArray | np.ndarray | None,
+    *,
+    require_georeference: bool = False,
+) -> ZoneResult:
+    if template is None or not isinstance(template, xr.DataArray):
+        return result
+    grid = SpatialGrid.from_dataarray(template, require_georeference=require_georeference)
+    if grid is None:
+        return result
+    if result.mask.shape != (grid.height, grid.width):
+        raise ValueError("zone mask shape does not align with spatial grid")
+    return replace(result, grid=grid)
 
 
 def build_zones(
@@ -119,7 +153,8 @@ def zones_from_wo_statistics(
         t_season=config.zones.t_season,
         min_valid_obs=config.validity.min_valid_obs,
     )
-    return replace(result, source=stats.product)
+    result = replace(result, source=stats.product)
+    return _attach_grid(result, stats.frequency)
 
 
 __all__ = ["ZoneResult", "build_zones", "zones_from_wo_statistics"]

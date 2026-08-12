@@ -265,6 +265,8 @@ class AnalysisInputs:
     median_apsec: Sequence[Any] | None = None
     channel_wet_profiles: Sequence[Sequence[bool]] | None = None
     channel_segment_lengths_m: Sequence[float] | None = None
+    zones: ZoneResult | None = None
+    zones_source: str | None = None
 
 
 def _empty_metric_coverage() -> pd.DataFrame:

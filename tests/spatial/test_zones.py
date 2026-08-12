@@ -294,6 +294,58 @@ def test_zones_from_wo_statistics_accepts_dask_backed_stats() -> None:
     assert result.mask.tolist() == [[2, 3], [3, 0]]
 
 
+# --- Georeferenced ZoneResult -------------------------------------------------
+
+
+def test_zones_from_wo_statistics_attaches_spatial_grid_from_frequency() -> None:
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("rioxarray")
+
+    y = np.array([100.0, 70.0])
+    x = np.array([10.0, 40.0])
+    frequency = xr.DataArray(
+        np.array([[90.0, 45.0], [10.0, 5.0]]),
+        dims=("y", "x"),
+        coords={"y": y, "x": x},
+    ).rio.write_crs("EPSG:3577")
+    stats = _wo_statistics(
+        frequency=frequency,
+        count_wet=np.array([[5, 5], [1, 0]]),
+        count_clear=np.array([[20, 20], [20, 20]]),
+    )
+
+    result = zones_from_wo_statistics(stats, config=_config())
+
+    assert result.grid is not None
+    assert "3577" in result.grid.crs.to_wkt()
+    assert result.grid.height == 2
+    assert result.grid.width == 2
+
+
+def test_zone_result_as_dataarray_carries_grid_contract() -> None:
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("rioxarray")
+
+    y = np.array([100.0, 70.0])
+    x = np.array([10.0, 40.0])
+    frequency = xr.DataArray(
+        np.array([[90.0, 45.0], [10.0, 5.0]]),
+        dims=("y", "x"),
+        coords={"y": y, "x": x},
+    ).rio.write_crs("EPSG:3577")
+    stats = _wo_statistics(
+        frequency=frequency,
+        count_wet=np.array([[5, 5], [1, 0]]),
+        count_clear=np.array([[20, 20], [20, 20]]),
+    )
+    result = zones_from_wo_statistics(stats, config=_config())
+
+    zones = result.as_dataarray()
+    assert zones.dims == ("y", "x")
+    assert zones.rio.crs is not None
+    result.grid.validate_dataarray(zones)
+
+
 def test_zones_from_wo_statistics_accepts_dask_backed_xarray_stats() -> None:
     # Production shape: WoStatistics fields are xr.DataArray wrapping Dask
     # arrays (per open_wo_statistics_for_zoning), not raw dask arrays --

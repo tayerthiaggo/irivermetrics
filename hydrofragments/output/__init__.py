@@ -14,6 +14,7 @@ from hydrofragments.output.rasters import (
     build_persistence_rasters,
     write_persistence_rasters,
 )
+from hydrofragments.output.spatial import SpatialGrid
 from hydrofragments.output.tables import (
     NON_NULLABLE_COLUMNS,
     PARQUET_PARTITION_COLUMNS,
@@ -43,6 +44,7 @@ __all__ = [
     "read_tidy_csv",
     "read_tidy_parquet",
     "records_to_frame",
+    "SpatialGrid",
     "validate_result_bundle",
     "write_metric_coverage",
     "write_output_tables",
