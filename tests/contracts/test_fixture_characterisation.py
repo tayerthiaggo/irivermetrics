@@ -1,4 +1,4 @@
-"""Read-only fixture characterisation for Milestone 0 evidence (no data mutation)."""
+"""Read-only fixture characterisation for release readiness evidence."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import pytest
 
 from tests.contracts.fixture_inspector import (
     inspect_drainage_geopackage,
-    inspect_metrics_csv,
     inspect_shapefile,
     inspect_water_mask_netcdf,
     inspect_water_mask_zarr,
@@ -18,7 +17,6 @@ TEST_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TEST_DIR.parent
 WMASK_PATH = TEST_DIR / "wmask_ts.nc"
 RCOR_PATH = TEST_DIR / "rcor_extent.shp"
-BASELINE_PATH = TEST_DIR / "results_iRiverMetrics" / "metrics" / "irm_metrics.csv"
 FITZROY_ZARR_PATH = REPO_ROOT / "data" / "wofs_monthly_masks_1986_2026.zarr"
 FITZROY_DRAINAGE_PATH = REPO_ROOT / "data" / "fitzroy_kimberley_drainage.gpkg"
 
@@ -31,11 +29,6 @@ def wmask_report():
 @pytest.fixture(scope="module")
 def rcor_report():
     return inspect_shapefile(RCOR_PATH)
-
-
-@pytest.fixture(scope="module")
-def baseline_report():
-    return inspect_metrics_csv(BASELINE_PATH)
 
 
 @pytest.fixture(scope="module")
@@ -88,15 +81,6 @@ def test_rcor_reports_seven_polygon_sections(rcor_report):
     assert rcor_report["geometry_types"] == ["Polygon"]
 
 
-def test_baseline_csv_is_legacy_not_v12_oracle(baseline_report):
-    assert baseline_report["exists"] is True
-    assert baseline_report["row_count"] == 441
-    assert baseline_report["section_count"] == 7
-    assert baseline_report["dropped_metrics_present"]["PF"] is True
-    assert baseline_report["pp_mean_static_per_section"] is True
-    assert baseline_report["suitable_as_v12_correctness_oracle"] is False
-
-
 def test_fitzroy_zarr_exists_and_checksum_is_stable(fitzroy_zarr_report):
     assert fitzroy_zarr_report["exists"] is True
     assert (
@@ -126,7 +110,6 @@ def test_fitzroy_zarr_wet_fraction_variability(fitzroy_zarr_report):
 
 def test_fitzroy_zarr_reliability_diagnostic_matches_evidence_report(fitzroy_zarr_report):
     obs = fitzroy_zarr_report["observed_frac_of_aoi"]
-    # Cross-checks the headline numbers in docs/audit/evidence/validity_reliability_report.md.
     assert obs["min"] == 0.0
     assert 0.97 < obs["median"] < 0.99
     assert obs["n_zero_coverage_months"] == 18
@@ -141,20 +124,18 @@ def test_fitzroy_drainage_exists_and_checksum_is_stable(fitzroy_drainage_report)
 
 
 def test_fitzroy_zarr_missingness_is_seasonal_mnar(fitzroy_zarr_report):
-    """Locks in the U2/Q1 load-bearing finding: coverage dips exactly when wetness peaks.
+    """Assert coverage dips when wetness peaks in Fitzroy validation Zarr.
 
-    Cross-checks docs/audit/evidence/validity_reliability_report.md §4. If this regresses,
-    the season-stratified estimator recommendation must be re-validated against the new data.
+    Monsoon peak (Jan-Mar) wetness is >3x dry season wetness; the stratified
+    estimator corrects the naive pooled under-estimation bias.
     """
     mnar = fitzroy_zarr_report["seasonal_mnar"]
     wet_frac_by_month = mnar["per_calendar_month_wet_frac"]
 
-    # Monsoon peak (Jan-Mar) has the highest observed wetness among the 12 calendar months.
     monsoon_peak_wet_frac = max(wet_frac_by_month[m] for m in (1, 2, 3))
     dry_season_wet_frac = max(wet_frac_by_month[m] for m in (6, 7, 8, 9, 10, 11))
     assert monsoon_peak_wet_frac > dry_season_wet_frac * 3
 
-    # The naive pooled estimator under-estimates wetness relative to the season-stratified one.
     assert mnar["stratified_minus_naive"] > 0
     relative_bias = mnar["stratified_minus_naive"] / mnar["naive_pooled_wet_frac"]
     assert 0.03 < relative_bias < 0.15

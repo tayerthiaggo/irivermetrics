@@ -412,7 +412,7 @@ def _channel_profile_records(
     return records
 
 
-# Metric ids that can ever originate from section_compat_rows() /
+# Metric ids that can ever originate from analyze_section_rows() /
 # _records_from_compat_rows() below (the legacy wide-row bridge). Kept in
 # sync with the "mapping" table inside _records_from_compat_rows -- used to
 # skip the whole compat-row compute path when a narrow profile selects none

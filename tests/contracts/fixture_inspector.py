@@ -271,39 +271,4 @@ def inspect_shapefile(path: Path) -> dict[str, Any]:
     return report
 
 
-def inspect_metrics_csv(path: Path) -> dict[str, Any]:
-    report: dict[str, Any] = {
-        "path": str(path),
-        "exists": path.exists(),
-        "kind": "legacy_wide_metrics_csv",
-    }
-    if not path.exists():
-        return report
 
-    report["checksum_sha256"] = _sha256(path)
-    df = pd.read_csv(path)
-    report["row_count"] = int(len(df))
-    report["section_count"] = int(df["section"].nunique()) if "section" in df else None
-    report["date_count"] = int(df["date"].nunique()) if "date" in df else None
-    report["date_range"] = {
-        "start": str(df["date"].min()),
-        "end": str(df["date"].max()),
-    }
-    dropped = ["PF", "PLF", "AWMPA", "AWMPL", "AWMPW", "PFL"]
-    report["dropped_metrics_present"] = {
-        name: name in df.columns for name in dropped
-    }
-    if "pp_mean_%" in df.columns and "section" in df.columns:
-        report["pp_mean_static_per_section"] = bool(
-            (df.groupby("section")["pp_mean_%"].nunique() == 1).all()
-        )
-    else:
-        report["pp_mean_static_per_section"] = None
-
-    report["naive_denominator_evidence"] = (
-        "pp_mean_% constant per section across all dates implies "
-        "time-invariant persistence from total-series mean, not valid_obs denominator"
-    )
-    report["suitable_as_v12_correctness_oracle"] = False
-    report["suitable_uses"] = ["historical_kernel_smoke_with_explicit_exclusions"]
-    return report

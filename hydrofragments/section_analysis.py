@@ -47,7 +47,7 @@ def _monthly_dataset(
     section 3.3, Step 2). ``time_index`` is optional only so this function
     remains directly testable/usable against an already-single-month or
     otherwise pre-bounded input (e.g. unit tests exercising the fused-compute
-    property in isolation); ``section_compat_rows`` always passes it.
+    property in isolation); ``analyze_section_rows`` always passes it.
 
     There must be no cube-wide pre-read (e.g. a separate ``.any().compute()``
     reachability check) anywhere in this path -- any such pass would re-read
@@ -151,7 +151,7 @@ def _measure_month_patch_properties(
 class _MonthPayload:
     """Bounded, plain-NumPy input for exactly one month's patch/APSEC/coverage
     work -- the unit of work dispatched to a serial call, thread, or process
-    worker by :func:`section_compat_rows`.
+    worker by :func:`analyze_section_rows`.
 
     Every field here is either a plain NumPy array (already realised by
     :func:`_monthly_dataset` before this payload is built -- never a Dask
@@ -160,7 +160,7 @@ class _MonthPayload:
     :class:`~hydrofragments.spatial.active_windows.AnalysisWindow`). This is
     what makes ``_MonthPayload`` safe to pickle across a Windows spawned
     process boundary -- see the module-level ``ProcessPoolExecutor`` note in
-    :func:`section_compat_rows`.
+    :func:`analyze_section_rows`.
 
     ``water_month``/``coverage_valid_obs_month`` are carried on the payload
     (rather than only on some separate "result") for two reasons: (1)
@@ -249,7 +249,7 @@ def _month_row(payload: _MonthPayload) -> dict[str, object]:
     dispatched to a :class:`~concurrent.futures.ProcessPoolExecutor` worker
     on Windows, where only picklable top-level callables and plain-data
     arguments can safely cross the spawned process boundary. Reproduces
-    exactly what the inline per-month loop body in ``section_compat_rows``
+    exactly what the inline per-month loop body in ``analyze_section_rows``
     used to compute -- this function's extraction changes only *where* the
     per-month work runs, never *what* it computes.
 
@@ -458,7 +458,7 @@ class _OccurrenceAccumulator:
     accumulation order (no associativity/rounding risk), so accumulating
     per-calendar-month running totals one month at a time and finalising
     after the loop reproduces ``compute_occurrence``'s whole-array groupby
-    result bit-for-bit. This is what lets ``section_compat_rows`` materialise
+    result bit-for-bit. This is what lets ``analyze_section_rows`` materialise
     only one month's ``water``/``valid_obs`` at a time while still producing
     the exact same occurrence/refuge-area values as before.
     """

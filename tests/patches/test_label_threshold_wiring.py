@@ -157,7 +157,7 @@ def test_none_target_chunk_bytes_preserves_todays_fallback_behavior():
         assert left.perimeter_m == right.perimeter_m
 
 
-def test_section_compat_rows_threads_configured_threshold_end_to_end(tmp_path):
+def test_analyze_section_rows_threads_configured_threshold_end_to_end(tmp_path):
     """End-to-end: HydroConfig.compute.target_chunk_bytes reaches
     label_components via section_compat_rows's real per-month patch call,
     not just via measure_patch_properties called directly.

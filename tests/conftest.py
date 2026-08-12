@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for ecofragments test suite."""
+"""Shared pytest fixtures for HydroFragments."""
 import numpy as np
 import pytest
 import xarray as xr
@@ -29,29 +29,9 @@ def rcor_extent_gdf(rcor_extent_path):
     return gpd.read_file(rcor_extent_path)
 
 
-@pytest.fixture(scope="session")
-def legacy_baseline_csv_path():
-    """Path to the legacy iRiverMetrics regression CSV.
-
-    Quarantined (U7, approved 2026-07-11): this fixture may only back smoke
-    comparisons of approved, purely-geometric invariant columns (e.g.
-    ``section_area_km2``). It must never be treated as a v1.2 correctness oracle -
-    see ``tests/contracts/test_legacy_baseline_quarantine.py`` and ``docs/testing.md``.
-    """
-    return TEST_DIR / "results_iRiverMetrics" / "metrics" / "irm_metrics.csv"
-
-
 @pytest.fixture
 def synthetic_cube():
-    """6 months, 12x12, deterministic water + validity, as a real WaterCube.
-
-    Duplicated here (also defined in tests/parity/conftest.py) so that
-    sibling suites -- notably tests/gating/ -- can use it too: pytest
-    conftest fixtures are visible to a directory and its descendants only,
-    not to siblings, so a fixture defined solely under tests/parity/ would
-    not reach tests/gating/. Task 1 (B1 safety net) and later tasks (2, 6,
-    7) rely on this fixture being available from both locations.
-    """
+    """6 months, 12x12, deterministic water + validity, as a real WaterCube."""
     rng = np.random.default_rng(1729)
     t, y, x = 6, 12, 12
     water = np.zeros((t, y, x), dtype=bool)
@@ -88,15 +68,7 @@ def synthetic_cube():
 
 @pytest.fixture
 def tmp_zarr_path(tmp_path):
-    """A small on-disk zarr store readable by ``open_water_cube(path)``.
-
-    Writes a ``water_mask`` variable using the raw watermask_tsfill encoding
-    (0/1 = valid dry/wet, 254/255 = invalid) that
-    :func:`hydrofragments.io.adapters.parse_watermask_tsfill` expects, so the
-    zarr-path branch of ``open_water_cube`` in ``hydrofragments/api.py`` can
-    be exercised end-to-end (used by ``tests/api/test_open_cube_chunks.py``
-    to verify the ``chunks`` kwarg is actually honored, m10).
-    """
+    """A small on-disk zarr store readable by ``open_water_cube(path)``."""
     rng = np.random.default_rng(2024)
     t, y, x = 6, 12, 12
     raw = np.zeros((t, y, x), dtype=np.uint8)
