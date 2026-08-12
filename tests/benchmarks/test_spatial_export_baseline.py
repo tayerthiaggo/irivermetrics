@@ -58,6 +58,14 @@ def _install_fake_spatial_subprocess(monkeypatch, *, seconds_by_scenario, rss_by
             }
         seconds = seconds_by_scenario.get(scenario_id, 5.0)
         rss = rss_by_scenario.get(scenario_id, 80_000_000)
+        if payload.get("expect_failure"):
+            return {
+                "status": "expected_failure",
+                "scenario_id": scenario_id,
+                "error_type": "MemoryBudgetExceeded",
+                "error_message": "synthetic benchmark failure",
+                "peak_rss_bytes": rss,
+            }
         run = _fake_spatial_run(
             scenario_id=scenario_id,
             total_seconds=seconds,
@@ -67,8 +75,82 @@ def _install_fake_spatial_subprocess(monkeypatch, *, seconds_by_scenario, rss_by
         )
         return run
 
+    def fake_true_baseline(*, output_dir, workers=1):
+        calls.append({"scenario_id": "baseline_export_off", "output_dir": str(output_dir), "workers": workers})
+        seconds = seconds_by_scenario.get("baseline_export_off", 5.0)
+        rss = rss_by_scenario.get("baseline_export_off", 80_000_000)
+        return _fake_spatial_run(
+            scenario_id="baseline_export_off",
+            total_seconds=seconds,
+            peak_rss_bytes=rss,
+        )
+
     monkeypatch.setattr(e2e, "_run_spatial_export_subprocess", fake_run)
+    monkeypatch.setattr(e2e, "_run_true_baseline_export_off_trial", fake_true_baseline)
     return calls
+
+
+def _sample_spatial_scenarios_for_gates():
+    def ok_run(scenario_id, *, total=10.0, rss=100_000_000, status="ok", error_type=None):
+        payload = {
+            "status": status,
+            "timings_seconds": {"total": total},
+            "peak_rss_bytes": rss,
+        }
+        if error_type is not None:
+            payload["error_type"] = error_type
+        return payload
+
+    return [
+        {
+            "scenario_id": "baseline_export_off",
+            "status": "ok",
+            "runs": [ok_run("baseline_export_off", total=10.0, rss=100_000_000) for _ in range(3)],
+        },
+        {
+            "scenario_id": "candidate_export_off",
+            "status": "ok",
+            "runs": [
+                {**ok_run("candidate_export_off", total=10.5, rss=102_000_000), "metric_parity_holds": True}
+                for _ in range(3)
+            ],
+        },
+        {
+            "scenario_id": "candidate_all_products",
+            "status": "ok",
+            "runs": [ok_run("candidate_all_products", total=11.0, rss=120_000_000) for _ in range(3)],
+        },
+        {
+            "scenario_id": "long_480_memory",
+            "status": "ok",
+            "runs": [ok_run("long_480_memory", total=60.0, rss=108_000_000)],
+        },
+        {
+            "scenario_id": "large_spatial_sparse",
+            "status": "ok",
+            "runs": [ok_run("large_spatial_sparse", total=1.2, rss=100_040_000)],
+        },
+        {
+            "scenario_id": "large_spatial_single_component",
+            "status": "ok",
+            "runs": [
+                {
+                    "status": "expected_failure",
+                    "error_type": "MemoryBudgetExceeded",
+                }
+            ],
+        },
+        {
+            "scenario_id": "checkpoint_export_retry",
+            "status": "ok",
+            "runs": [
+                {
+                    "status": "ok",
+                    "export_retry": {"source_materializations": 0},
+                }
+            ],
+        },
+    ]
 
 
 def test_spatial_export_matrix_schema_and_gates(monkeypatch, tmp_path):
@@ -90,7 +172,25 @@ def test_spatial_export_matrix_schema_and_gates(monkeypatch, tmp_path):
 
     gates = payload["gates"]
     assert gates["export_off_within_10pct_gate"] is True
+    assert gates["export_off_peak_rss_within_gate"] is True
     assert gates["all_products_peak_rss_within_125pct_gate"] is True
+    assert gates["long_480_memory_within_gate"] is True
+    assert gates["large_spatial_rss_within_125pct_admission_gate"] is True
+    assert gates["large_spatial_single_component_fail_fast"] is True
+    assert gates["metric_parity_on_off_holds"] is True
+    assert gates["checkpoint_retry_skips_source_reads"] is True
+    assert gates["true_baseline_commit"] == e2e.SPATIAL_EXPORT_TRUE_BASELINE_COMMIT
+
+
+def test_summarize_spatial_export_gates_real_logic():
+    gates = e2e._summarize_spatial_export_gates(_sample_spatial_scenarios_for_gates())
+
+    assert gates["export_off_within_10pct_gate"] is True
+    assert gates["export_off_peak_rss_within_gate"] is True
+    assert gates["all_products_peak_rss_within_125pct_gate"] is True
+    assert gates["long_480_memory_within_gate"] is True
+    assert gates["large_spatial_rss_within_125pct_admission_gate"] is True
+    assert gates["large_spatial_single_component_fail_fast"] is True
     assert gates["metric_parity_on_off_holds"] is True
     assert gates["checkpoint_retry_skips_source_reads"] is True
 
@@ -140,6 +240,23 @@ def test_write_spatial_export_baseline_round_trips(monkeypatch, tmp_path):
     assert payload["baseline_commit"] == "4fab7df"
     assert "Promotion gates" in md_path.read_text(encoding="utf-8")
     assert result["report_files"]["json"] == str(json_path)
+
+
+@pytest.mark.slow
+def test_large_spatial_single_component_raises_memory_budget_exceeded(tmp_path):
+    scenario = next(
+        s
+        for s in e2e.SPATIAL_EXPORT_SCENARIOS
+        if s.scenario_id == "large_spatial_single_component"
+    )
+    payload = e2e._spatial_export_subprocess_payload(
+        scenario=scenario,
+        output_dir=tmp_path / "out",
+        workdir=tmp_path / "work",
+    )
+    result = e2e._run_spatial_export_subprocess(payload)
+    assert result["status"] == "expected_failure"
+    assert result["error_type"] == "MemoryBudgetExceeded"
 
 
 @pytest.mark.slow

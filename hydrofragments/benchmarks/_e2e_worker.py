@@ -470,22 +470,25 @@ def _build_spatial_fixture(fixture_id: str, *, zarr_path: str | None = None):
         import dask.array as da
 
         months, height, width = 2, 96, 96
+        chunk_y, chunk_x = 48, 48
         times = pd.date_range("2020-01-01", periods=months, freq="MS")
         y = 240.0 - np.arange(height) * 30.0 - 15.0
         x = np.arange(width) * 30.0 + 15.0
-        water = np.zeros((months, height, width), dtype=np.int8)
+        water = np.zeros((months, height, width), dtype=np.uint8)
         water[:, 4:92, 4:92] = 1
         valid = np.ones((months, height, width), dtype=bool)
+        shared_coords = {"time": times, "y": y, "x": x}
+        shared_chunks = (1, chunk_y, chunk_x)
         water_da = xr.DataArray(
-            da.from_array(water, chunks=(1, 48, 48)),
+            da.from_array(water, chunks=shared_chunks),
             dims=("time", "y", "x"),
-            coords={"time": times, "y": y, "x": x},
+            coords=shared_coords,
         ).rio.write_crs("EPSG:3577")
         valid_da = xr.DataArray(
-            da.from_array(valid, chunks=(1, 48, 48)),
+            da.from_array(valid, chunks=shared_chunks),
             dims=("time", "y", "x"),
-            coords={"time": times, "y": y, "x": x},
-        )
+            coords=shared_coords,
+        ).rio.write_crs("EPSG:3577")
         return open_water_cube(water_da, valid_obs=valid_da, input_kind="generic_binary")
 
     raise ValueError(f"unsupported spatial-export fixture_id: {fixture_id!r}")
@@ -497,31 +500,42 @@ def _spatial_export_config(
     spatial_products: tuple[str, ...],
     raster_formats: tuple[str, ...],
     workers: int,
+    fixture_id: str = "compact_georef",
 ):
     from hydrofragments.config import HydroConfig
 
-    return HydroConfig.from_mapping(
-        {
-            "config_schema_version": "1.1.0",
-            "input": {"kind": "generic_binary"},
-            "temporal": {
-                "input_cadence": "monthly",
-                "monthly_composite": "supplied",
-                "composite_owner": "caller",
-            },
-            "patches": {"min_patch_pixels": 1, "connectivity_rule": 8},
-            "compute": {
-                "workers": workers,
-                "target_chunk_bytes": 256_000,
-                "worker_memory_fraction": 0.25,
-            },
-            "output": {
-                "output_dir": str(output_dir),
-                "spatial_products": list(spatial_products),
-                "raster_formats": list(raster_formats),
-            },
+    mapping: dict[str, object] = {
+        "config_schema_version": "1.1.0",
+        "input": {"kind": "generic_binary"},
+        "temporal": {
+            "input_cadence": "monthly",
+            "monthly_composite": "supplied",
+            "composite_owner": "caller",
+        },
+        "patches": {"min_patch_pixels": 1, "connectivity_rule": 8},
+        "compute": {
+            "workers": workers,
+            "target_chunk_bytes": 256_000,
+            "worker_memory_fraction": 0.25,
+        },
+        "output": {
+            "output_dir": str(output_dir),
+            "spatial_products": list(spatial_products),
+            "raster_formats": list(raster_formats),
+        },
+    }
+    if fixture_id == "large_spatial_single_component":
+        mapping["patches"] = {
+            "min_patch_pixels": 1,
+            "connectivity_rule": 8,
+            "width_resolution_floor_pixels": 1.0,
         }
-    )
+        mapping["compute"] = {
+            "workers": workers,
+            "target_chunk_bytes": 2_048,
+            "worker_memory_fraction": 0.25,
+        }
+    return HydroConfig.from_mapping(mapping)
 
 
 def _artifact_bytes(output_dir: Path) -> dict[str, int]:
@@ -584,6 +598,7 @@ def _run_spatial_export(payload: dict[str, Any]) -> dict[str, Any]:
             spatial_products=spatial_products,
             raster_formats=raster_formats,
             workers=workers,
+            fixture_id=fixture_id,
         )
         cube = _build_spatial_fixture(fixture_id, zarr_path=zarr_path)
         grid = SpatialGrid.from_dataarray(cube.water.isel(time=0), require_georeference=True)
@@ -706,6 +721,7 @@ def _run_spatial_export(payload: dict[str, Any]) -> dict[str, Any]:
             spatial_products=spatial_products,
             raster_formats=raster_formats,
             workers=workers,
+            fixture_id=fixture_id,
         )
         output_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,8 +1,9 @@
 {
   "schema_version": "1.0.0",
   "baseline": "dynamics_spatial_exports",
-  "created_at": "2026-08-12T12:40:52.207502+00:00",
-  "baseline_commit": "4fab7df",
+  "created_at": "2026-08-12T13:42:32.261257+00:00",
+  "baseline_commit": "6230b31",
+  "true_baseline_commit": "12a6dbd",
   "scope_note": "Repository-owned synthetic fixtures and an optional read-only local monthly Zarr subset. Network-dependent DEA acquisition numbers from end_to_end_workflow are excluded from this gate.",
   "environment": {
     "python": "3.14.5",
@@ -35,34 +36,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 2.034271099983016,
-            "bundle_validation": 0.007509099988965318,
-            "total": 2.0417801999719813
+            "core_analysis": 0.6688791999768,
+            "bundle_validation": 0.0,
+            "total": 0.6688791999768
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/8bee5064a76647f1a69dd5d695418fac-0.parquet": 29703,
-            "run_manifest.json": 6192
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526397440,
-          "subprocess_wall_seconds": 7.899887800012948
+          "source_materializations": null,
+          "label_passes": null,
+          "code_commit": "12a6dbd",
+          "peak_rss_bytes": 500895744,
+          "subprocess_wall_seconds": 5.636777299980167
         },
         {
           "status": "ok",
@@ -71,34 +53,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 2.060042400000384,
-            "bundle_validation": 0.004494799999520183,
-            "total": 2.0645371999999043
+            "core_analysis": 0.6615032000117935,
+            "bundle_validation": 0.0,
+            "total": 0.6615032000117935
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 29703,
-            "run_manifest.json": 6192
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526770176,
-          "subprocess_wall_seconds": 7.938765800005058
+          "source_materializations": null,
+          "label_passes": null,
+          "code_commit": "12a6dbd",
+          "peak_rss_bytes": 500736000,
+          "subprocess_wall_seconds": 5.894942200015066
         },
         {
           "status": "ok",
@@ -107,34 +70,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 2.0668431000085548,
-            "bundle_validation": 0.008605900016846135,
-            "total": 2.075449000025401
+            "core_analysis": 0.6406738999939989,
+            "bundle_validation": 0.0,
+            "total": 0.6406738999939989
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/43ad9094cc344b02812d196e53372b3a-0.parquet": 29703,
-            "run_manifest.json": 6192
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526684160,
-          "subprocess_wall_seconds": 8.229967299994314
+          "source_materializations": null,
+          "label_passes": null,
+          "code_commit": "12a6dbd",
+          "peak_rss_bytes": 500916224,
+          "subprocess_wall_seconds": 5.949640900013037
         },
         {
           "status": "ok",
@@ -143,34 +87,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 1.8347721000027377,
-            "bundle_validation": 0.005312599998433143,
-            "total": 1.8400847000011709
+            "core_analysis": 0.64225250002346,
+            "bundle_validation": 0.0,
+            "total": 0.64225250002346
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/6f034ea823ae4723a478eb8556941a29-0.parquet": 29703,
-            "run_manifest.json": 6192
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526979072,
-          "subprocess_wall_seconds": 7.854545999987749
+          "source_materializations": null,
+          "label_passes": null,
+          "code_commit": "12a6dbd",
+          "peak_rss_bytes": 500887552,
+          "subprocess_wall_seconds": 5.686291599995457
         },
         {
           "status": "ok",
@@ -179,34 +104,15 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 2.0181692999904044,
-            "bundle_validation": 0.007743399997707456,
-            "total": 2.025912699988112
+            "core_analysis": 0.713259799988009,
+            "bundle_validation": 0.0,
+            "total": 0.713259799988009
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": null,
-          "coverage_digest_off": null,
-          "metric_parity_holds": null,
-          "source_materializations": 12,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 29703,
-            "run_manifest.json": 6190
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526503936,
-          "subprocess_wall_seconds": 7.539234299998498
+          "source_materializations": null,
+          "label_passes": null,
+          "code_commit": "12a6dbd",
+          "peak_rss_bytes": 501125120,
+          "subprocess_wall_seconds": 5.819084999995539
         }
       ]
     },
@@ -231,14 +137,14 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.6362235999840777,
-            "core_analysis": 2.035943299997598,
-            "bundle_validation": 0.007496399979572743,
-            "total": 2.0434396999771707
+            "parity_off_seconds": 1.4840392000041902,
+            "core_analysis": 1.5317447999841534,
+            "bundle_validation": 0.004167300008703023,
+            "total": 1.5359120999928564
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -251,15 +157,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/9db203200ca54467a68270feefbb09bf-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/9e9af24aa5424d3e9783ed1ed7a2a671-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526532608,
-          "subprocess_wall_seconds": 9.693762599985348
+          "peak_rss_bytes": 526856192,
+          "subprocess_wall_seconds": 8.264054900006158
         },
         {
           "status": "ok",
@@ -268,14 +174,14 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.8392727000173181,
-            "core_analysis": 2.180237099993974,
-            "bundle_validation": 0.007455499988282099,
-            "total": 2.187692599982256
+            "parity_off_seconds": 1.654717500001425,
+            "core_analysis": 1.5065824999765027,
+            "bundle_validation": 0.004409200017107651,
+            "total": 1.5109916999936104
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -288,15 +194,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/dde09e3e89654afcbf34250affd41a11-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/dde09e3e89654afcbf34250affd41a11-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526659584,
-          "subprocess_wall_seconds": 9.939275700016879
+          "peak_rss_bytes": 526544896,
+          "subprocess_wall_seconds": 8.57052089998615
         },
         {
           "status": "ok",
@@ -305,14 +211,14 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.75802229999681,
-            "core_analysis": 1.8636209999967832,
-            "bundle_validation": 0.007594399998197332,
-            "total": 1.8712153999949805
+            "parity_off_seconds": 1.6114394000032917,
+            "core_analysis": 1.515727899997728,
+            "bundle_validation": 0.005298100004438311,
+            "total": 1.5210260000021663
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -325,15 +231,52 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/aaec134a197e4eab86da13d767185d1f-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/aaec134a197e4eab86da13d767185d1f-0.parquet": 29703,
+            "run_manifest.json": 6193
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526938112,
+          "subprocess_wall_seconds": 8.573999999993248
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.6116694000083953,
+            "core_analysis": 1.6885260000126436,
+            "bundle_validation": 0.008327400020789355,
+            "total": 1.696853400033433
+          },
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/71d5b0753617406ca9c0e8444616b7ab-0.parquet": 29703,
             "run_manifest.json": 6191
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 526934016,
-          "subprocess_wall_seconds": 9.43206019999343
+          "peak_rss_bytes": 527073280,
+          "subprocess_wall_seconds": 8.835389000014402
         },
         {
           "status": "ok",
@@ -342,14 +285,14 @@
           "fixture_id": "compact_georef",
           "spatial_products": [],
           "timings_seconds": {
-            "parity_off_seconds": 1.7862204000120983,
-            "core_analysis": 2.1211017000023276,
-            "bundle_validation": 0.008568399993237108,
-            "total": 2.1296700999955647
+            "parity_off_seconds": 1.5954112999897916,
+            "core_analysis": 1.5238871999899857,
+            "bundle_validation": 0.0042181000171694905,
+            "total": 1.5281053000071552
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -362,52 +305,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 29703,
-            "run_manifest.json": 6191
-          },
-          "checkpoint_state": null,
-          "peak_rss_bytes": 526974976,
-          "subprocess_wall_seconds": 9.949101900012465
-        },
-        {
-          "status": "ok",
-          "scenario_id": "candidate_export_off",
-          "phase": "full",
-          "fixture_id": "compact_georef",
-          "spatial_products": [],
-          "timings_seconds": {
-            "parity_off_seconds": 1.5712669999920763,
-            "core_analysis": 2.1768599999777507,
-            "bundle_validation": 0.007342400000197813,
-            "total": 2.1842023999779485
-          },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
-          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metric_parity_holds": true,
-          "source_materializations": 24,
-          "label_passes": 0,
-          "cube_shape": {
-            "time": 12,
-            "y": 65,
-            "x": 65
-          },
-          "output_bytes_by_product": {
-            "config.json": 1420,
-            "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/bec1fde750e044c89b6dfa394ef6d1b8-0.parquet": 29703,
             "run_manifest.json": 6193
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 527310848,
-          "subprocess_wall_seconds": 9.893855100002838
+          "peak_rss_bytes": 526958592,
+          "subprocess_wall_seconds": 8.590229599998565
         }
       ]
     },
@@ -436,14 +342,14 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.7530986000201665,
-            "core_analysis": 2.1188349000003655,
-            "bundle_validation": 0.01339370000641793,
-            "total": 2.1322286000067834
+            "parity_off_seconds": 1.6474255000066478,
+            "core_analysis": 1.6393196000135504,
+            "bundle_validation": 0.008725899999262765,
+            "total": 1.6480455000128131
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -456,10 +362,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/aaff51976bf44adb982429de831961c9-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/1244b2ae5d5445618e58f4ff07d6825a-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -467,11 +373,11 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9275
+            "run_manifest.json": 9277
           },
           "checkpoint_state": {
-            "run_id": "e04f1446e2e34e07953f4d25656d8f8b",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "3b167b8e6c1b436eb50d54b4be6551f8",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -551,8 +457,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 539840512,
-          "subprocess_wall_seconds": 9.720340100000612
+          "peak_rss_bytes": 540692480,
+          "subprocess_wall_seconds": 8.714121299999533
         },
         {
           "status": "ok",
@@ -563,14 +469,14 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.7114702000108082,
-            "core_analysis": 2.315330700017512,
-            "bundle_validation": 0.013638600008562207,
-            "total": 2.328969300026074
+            "parity_off_seconds": 1.5207695999997668,
+            "core_analysis": 1.8048849999904633,
+            "bundle_validation": 0.007863799983169883,
+            "total": 1.8127487999736331
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -583,10 +489,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/f283a3ef269b434d887f92e66f3efd70-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/0c362617b97e438994117243fda794c6-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/0c362617b97e438994117243fda794c6-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -597,8 +503,8 @@
             "run_manifest.json": 9277
           },
           "checkpoint_state": {
-            "run_id": "8bdc8675810a4f47b2f8292364ad514e",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "87bbb70513754ff2859b7491302f9ff2",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -678,8 +584,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 540012544,
-          "subprocess_wall_seconds": 9.902237100002822
+          "peak_rss_bytes": 540291072,
+          "subprocess_wall_seconds": 8.633302200003527
         },
         {
           "status": "ok",
@@ -690,14 +596,14 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5845428000029642,
-            "core_analysis": 2.050118499988457,
-            "bundle_validation": 0.014275099994847551,
-            "total": 2.0643935999833047
+            "parity_off_seconds": 1.584815800015349,
+            "core_analysis": 1.7020277999981772,
+            "bundle_validation": 0.009345300000859424,
+            "total": 1.7113730999990366
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -710,10 +616,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/8a5b5f5164114448959a614bfed22f0b-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/5b77331d83504437989e9647b7793fbc-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/5b77331d83504437989e9647b7793fbc-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -724,8 +630,8 @@
             "run_manifest.json": 9275
           },
           "checkpoint_state": {
-            "run_id": "80d81640784d4ff6ba9087b3caa4251d",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "7f3888daf16647b4a1e053fdf93cd665",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -805,8 +711,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 540147712,
-          "subprocess_wall_seconds": 9.446818399999756
+          "peak_rss_bytes": 539045888,
+          "subprocess_wall_seconds": 8.666873000009218
         },
         {
           "status": "ok",
@@ -817,14 +723,14 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.7482369000208564,
-            "core_analysis": 2.342099600005895,
-            "bundle_validation": 0.014591699989978224,
-            "total": 2.356691299995873
+            "parity_off_seconds": 1.527617999992799,
+            "core_analysis": 1.7945436000009067,
+            "bundle_validation": 0.007426600001053885,
+            "total": 1.8019702000019606
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -837,10 +743,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/19322373c96a4d01975b672f65300947-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/e379861273e24b33b611f44ac2b078e8-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/e379861273e24b33b611f44ac2b078e8-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -848,11 +754,11 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9273
+            "run_manifest.json": 9277
           },
           "checkpoint_state": {
-            "run_id": "d44d06b451d448d28e7ea44d07c984b6",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "76ee05f60fa342e3bb28de2c64ce2547",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04.spatial_checkpoints\\spatial_rasters",
@@ -932,8 +838,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 539406336,
-          "subprocess_wall_seconds": 10.099040899978718
+          "peak_rss_bytes": 540782592,
+          "subprocess_wall_seconds": 8.561592000012752
         },
         {
           "status": "ok",
@@ -944,14 +850,14 @@
             "persistence_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5764697999984492,
-            "core_analysis": 2.220864699978847,
-            "bundle_validation": 0.013715699984459206,
-            "total": 2.2345803999633063
+            "parity_off_seconds": 1.5712340000027325,
+            "core_analysis": 1.7920745999726932,
+            "bundle_validation": 0.013291700015543029,
+            "total": 1.8053662999882363
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -964,10 +870,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/63310cd940a24a65a14d744afe6a0c53-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/559f81bcf4084faca4c3906a1fa828e3-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -978,8 +884,8 @@
             "run_manifest.json": 9275
           },
           "checkpoint_state": {
-            "run_id": "ff07f9752f264d0d926214d696e2dadd",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "d4126b1a731640ebbfcbd7e49e36c90e",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05.spatial_checkpoints\\spatial_rasters",
@@ -1059,8 +965,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 539750400,
-          "subprocess_wall_seconds": 9.636283200001344
+          "peak_rss_bytes": 540078080,
+          "subprocess_wall_seconds": 8.606183399999281
         }
       ]
     },
@@ -1089,14 +995,14 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5692955999984406,
-            "core_analysis": 2.699804099975154,
-            "bundle_validation": 0.00841549999313429,
-            "total": 2.708219599968288
+            "parity_off_seconds": 1.54867170000216,
+            "core_analysis": 2.147838300006697,
+            "bundle_validation": 0.005681499984348193,
+            "total": 2.153519799991045
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1109,16 +1015,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/8fc8ac98fa4145f293d0548e40d459d4-0.parquet": 29703,
             "run_manifest.json": 6639,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "cf487090f8bb4e91ad5a45179e45fae8",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "c3756cac7c004080a0c72ca56e5fca4c",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -1198,8 +1104,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 554364928,
-          "subprocess_wall_seconds": 9.981654500006698
+          "peak_rss_bytes": 553689088,
+          "subprocess_wall_seconds": 8.93873250001343
         },
         {
           "status": "ok",
@@ -1210,14 +1116,14 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5697702000034042,
-            "core_analysis": 2.943056699994486,
-            "bundle_validation": 0.008935799996834248,
-            "total": 2.95199249999132
+            "parity_off_seconds": 1.642782899987651,
+            "core_analysis": 2.023410399997374,
+            "bundle_validation": 0.007570600020699203,
+            "total": 2.0309810000180732
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1230,16 +1136,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/f10fe824d2c04f0f8832d357750d86f0-0.parquet": 29703,
             "run_manifest.json": 6639,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "49d141779c1144df94e8052be07beb52",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "413ad8c3975a48a6b5c6bada6a2f1c36",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -1319,8 +1225,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556281856,
-          "subprocess_wall_seconds": 10.504195099987555
+          "peak_rss_bytes": 554266624,
+          "subprocess_wall_seconds": 9.03695089998655
         },
         {
           "status": "ok",
@@ -1331,14 +1237,14 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.824555600003805,
-            "core_analysis": 2.954796800011536,
-            "bundle_validation": 0.008277100016130134,
-            "total": 2.9630739000276662
+            "parity_off_seconds": 1.482517900003586,
+            "core_analysis": 1.9552021999843419,
+            "bundle_validation": 0.008142000006046146,
+            "total": 1.963344199990388
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1351,16 +1257,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/cbcee238ad804220aec360fd94c988a7-0.parquet": 29703,
-            "run_manifest.json": 6639,
+            "metrics/metric_family=extent/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/77983dafbe5341c2a4ca9f473c64b9c0-0.parquet": 29703,
+            "run_manifest.json": 6637,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "a63a37ad9020445492a53d0791b138b0",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "ca64875b3d9a4f898afb1fbc612acf89",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -1440,8 +1346,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 554266624,
-          "subprocess_wall_seconds": 10.46316030001617
+          "peak_rss_bytes": 555106304,
+          "subprocess_wall_seconds": 8.695238599990262
         },
         {
           "status": "ok",
@@ -1452,14 +1358,14 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5958196000137832,
-            "core_analysis": 2.8126318999857176,
-            "bundle_validation": 0.009014499984914437,
-            "total": 2.821646399970632
+            "parity_off_seconds": 1.557163199991919,
+            "core_analysis": 1.969272499991348,
+            "bundle_validation": 0.006046700000297278,
+            "total": 1.9753191999916453
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1472,16 +1378,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/21c80d94f1734d70a88b75a0597c347c-0.parquet": 29703,
-            "run_manifest.json": 6639,
+            "metrics/metric_family=extent/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/9c67e8b8a2e64d2ba1239f44bdd5a7e1-0.parquet": 29703,
+            "run_manifest.json": 6641,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "dcbdc6a427374601afee8d0aee8e201c",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "ed88ed7548c945139a3feb169732941c",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04.spatial_checkpoints\\spatial_rasters",
@@ -1561,8 +1467,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 554479616,
-          "subprocess_wall_seconds": 10.270967899996322
+          "peak_rss_bytes": 555487232,
+          "subprocess_wall_seconds": 8.89779630000703
         },
         {
           "status": "ok",
@@ -1573,14 +1479,14 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.5929332000087015,
-            "core_analysis": 2.638456899992889,
-            "bundle_validation": 0.009350899985292926,
-            "total": 2.6478077999781817
+            "parity_off_seconds": 1.6305145999940578,
+            "core_analysis": 2.12321280001197,
+            "bundle_validation": 0.00931179997860454,
+            "total": 2.1325245999905746
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1593,16 +1499,16 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 29703,
-            "run_manifest.json": 6639,
+            "metrics/metric_family=extent/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/d9b6720268004b059dad7fca02168462-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/d9b6720268004b059dad7fca02168462-0.parquet": 29703,
+            "run_manifest.json": 6641,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "13538f24df7f4d0fbe979cb903332f80",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "19062743b8a8488dad0a3f21028211e9",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05.spatial_checkpoints\\spatial_rasters",
@@ -1682,8 +1588,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 554549248,
-          "subprocess_wall_seconds": 10.126859100011643
+          "peak_rss_bytes": 555032576,
+          "subprocess_wall_seconds": 9.032819199986989
         }
       ]
     },
@@ -1716,14 +1622,14 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.8632337999879383,
-            "core_analysis": 3.152828499994939,
-            "bundle_validation": 0.015970600012224168,
-            "total": 3.1687991000071634
+            "parity_off_seconds": 1.4831452000071295,
+            "core_analysis": 2.237050299998373,
+            "bundle_validation": 0.009389399987412617,
+            "total": 2.2464396999857854
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1736,10 +1642,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/3d15412f2cc7433298a6e3db7b145386-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/3d15412f2cc7433298a6e3db7b145386-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -1751,8 +1657,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "c8580c3d13a5464da506c6572cb7bec1",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "6bd7a517f6ac487498f67cb077484180",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -1832,8 +1738,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556310528,
-          "subprocess_wall_seconds": 11.048396500002127
+          "peak_rss_bytes": 557015040,
+          "subprocess_wall_seconds": 9.114564299990889
         },
         {
           "status": "ok",
@@ -1846,14 +1752,14 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.7217928000027314,
-            "core_analysis": 3.562904599995818,
-            "bundle_validation": 0.01809609998599626,
-            "total": 3.5810006999818143
+            "parity_off_seconds": 1.661653999995906,
+            "core_analysis": 2.194931899983203,
+            "bundle_validation": 0.008745600003749132,
+            "total": 2.203677499986952
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1866,10 +1772,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/66c095eb01b2408b92941a5ef01a2271-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/e81385134e794674b455d1a85a0d37c7-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/e81385134e794674b455d1a85a0d37c7-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -1881,8 +1787,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "51edd18108da4e71bc568e59411b93c4",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "5b4a745d1b6e430c949e5415f7458efa",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -1962,8 +1868,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 557449216,
-          "subprocess_wall_seconds": 11.146722699981183
+          "peak_rss_bytes": 556785664,
+          "subprocess_wall_seconds": 9.403774899983546
         },
         {
           "status": "ok",
@@ -1976,14 +1882,14 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.7749081999936607,
-            "core_analysis": 3.0717266999999993,
-            "bundle_validation": 0.012854800006607547,
-            "total": 3.084581500006607
+            "parity_off_seconds": 1.666220399987651,
+            "core_analysis": 2.309218600013992,
+            "bundle_validation": 0.009399500006111339,
+            "total": 2.318618100020103
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -1996,10 +1902,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/21d4cc3abf8047b19fc02c701b382251-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/bbf82c96b5ba4a828d13416107c0e26e-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2007,12 +1913,12 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9733,
+            "run_manifest.json": 9731,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "245611273f3c44d4863d13ccf4960401",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "bc081d246c2c47a7b193b764ac638a6b",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -2092,8 +1998,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 558067712,
-          "subprocess_wall_seconds": 10.7504374999844
+          "peak_rss_bytes": 556400640,
+          "subprocess_wall_seconds": 9.471315999981016
         },
         {
           "status": "ok",
@@ -2106,14 +2012,14 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.586416099977214,
-            "core_analysis": 2.8350229999923613,
-            "bundle_validation": 0.01421309998841025,
-            "total": 2.8492360999807715
+            "parity_off_seconds": 1.5903489000047557,
+            "core_analysis": 2.279383899993263,
+            "bundle_validation": 0.011056300019845366,
+            "total": 2.2904402000131086
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -2126,10 +2032,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/8b7126d5afe54c7c93cd37784cf53122-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2137,12 +2043,12 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9731,
+            "run_manifest.json": 9733,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "c1b92b892493444eb9fc50884808ed6e",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "b5158caa9e7b422991b8ba355154d29b",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04.spatial_checkpoints\\spatial_rasters",
@@ -2222,8 +2128,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556408832,
-          "subprocess_wall_seconds": 10.11765679999371
+          "peak_rss_bytes": 556724224,
+          "subprocess_wall_seconds": 9.272607799997786
         },
         {
           "status": "ok",
@@ -2236,14 +2142,14 @@
             "temporal_rasters"
           ],
           "timings_seconds": {
-            "parity_off_seconds": 1.839224600000307,
-            "core_analysis": 3.6408559999836143,
-            "bundle_validation": 0.015507699979934841,
-            "total": 3.656363699963549
+            "parity_off_seconds": 1.587359999975888,
+            "core_analysis": 2.281555199995637,
+            "bundle_validation": 0.013369799999054521,
+            "total": 2.2949249999946915
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
-          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest_off": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metric_parity_holds": true,
           "source_materializations": 24,
@@ -2256,10 +2162,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/530f07548e8c43c3a34c27e2fd6e101f-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2271,8 +2177,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "ad11965b8636423abec25545fda8d51c",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "7a1d72fe118e4f9892a96e209c79cd6a",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05.spatial_checkpoints\\spatial_rasters",
@@ -2352,8 +2258,8 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 558682112,
-          "subprocess_wall_seconds": 11.809814999985974
+          "peak_rss_bytes": 557731840,
+          "subprocess_wall_seconds": 9.279421699990053
         }
       ]
     },
@@ -2386,11 +2292,11 @@
           "fixture_id": "long_480_small",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 65.23358160001226,
-            "bundle_validation": 0.0074647000001277775,
-            "total": 65.24104630001239
+            "core_analysis": 46.95396109999274,
+            "bundle_validation": 0.004603599983965978,
+            "total": 46.958564699976705
           },
-          "metrics_digest": "82bcfbbbad6f438dd0270374bb043804a5896973e63bac8840ec0edc56a7babb",
+          "metrics_digest": "fb6cedbea458a491cb602fdc6f4b153ec79b1757c2b250f7daac700d24631a5e",
           "coverage_digest": "99a154f0fb06bb9ebdc13bc6fa62aa250f2237a091bc4cd366a19799bf4ac204",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2405,15 +2311,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1215,
-            "metrics/metric_family=extent/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 35612,
-            "metrics/metric_family=fragmentation/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 36517,
-            "metrics/metric_family=morphology/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 39500,
-            "metrics/metric_family=persistence/value_type=raster_summary/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 35134,
-            "run_manifest.json": 6183
+            "metrics/metric_family=extent/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 35612,
+            "metrics/metric_family=fragmentation/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 36517,
+            "metrics/metric_family=morphology/value_type=monthly/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 39500,
+            "metrics/metric_family=persistence/value_type=raster_summary/3e2870ceece14a80a303d98d6f41e0bd-0.parquet": 35134,
+            "run_manifest.json": 6189
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 555429888,
-          "subprocess_wall_seconds": 70.97918399999617
+          "peak_rss_bytes": 555208704,
+          "subprocess_wall_seconds": 52.377434599999106
         }
       ]
     },
@@ -2438,11 +2344,11 @@
           "fixture_id": "large_spatial_sparse",
           "spatial_products": [],
           "timings_seconds": {
-            "core_analysis": 1.1504550999961793,
-            "bundle_validation": 0.004514000000199303,
-            "total": 1.1549690999963786
+            "core_analysis": 1.0558312000066508,
+            "bundle_validation": 0.004494699998758733,
+            "total": 1.0603259000054095
           },
-          "metrics_digest": "64ac6d32feda74cef7fb604c86732e61960670fb37eee0e15d2d29c759b198e0",
+          "metrics_digest": "11af91932b2a7f328e042dc37938cce9828850f5b73eb54020a65c85f1f75575",
           "coverage_digest": "ccf02d78ec4ed233715cb73fd351c400d1246b17ef7e9109ae9df20d90239e94",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2457,15 +2363,15 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1221,
-            "metrics/metric_family=extent/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29947,
-            "metrics/metric_family=fragmentation/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 30000,
-            "metrics/metric_family=morphology/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29875,
-            "metrics/metric_family=persistence/value_type=raster_summary/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29600,
+            "metrics/metric_family=extent/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 29947,
+            "metrics/metric_family=fragmentation/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 30000,
+            "metrics/metric_family=morphology/value_type=monthly/91976823a9074f2686a573da7036f80d-0.parquet": 29875,
+            "metrics/metric_family=persistence/value_type=raster_summary/91976823a9074f2686a573da7036f80d-0.parquet": 29600,
             "run_manifest.json": 6194
           },
           "checkpoint_state": null,
-          "peak_rss_bytes": 525905920,
-          "subprocess_wall_seconds": 6.9051175999920815
+          "peak_rss_bytes": 525819904,
+          "subprocess_wall_seconds": 6.423778799973661
         }
       ]
     },
@@ -2486,9 +2392,9 @@
         {
           "status": "expected_failure",
           "scenario_id": "large_spatial_single_component",
-          "error_type": "ValueError",
-          "error_message": "Grid mismatch",
-          "subprocess_wall_seconds": 5.86219980000169,
+          "error_type": "MemoryBudgetExceeded",
+          "error_message": "component crop for label=1 in window='window-0001' requires 32400 live bytes but worker budget is 512",
+          "subprocess_wall_seconds": 6.000005099980626,
           "peak_rss_bytes": null
         }
       ]
@@ -2520,11 +2426,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.737687500019092,
-            "bundle_validation": 0.014718599995831028,
-            "total": 2.752406100014923
+            "core_analysis": 2.5693254999932833,
+            "bundle_validation": 0.010171500005526468,
+            "total": 2.5794969999988098
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2539,10 +2445,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/cab25baf138346f4a62f3a500a83683b-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/cab25baf138346f4a62f3a500a83683b-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2554,8 +2460,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "dca69dfa5c5f4e60bb9eb1d3f0a096e9",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "79f466a64b814dbeb1570e8bde790850",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01.spatial_checkpoints\\spatial_rasters",
@@ -2635,27 +2541,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556638208,
-          "subprocess_wall_seconds": 8.694900100002997,
+          "peak_rss_bytes": 556486656,
+          "subprocess_wall_seconds": 7.854292200005148,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.7594315999886021,
-              "total": 0.7594315999886021
+              "output_finalize": 0.6619140999973752,
+              "total": 0.6619140999973752
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/34d36680198b44f0ad367b66ac368aed-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/899fe4b9ee7a42b9b2fba46330c26f0d-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2663,11 +2569,11 @@
               "rasters/recurrence_valid_year_count.tif": 980,
               "rasters/refuge_mask.tif": 885,
               "rasters/valid_observation_count.tif": 1099,
-              "run_manifest.json": 9720,
+              "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 456450048,
-            "subprocess_wall_seconds": 6.606986900005722
+            "peak_rss_bytes": 455258112,
+            "subprocess_wall_seconds": 6.093820800015237
           }
         },
         {
@@ -2680,11 +2586,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.6009334000118542,
-            "bundle_validation": 0.010025399998994544,
-            "total": 2.610958800010849
+            "core_analysis": 2.5146735000016633,
+            "bundle_validation": 0.01658200001111254,
+            "total": 2.531255500012776
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2699,10 +2605,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/f59998e91ba446199952ae69e47bd296-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/89636758542d42bebc9455be249ab8a6-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/89636758542d42bebc9455be249ab8a6-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2714,8 +2620,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "7b8e02e559ee44c984a3272491a5df4d",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "9b2f771940bd489b94ccd8c5aceb7c42",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02.spatial_checkpoints\\spatial_rasters",
@@ -2795,27 +2701,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556482560,
-          "subprocess_wall_seconds": 8.382727899996098,
+          "peak_rss_bytes": 556711936,
+          "subprocess_wall_seconds": 7.939631200017175,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.7923114000004716,
-              "total": 0.7923114000004716
+              "output_finalize": 0.6855642999871634,
+              "total": 0.6855642999871634
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/0b5d1c0518e84234a486297320c96a65-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/0b5d1c0518e84234a486297320c96a65-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2826,8 +2732,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 456765440,
-            "subprocess_wall_seconds": 6.2566475000057835
+            "peak_rss_bytes": 456761344,
+            "subprocess_wall_seconds": 6.087780500005465
           }
         },
         {
@@ -2840,11 +2746,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.6110834999999497,
-            "bundle_validation": 0.01294769998639822,
-            "total": 2.624031199986348
+            "core_analysis": 2.498394599999301,
+            "bundle_validation": 0.00993259999086149,
+            "total": 2.5083271999901626
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -2859,10 +2765,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/408687b80f734007bf3dd082df7724cd-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/400b58d6aaeb4998a7aecf75d0300143-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -2870,12 +2776,12 @@
             "rasters/recurrence_valid_year_count.tif": 980,
             "rasters/refuge_mask.tif": 885,
             "rasters/valid_observation_count.tif": 1099,
-            "run_manifest.json": 9717,
+            "run_manifest.json": 9715,
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "8170226fe4ce49aeac598e8856dbbf1c",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "7f78c8fe4989431d9bc1d2e82c1d2d86",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03.spatial_checkpoints\\spatial_rasters",
@@ -2955,27 +2861,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 556240896,
-          "subprocess_wall_seconds": 8.440566199977184,
+          "peak_rss_bytes": 557830144,
+          "subprocess_wall_seconds": 7.866512100008549,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.6190834000008181,
-              "total": 0.6190834000008181
+              "output_finalize": 0.7314819000021089,
+              "total": 0.7314819000021089
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/786315c92740436ca3d1fbc66c06945b-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/9889fce600884d9aab87d103ab40a862-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/9889fce600884d9aab87d103ab40a862-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -2986,8 +2892,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 456929280,
-            "subprocess_wall_seconds": 6.594525499996962
+            "peak_rss_bytes": 458809344,
+            "subprocess_wall_seconds": 6.229242900008103
           }
         },
         {
@@ -3000,11 +2906,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.4990237999882083,
-            "bundle_validation": 0.007815100019797683,
-            "total": 2.506838900008006
+            "core_analysis": 2.5421639000123832,
+            "bundle_validation": 0.00811469997279346,
+            "total": 2.5502785999851767
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -3019,10 +2925,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/0b0e021d465a477b946ca656ce4de44e-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/cb07f68b61654721a18bcae89805399e-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/cb07f68b61654721a18bcae89805399e-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -3034,8 +2940,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "0625c747489a41918850ba6d5ded9c67",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "6dfabc2133344dc2955e276cefa26d8f",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04.spatial_checkpoints\\spatial_rasters",
@@ -3115,27 +3021,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 555892736,
-          "subprocess_wall_seconds": 8.350773999991361,
+          "peak_rss_bytes": 557367296,
+          "subprocess_wall_seconds": 7.762308699981077,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.7646422999969218,
-              "total": 0.7646422999969218
+              "output_finalize": 0.6431398999993689,
+              "total": 0.6431398999993689
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/81b1114966204ed39c869aaf4d32a93c-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/e6e1cd4a14984f82987ea2b8d5c58258-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -3146,8 +3052,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 457314304,
-            "subprocess_wall_seconds": 6.292971699993359
+            "peak_rss_bytes": 455053312,
+            "subprocess_wall_seconds": 6.129283300018869
           }
         },
         {
@@ -3160,11 +3066,11 @@
             "monthly_pools"
           ],
           "timings_seconds": {
-            "core_analysis": 2.621878400008427,
-            "bundle_validation": 0.014680599997518584,
-            "total": 2.6365590000059456
+            "core_analysis": 2.5361544999759644,
+            "bundle_validation": 0.013496100000338629,
+            "total": 2.549650599976303
           },
-          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
           "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
           "metrics_digest_off": null,
           "coverage_digest_off": null,
@@ -3179,10 +3085,10 @@
           "output_bytes_by_product": {
             "config.json": 1420,
             "metric_coverage.csv": 1233,
-            "metrics/metric_family=extent/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30132,
-            "metrics/metric_family=fragmentation/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30252,
-            "metrics/metric_family=morphology/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30039,
-            "metrics/metric_family=persistence/value_type=raster_summary/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 29703,
+            "metrics/metric_family=extent/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/a1a95649c0814623ace8a0a7dd694815-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/a1a95649c0814623ace8a0a7dd694815-0.parquet": 29703,
             "rasters/hydroperiod_by_year.tif": 7332,
             "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
             "rasters/occurrence.tif": 1213,
@@ -3194,8 +3100,8 @@
             "vectors/spatial.gpkg": 876544
           },
           "checkpoint_state": {
-            "run_id": "d867e9f799f34b7f95f915be0d22f2e6",
-            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "run_id": "36756e9faa7343deb9b88ac648c95b70",
+            "git_sha": "6230b311769339cf2bd84b581ac72a6395c36912",
             "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metrics",
             "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metric_coverage.csv",
             "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05.spatial_checkpoints\\spatial_rasters",
@@ -3275,27 +3181,27 @@
               "validity_policy": "p_native_season_stratified_v1"
             }
           },
-          "peak_rss_bytes": 557215744,
-          "subprocess_wall_seconds": 8.507392400002573,
+          "peak_rss_bytes": 556605440,
+          "subprocess_wall_seconds": 7.8797448000113945,
           "export_retry": {
             "status": "ok",
             "scenario_id": "checkpoint_export_retry",
             "phase": "export_retry",
             "timings_seconds": {
-              "output_finalize": 0.7228652999910992,
-              "total": 0.7228652999910992
+              "output_finalize": 0.6739774000016041,
+              "total": 0.6739774000016041
             },
             "source_materializations": 0,
             "label_passes": 0,
-            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "metrics_digest": "96d079af3a24eed1274e09349988f11398748fcfc587fb63348dc6ef16ec4565",
             "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
             "output_bytes_by_product": {
               "config.json": 1420,
               "metric_coverage.csv": 1233,
-              "metrics/metric_family=extent/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30132,
-              "metrics/metric_family=fragmentation/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30252,
-              "metrics/metric_family=morphology/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30039,
-              "metrics/metric_family=persistence/value_type=raster_summary/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 29703,
+              "metrics/metric_family=extent/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/2769cb4eb256489f9e27377cecddbd79-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/2769cb4eb256489f9e27377cecddbd79-0.parquet": 29703,
               "rasters/hydroperiod_by_year.tif": 7332,
               "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
               "rasters/occurrence.tif": 1213,
@@ -3306,8 +3212,8 @@
               "run_manifest.json": 9722,
               "vectors/spatial.gpkg": 876544
             },
-            "peak_rss_bytes": 456065024,
-            "subprocess_wall_seconds": 6.244250599993393
+            "peak_rss_bytes": 455069696,
+            "subprocess_wall_seconds": 6.1656386999820825
           }
         }
       ]
@@ -3322,14 +3228,27 @@
     }
   ],
   "gates": {
-    "export_off_median_seconds_baseline": 2.0417801999719813,
-    "export_off_median_seconds_candidate": 2.1296700999955647,
-    "export_off_regression_fraction": 0.04304572060439679,
-    "export_off_within_10pct_gate": true,
-    "export_off_peak_rss_bytes_candidate_median": 526934016,
-    "all_products_peak_rss_bytes_median": 557449216,
-    "all_products_peak_rss_fraction_of_core": 1.0579108561478787,
+    "true_baseline_commit": "12a6dbd",
+    "export_off_median_seconds_baseline": 0.6615032000117935,
+    "export_off_median_seconds_candidate": 1.5281053000071552,
+    "export_off_regression_fraction": 1.3100497472724417,
+    "export_off_within_10pct_gate": false,
+    "export_off_peak_rss_bytes_baseline_median": 500895744,
+    "export_off_peak_rss_bytes_candidate_median": 526938112,
+    "export_off_peak_rss_tolerance_bytes": 5242880,
+    "export_off_peak_rss_within_gate": false,
+    "all_products_peak_rss_bytes_median": 556785664,
+    "all_products_peak_rss_fraction_of_core": 1.0566433729507878,
     "all_products_peak_rss_within_125pct_gate": true,
+    "long_480_peak_rss_bytes_median": 555208704,
+    "long_480_peak_rss_fraction_of_compact": 1.0536506875403235,
+    "long_480_peak_rss_documented_tolerance_bytes": 33554432,
+    "long_480_memory_within_gate": true,
+    "large_spatial_admission_budget_bytes": 64000,
+    "large_spatial_peak_rss_increment_bytes": 24924160,
+    "large_spatial_rss_documented_tolerance_bytes": 33554432,
+    "large_spatial_rss_within_125pct_admission_gate": true,
+    "large_spatial_single_component_fail_fast": true,
     "metric_parity_on_off_holds": true,
     "checkpoint_retry_skips_source_reads": true
   }

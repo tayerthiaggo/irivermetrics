@@ -40,6 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import platform
 import shutil
@@ -675,10 +676,22 @@ def write_end_to_end_baseline(
 
 SPATIAL_EXPORT_SCHEMA_VERSION = "1.0.0"
 SPATIAL_EXPORT_BASELINE = "dynamics_spatial_exports"
+SPATIAL_EXPORT_TRUE_BASELINE_COMMIT = "12a6dbd"
+SPATIAL_EXPORT_BASELINE_WORKTREE = (
+    REPO_ROOT / ".benchmark_worktrees" / "spatial_export_true_baseline_12a6dbd"
+)
+SPATIAL_EXPORT_TRUE_BASELINE_RUNNER = (
+    REPO_ROOT / "benchmarks" / "spatial_export_true_baseline_runner.py"
+)
 FITZROY_ZARR_FIXTURE = REPO_ROOT / "data" / "wofs_monthly_masks_1986_2026.zarr"
 
 EXPORT_OFF_REGRESSION_MAX_FRACTION = 0.10
 ALL_PRODUCTS_PEAK_RSS_MAX_FRACTION = 1.25
+LARGE_SPATIAL_RSS_ADMISSION_MAX_FRACTION = 1.25
+LARGE_SPATIAL_RSS_DOCUMENTED_TOLERANCE_BYTES = 32 * 1024 * 1024
+EXPORT_OFF_PEAK_RSS_MIN_TOLERANCE_BYTES = 5 * 1024 * 1024
+LONG_480_PEAK_RSS_MAX_FRACTION_OF_COMPACT = 1.10
+LONG_480_PEAK_RSS_DOCUMENTED_TOLERANCE_BYTES = 32 * 1024 * 1024
 SPATIAL_EXPORT_DEFAULT_REPEATS = 5
 SPATIAL_EXPORT_DEFAULT_WARMUP = 1
 
@@ -789,6 +802,78 @@ SPATIAL_EXPORT_SCENARIOS: tuple[SpatialExportScenario, ...] = (
 )
 
 
+def _ensure_spatial_export_baseline_worktree() -> Path:
+    """Return a detached worktree checked out at the frozen pre-plan commit."""
+
+    worktree = SPATIAL_EXPORT_BASELINE_WORKTREE
+    if (worktree / "hydrofragments" / "api.py").exists():
+        return worktree
+
+    worktree.parent.mkdir(parents=True, exist_ok=True)
+    completed = subprocess.run(
+        [
+            "git",
+            "worktree",
+            "add",
+            "--detach",
+            str(worktree),
+            SPATIAL_EXPORT_TRUE_BASELINE_COMMIT,
+        ],
+        cwd=str(REPO_ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0 and not (worktree / "hydrofragments" / "api.py").exists():
+        raise RuntimeError(
+            "failed to create spatial-export true-baseline worktree at "
+            f"{SPATIAL_EXPORT_TRUE_BASELINE_COMMIT!r}: {completed.stderr}"
+        )
+    return worktree
+
+
+def _run_true_baseline_export_off_trial(*, output_dir: Path, workers: int = 1) -> dict[str, Any]:
+    """Run export-off compact_georef using code from the frozen baseline commit."""
+
+    worktree = _ensure_spatial_export_baseline_worktree()
+    payload = {
+        "output_dir": str(output_dir),
+        "workers": workers,
+        "code_commit": SPATIAL_EXPORT_TRUE_BASELINE_COMMIT,
+    }
+    wall_start = time.perf_counter()
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(worktree)
+    completed = subprocess.run(
+        [sys.executable, str(SPATIAL_EXPORT_TRUE_BASELINE_RUNNER)],
+        input=json.dumps(payload),
+        cwd=str(worktree),
+        text=True,
+        capture_output=True,
+        timeout=900,
+        env=env,
+    )
+    wall_seconds = time.perf_counter() - wall_start
+    stdout = completed.stdout
+    stderr = completed.stderr or ""
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "true-baseline spatial-export subprocess exited "
+            f"{completed.returncode} at {SPATIAL_EXPORT_TRUE_BASELINE_COMMIT!r}. "
+            f"stderr:\n{stderr}\nstdout:\n{stdout}"
+        )
+    try:
+        result = json.loads(stdout) if stdout.strip() else {"status": "error", "error_message": stderr}
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "true-baseline spatial-export subprocess produced non-JSON stdout:\n"
+            f"{stdout}\nstderr:\n{stderr}"
+        ) from exc
+    result["subprocess_wall_seconds"] = wall_seconds
+    result.setdefault("peak_rss_bytes", None)
+    return result
+
+
 def _spatial_export_subprocess_payload(
     *,
     scenario: SpatialExportScenario,
@@ -879,6 +964,32 @@ def _median_rss(runs: list[dict[str, Any]]) -> int | None:
     return int(statistics.median(values))
 
 
+def _rss_spread(runs: list[dict[str, Any]]) -> int | None:
+    values = [
+        int(run["peak_rss_bytes"])
+        for run in runs
+        if run.get("status") == "ok" and run.get("peak_rss_bytes") is not None
+    ]
+    if len(values) < 2:
+        return 0
+    return int(max(values) - min(values))
+
+
+def _spatial_export_worker_byte_budget(*, fixture_id: str = "compact_georef", workers: int = 1) -> int:
+    from hydrofragments.analysis.window_stream import resolve_worker_byte_budget
+
+    from hydrofragments.benchmarks._e2e_worker import _spatial_export_config
+
+    config = _spatial_export_config(
+        output_dir=Path("."),
+        spatial_products=(),
+        raster_formats=("geotiff",),
+        workers=workers,
+        fixture_id=fixture_id,
+    )
+    return resolve_worker_byte_budget(config)
+
+
 def _run_spatial_export_scenario(
     *,
     scenario: SpatialExportScenario,
@@ -942,7 +1053,13 @@ def _run_spatial_export_scenario(
             zarr_path=zarr_path,
         )
         try:
-            run = _run_spatial_export_subprocess(payload)
+            if scenario.role == "baseline":
+                run = _run_true_baseline_export_off_trial(
+                    output_dir=output_dir,
+                    workers=scenario.workers,
+                )
+            else:
+                run = _run_spatial_export_subprocess(payload)
         except RuntimeError as exc:
             run = {
                 "status": "error",
@@ -987,6 +1104,9 @@ def _summarize_spatial_export_gates(
     baseline_runs = by_id.get("baseline_export_off", {}).get("runs") or []
     candidate_off_runs = by_id.get("candidate_export_off", {}).get("runs") or []
     all_products_runs = by_id.get("candidate_all_products", {}).get("runs") or []
+    long_480_runs = by_id.get("long_480_memory", {}).get("runs") or []
+    large_sparse_runs = by_id.get("large_spatial_sparse", {}).get("runs") or []
+    single_component_runs = by_id.get("large_spatial_single_component", {}).get("runs") or []
 
     baseline_median = _median_seconds(baseline_runs)
     candidate_off_median = _median_seconds(candidate_off_runs)
@@ -994,9 +1114,25 @@ def _summarize_spatial_export_gates(
     export_off_within_gate = None
     if baseline_median and candidate_off_median:
         regression_fraction = (candidate_off_median - baseline_median) / baseline_median
-        export_off_within_gate = regression_fraction <= EXPORT_OFF_REGRESSION_MAX_FRACTION
+        export_off_within_gate = candidate_off_median <= (
+            baseline_median * (1.0 + EXPORT_OFF_REGRESSION_MAX_FRACTION)
+        )
 
-    core_peak_rss = _median_rss(candidate_off_runs)
+    baseline_peak_rss = _median_rss(baseline_runs)
+    candidate_off_peak_rss = _median_rss(candidate_off_runs)
+    baseline_rss_spread = _rss_spread(baseline_runs)
+    export_off_rss_tolerance_bytes = None
+    export_off_peak_rss_within_gate = None
+    if baseline_peak_rss is not None and candidate_off_peak_rss is not None:
+        export_off_rss_tolerance_bytes = max(
+            EXPORT_OFF_PEAK_RSS_MIN_TOLERANCE_BYTES,
+            baseline_rss_spread or 0,
+        )
+        export_off_peak_rss_within_gate = (
+            candidate_off_peak_rss <= baseline_peak_rss + export_off_rss_tolerance_bytes
+        )
+
+    core_peak_rss = candidate_off_peak_rss
     all_products_peak_rss = _median_rss(all_products_runs)
     all_products_rss_fraction = None
     all_products_rss_within_gate = None
@@ -1004,6 +1140,39 @@ def _summarize_spatial_export_gates(
         all_products_rss_fraction = all_products_peak_rss / core_peak_rss
         all_products_rss_within_gate = (
             all_products_rss_fraction <= ALL_PRODUCTS_PEAK_RSS_MAX_FRACTION
+        )
+
+    long_480_peak_rss = _median_rss(long_480_runs)
+    long_480_peak_rss_fraction_of_compact = None
+    long_480_memory_within_gate = None
+    if long_480_peak_rss is not None and core_peak_rss:
+        long_480_peak_rss_fraction_of_compact = long_480_peak_rss / core_peak_rss
+        allowed = int(core_peak_rss * LONG_480_PEAK_RSS_MAX_FRACTION_OF_COMPACT)
+        allowed += LONG_480_PEAK_RSS_DOCUMENTED_TOLERANCE_BYTES
+        long_480_memory_within_gate = long_480_peak_rss <= allowed
+
+    sparse_admission_budget_bytes = _spatial_export_worker_byte_budget(
+        fixture_id="large_spatial_sparse"
+    )
+    sparse_peak_rss = _median_rss(large_sparse_runs)
+    large_spatial_rss_increment_bytes = None
+    large_spatial_rss_within_125pct_admission_gate = None
+    if sparse_peak_rss is not None and baseline_peak_rss is not None:
+        large_spatial_rss_increment_bytes = sparse_peak_rss - baseline_peak_rss
+        allowed_increment = int(
+            sparse_admission_budget_bytes * LARGE_SPATIAL_RSS_ADMISSION_MAX_FRACTION
+        )
+        allowed_increment += LARGE_SPATIAL_RSS_DOCUMENTED_TOLERANCE_BYTES
+        large_spatial_rss_within_125pct_admission_gate = (
+            large_spatial_rss_increment_bytes <= allowed_increment
+        )
+
+    large_spatial_single_component_fail_fast = None
+    if single_component_runs:
+        large_spatial_single_component_fail_fast = all(
+            run.get("status") == "expected_failure"
+            and run.get("error_type") == "MemoryBudgetExceeded"
+            for run in single_component_runs
         )
 
     parity_holds = None
@@ -1022,14 +1191,27 @@ def _summarize_spatial_export_gates(
         )
 
     return {
+        "true_baseline_commit": SPATIAL_EXPORT_TRUE_BASELINE_COMMIT,
         "export_off_median_seconds_baseline": baseline_median,
         "export_off_median_seconds_candidate": candidate_off_median,
         "export_off_regression_fraction": regression_fraction,
         "export_off_within_10pct_gate": export_off_within_gate,
-        "export_off_peak_rss_bytes_candidate_median": _median_rss(candidate_off_runs),
+        "export_off_peak_rss_bytes_baseline_median": baseline_peak_rss,
+        "export_off_peak_rss_bytes_candidate_median": candidate_off_peak_rss,
+        "export_off_peak_rss_tolerance_bytes": export_off_rss_tolerance_bytes,
+        "export_off_peak_rss_within_gate": export_off_peak_rss_within_gate,
         "all_products_peak_rss_bytes_median": all_products_peak_rss,
         "all_products_peak_rss_fraction_of_core": all_products_rss_fraction,
         "all_products_peak_rss_within_125pct_gate": all_products_rss_within_gate,
+        "long_480_peak_rss_bytes_median": long_480_peak_rss,
+        "long_480_peak_rss_fraction_of_compact": long_480_peak_rss_fraction_of_compact,
+        "long_480_peak_rss_documented_tolerance_bytes": LONG_480_PEAK_RSS_DOCUMENTED_TOLERANCE_BYTES,
+        "long_480_memory_within_gate": long_480_memory_within_gate,
+        "large_spatial_admission_budget_bytes": sparse_admission_budget_bytes,
+        "large_spatial_peak_rss_increment_bytes": large_spatial_rss_increment_bytes,
+        "large_spatial_rss_documented_tolerance_bytes": LARGE_SPATIAL_RSS_DOCUMENTED_TOLERANCE_BYTES,
+        "large_spatial_rss_within_125pct_admission_gate": large_spatial_rss_within_125pct_admission_gate,
+        "large_spatial_single_component_fail_fast": large_spatial_single_component_fail_fast,
         "metric_parity_on_off_holds": parity_holds,
         "checkpoint_retry_skips_source_reads": checkpoint_retry_holds,
     }
@@ -1078,6 +1260,7 @@ def run_spatial_export_matrix(
         "baseline": SPATIAL_EXPORT_BASELINE,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "baseline_commit": baseline_commit,
+        "true_baseline_commit": SPATIAL_EXPORT_TRUE_BASELINE_COMMIT,
         "scope_note": (
             "Repository-owned synthetic fixtures and an optional read-only "
             "local monthly Zarr subset. Network-dependent DEA acquisition "
@@ -1105,6 +1288,7 @@ def _spatial_export_markdown_report(payload: dict[str, Any]) -> str:
         "",
         f"- Schema: `{payload['schema_version']}`",
         f"- Baseline commit: `{payload['baseline_commit']}`",
+        f"- True baseline commit: `{payload['true_baseline_commit']}`",
         f"- Created: `{payload['created_at']}`",
         "",
         "## Scenario medians",
@@ -1177,6 +1361,7 @@ __all__ = [
     "SpatialExportScenario",
     "SPATIAL_EXPORT_SCENARIOS",
     "SPATIAL_EXPORT_SCHEMA_VERSION",
+    "SPATIAL_EXPORT_TRUE_BASELINE_COMMIT",
     "run_spatial_export_matrix",
     "write_spatial_export_baseline",
 ]
