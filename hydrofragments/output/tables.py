@@ -77,43 +77,11 @@ VectorExporter = Callable[[Path, Path], Path]
 
 
 def resolve_git_sha() -> str:
-    """Resolve one git revision for an entire analysis run.
+    """Resolve one git revision for an entire analysis run."""
 
-    Precedence: CI environment variable, installed package metadata, local
-    Git ``HEAD``, then the literal ``unknown``.
-    """
+    from hydrofragments.workflow import resolve_git_sha as _resolve_git_sha
 
-    env_value = os.environ.get(_GIT_SHA_ENV, "").strip()
-    if env_value:
-        return env_value
-
-    try:
-        metadata = importlib.metadata.metadata("hydrofragments")
-        for key in _PACKAGE_METADATA_REVISION_KEYS:
-            value = metadata.get(key, "").strip()
-            if value:
-                return value
-    except importlib.metadata.PackageNotFoundError:
-        pass
-
-    repo_root = Path(__file__).resolve().parents[2]
-    try:
-        completed = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
-        )
-        if completed.returncode == 0:
-            head = completed.stdout.strip()
-            if head:
-                return head
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-    return "unknown"
+    return _resolve_git_sha()
 
 
 def validate_table_formats(formats: Sequence[str]) -> tuple[str, ...]:

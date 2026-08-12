@@ -12,7 +12,11 @@ import pandas as pd
 import xarray as xr
 
 from hydrofragments._version import __version__
-from hydrofragments.section_analysis import DynamicsSupportCollector, analyze_section_rows
+from hydrofragments.section_analysis import (
+    DynamicsSupportCollector,
+    SectionSpatialCollector,
+    analyze_section_rows,
+)
 from hydrofragments.config import HydroConfig
 from hydrofragments.compute import resolve_execution_plan
 from hydrofragments.guards import ComparisonGuardError, guard_comparison
@@ -37,8 +41,13 @@ from hydrofragments.models import (
     ValidationReport,
     WaterCube,
 )
-from hydrofragments.output import build_run_manifest, records_to_frame, write_run_metadata
-from hydrofragments.output.tables import resolve_git_sha
+from hydrofragments.output.finalize import (
+    CoreAnalysisResult,
+    build_in_memory_manifest,
+    finalize_analysis_bundle,
+    preflight_spatial_outputs,
+)
+from hydrofragments.output.tables import records_to_frame, resolve_git_sha
 from hydrofragments.schema import (
     EdgeFlag,
     MetricDependency,
@@ -62,6 +71,7 @@ from hydrofragments.metrics.dynamics import (
 )
 from hydrofragments.temporal import detect_cadence, detect_hy_anchors
 from hydrofragments.temporal.hydroyear import HyAnchorResult
+from hydrofragments.spatial.zones import ZoneResult
 
 
 def _describe_chunks(array: xr.DataArray) -> str:
@@ -1100,7 +1110,7 @@ def _build_metric_coverage(
     return coverage.sort_values("metric", kind="stable").reset_index(drop=True)
 
 
-def analyze(
+def _run_core_analysis(
     cube: WaterCube,
     aoi_id: str,
     *,
@@ -1108,16 +1118,11 @@ def analyze(
     inputs: AnalysisInputs | None = None,
     pixel_size_m: float = 30.0,
     catchment_id: str | None = None,
-) -> HydroResult:
-    """Execute configured metric profiles for one AOI.
+    git_sha: str | None = None,
+    zone_result: ZoneResult | None = None,
+) -> CoreAnalysisResult:
+    """Compute metrics and optional spatial checkpoints without publishing."""
 
-    ``inputs`` bundles optional advanced inputs (drainage context, hydroyear
-    extent, dual-composite APSEC, channel profiles) -- see
-    :class:`hydrofragments.models.AnalysisInputs`. ``inputs.hydroyear_extent``
-    enables the external hydroseason adapter. Dynamics additionally requires
-    both ``inputs.max_water_apsec`` and ``inputs.median_apsec``; absent
-    either composite, the registry reports an explicit dependency skip.
-    """
     inputs = inputs or AnalysisInputs()
     drainage = inputs.drainage
     hydroyear_extent = inputs.hydroyear_extent
@@ -1143,7 +1148,7 @@ def analyze(
     if not report.is_valid:
         raise ValueError("; ".join(report.errors))
 
-    git_sha = resolve_git_sha()
+    resolved_git_sha = git_sha or resolve_git_sha()
     run_id = uuid4().hex
     catchment = catchment_id or aoi_id
     crs = cube.crs or config.spatial.target_crs
@@ -1162,13 +1167,14 @@ def analyze(
             hydroyear_extent, hydrofragments_config=config
         )
 
-    # Resolve which metrics are selected BEFORE computing anything (B1): the
-    # compat row bridge below only computes families whose metric ids are in
-    # selected_ids, so an expensive family (e.g. patch morphology) that a
-    # narrow profile never asked for is never run. Uses the same
-    # _available_dependencies() helper as validate_inputs() so execution and
-    # validation can never silently disagree about what this run's inputs
-    # actually make available.
+    preflight_spatial_outputs(
+        config,
+        cube=cube,
+        inputs=inputs,
+        hydroyear_result=hydroyear_result,
+        zone_result=zone_result or inputs.zones,
+    )
+
     available_dependencies = _available_dependencies(
         config=config,
         drainage=drainage,
@@ -1195,6 +1201,7 @@ def analyze(
             end_dry_anchors=hydroyear_result.anchors,
         )
 
+    spatial_collector = SectionSpatialCollector()
     records: list[MetricRecord] = []
     dynamics_support: DynamicsSupport | None = None
     refuge_states: tuple[EndDryState, ...] = ()
@@ -1212,6 +1219,7 @@ def analyze(
             end_dry_anchors=(
                 hydroyear_result.anchors if hydroyear_result is not None else None
             ),
+            spatial_collector=spatial_collector,
         )
         if need_section_rows:
             records = _records_from_section_rows(
@@ -1223,7 +1231,7 @@ def analyze(
                 resolution_m=pixel_size_m,
                 crs=crs,
                 source=cube.source,
-                git_sha=git_sha,
+                git_sha=resolved_git_sha,
             )
         if dynamics_collector is not None:
             dynamics_support, refuge_states = dynamics_collector.finalize()
@@ -1249,7 +1257,7 @@ def analyze(
                 resolution_m=pixel_size_m,
                 crs=crs,
                 source=cube.source,
-                git_sha=git_sha,
+                git_sha=resolved_git_sha,
             )
         )
     if {"recurrence", "hydroperiod"} & selected_ids:
@@ -1263,7 +1271,7 @@ def analyze(
                 source=cube.source,
                 resolution_m=pixel_size_m,
                 crs=crs,
-                git_sha=git_sha,
+                git_sha=resolved_git_sha,
             )
         )
     if selected_ids & _DYNAMICS_PROFILE_METRIC_IDS and hydroyear_result is not None:
@@ -1305,7 +1313,7 @@ def analyze(
                     "source": cube.source,
                     "resolution_m": pixel_size_m,
                     "crs": crs,
-                    "git_sha": git_sha,
+                    "git_sha": resolved_git_sha,
                 },
                 max_water=max_water_apsec,
                 median=median_apsec,
@@ -1317,7 +1325,6 @@ def analyze(
         frame, coverage_plan, selected_ids=selected_ids
     )
 
-    configured_output_dir = config.output.output_dir
     backend_warnings = list(report.warnings)
     if (
         config.compute.accelerator == "auto"
@@ -1326,29 +1333,29 @@ def analyze(
         backend_warnings.append(
             f"accelerator_fallback: {execution_plan.fallback_reason}"
         )
-    created_at = datetime.now(timezone.utc)
-    manifest_arguments = {
-        "run_id": run_id,
-        "package_version": __version__,
-        "git_sha": git_sha,
-        "input_fingerprint": {
+
+    return CoreAnalysisResult(
+        metrics_table=frame,
+        metric_coverage=metric_coverage,
+        run_id=run_id,
+        git_sha=resolved_git_sha,
+        report_warnings=tuple(backend_warnings),
+        skipped_metrics=report.skipped_metrics,
+        execution_plan_mapping={
+            "planned_backend": execution_plan.planned_backend,
+            "actual_backend_by_stage": {
+                "analyze": "cpu",
+                **execution_plan.actual_backend_by_stage,
+            },
+            "backend_capabilities": execution_plan.capabilities.to_mapping(),
+        },
+        input_fingerprint={
             "source": cube.source,
             "cadence": cube.cadence,
             "shape": dict(cube.water.sizes),
             "chunks": _describe_chunks(cube.water),
         },
-        "planned_backend": execution_plan.planned_backend,
-        "actual_backend_by_stage": {
-            "analyze": "cpu",
-            **execution_plan.actual_backend_by_stage,
-        },
-        "backend_capabilities": execution_plan.capabilities.to_mapping(),
-        "skipped_metrics": [
-            {"metric_id": metric_id, "reason": reason}
-            for metric_id, reason in report.skipped_metrics
-        ],
-        "warnings": backend_warnings,
-        "comparison_context": {
+        comparison_context={
             "aoi_id": aoi_id,
             "source": cube.source,
             "resolution_m": pixel_size_m,
@@ -1357,27 +1364,56 @@ def analyze(
                 0 if hydroyear_result is None else len(hydroyear_result.anchors)
             ),
         },
-        "created_at": created_at,
-    }
+        hydroyear_result=hydroyear_result,
+        raster_checkpoint=spatial_collector.raster_checkpoint,
+        pool_checkpoint_root=spatial_collector.pool_checkpoint_root,
+        spatial_grid=spatial_collector.grid,
+    )
 
-    if configured_output_dir is None:
-        manifest_dict = dict(build_run_manifest(config, **manifest_arguments))
-        manifest_dict["manifest_path"] = None
-        result_output_dir = None
-    else:
-        output_dir = Path(configured_output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        write_run_metadata(output_dir, config, **manifest_arguments)
-        manifest_dict = dict(build_run_manifest(config, **manifest_arguments))
-        manifest_dict["manifest_path"] = str(output_dir / "run_manifest.json")
-        result_output_dir = output_dir
 
-    return HydroResult(
-        metrics_table=frame,
-        manifest=manifest_dict,
-        output_dir=result_output_dir,
-        run_id=run_id,
-        metric_coverage=metric_coverage,
+def analyze(
+    cube: WaterCube,
+    aoi_id: str,
+    *,
+    config: HydroConfig,
+    inputs: AnalysisInputs | None = None,
+    pixel_size_m: float = 30.0,
+    catchment_id: str | None = None,
+) -> HydroResult:
+    """Execute configured metric profiles for one AOI.
+
+    ``inputs`` bundles optional advanced inputs (drainage context, hydroyear
+    extent, dual-composite APSEC, channel profiles) -- see
+    :class:`hydrofragments.models.AnalysisInputs`. ``inputs.hydroyear_extent``
+    enables the external hydroseason adapter. Dynamics additionally requires
+    both ``inputs.max_water_apsec`` and ``inputs.median_apsec``; absent
+    either composite, the registry reports an explicit dependency skip.
+    """
+    core = _run_core_analysis(
+        cube,
+        aoi_id,
+        config=config,
+        inputs=inputs,
+        pixel_size_m=pixel_size_m,
+        catchment_id=catchment_id,
+    )
+
+    if config.output.output_dir is None:
+        manifest_dict = build_in_memory_manifest(config, core)
+        return HydroResult(
+            metrics_table=core.metrics_table,
+            manifest=manifest_dict,
+            output_dir=None,
+            run_id=core.run_id,
+            metric_coverage=core.metric_coverage,
+        )
+
+    return finalize_analysis_bundle(
+        config,
+        core,
+        cube=cube,
+        inputs=inputs,
+        pixel_size_m=pixel_size_m,
     )
 
 

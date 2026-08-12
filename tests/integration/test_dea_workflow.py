@@ -35,6 +35,7 @@ pytest.importorskip("shapely")
 pytest.importorskip("rioxarray")
 
 import hydroseason
+from hydrofragments.config import HydroConfig
 from shapely import wkb
 from shapely.geometry import box, LineString
 
@@ -381,7 +382,9 @@ def test_analyze_from_dea_returned_result_manifest_is_dea_enriched(monkeypatch, 
     assert result.manifest["dea_provenance"]["product"] == "ga_ls_wo_fq_myear_3"
 
     on_disk = json.loads((Path(result.output_dir) / "run_manifest.json").read_text())
-    assert result.manifest == on_disk
+    in_memory = dict(result.manifest)
+    in_memory.pop("manifest_path", None)
+    assert in_memory == on_disk
 
 
 def test_analyze_from_dea_without_drainage_skips_channel_metrics(monkeypatch, tmp_path):
@@ -452,7 +455,23 @@ def test_second_call_delegates_resume_decision_to_acquire_wofs_cache(
         _aoi(), "2020-01-01", "2020-04-30", aoi_id="test_aoi", cache_dir=tmp_path / "wofs_cache"
     )
     analyze_from_dea(
-        _aoi(), "2020-01-01", "2020-04-30", aoi_id="test_aoi", cache_dir=tmp_path / "wofs_cache"
+        _aoi(),
+        "2020-01-01",
+        "2020-04-30",
+        aoi_id="test_aoi",
+        cache_dir=tmp_path / "wofs_cache",
+        config=HydroConfig.from_mapping(
+            {
+                "config_schema_version": "1.0.0",
+                "input": {"kind": "watermask_tsfill"},
+                "temporal": {
+                    "input_cadence": "monthly",
+                    "monthly_composite": "max_water",
+                    "composite_owner": "upstream",
+                },
+                "output": {"output_dir": str(tmp_path / "output_second")},
+            }
+        ),
     )
 
     # One open_wo_statistics + one build_wet_planning_footprint call per
@@ -481,6 +500,18 @@ def test_cache_hit_emits_same_metrics_and_coverage_tables(monkeypatch, tmp_path)
         "2020-04-30",
         aoi_id="test_aoi",
         cache_dir=tmp_path / "wofs_cache",
+        config=HydroConfig.from_mapping(
+            {
+                "config_schema_version": "1.0.0",
+                "input": {"kind": "watermask_tsfill"},
+                "temporal": {
+                    "input_cadence": "monthly",
+                    "monthly_composite": "max_water",
+                    "composite_owner": "upstream",
+                },
+                "output": {"output_dir": str(tmp_path / "output_repeat")},
+            }
+        ),
     )
 
     pd.testing.assert_frame_equal(

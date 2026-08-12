@@ -491,7 +491,7 @@ def test_analyze_with_output_dir_returns_full_manifest_dictionary(tmp_path) -> N
 
     assert result.output_dir == tmp_path
     assert result.manifest["manifest_path"] == str(tmp_path / "run_manifest.json")
-    assert result.manifest["manifest_schema_version"] == "1.0.0"
+    assert result.manifest["manifest_schema_version"] == "1.1.0"
     assert "artifacts" in result.manifest
     assert (tmp_path / "run_manifest.json").exists()
 

@@ -495,6 +495,7 @@ class _MonthStreamJob:
     budget_bytes: int
     grid_shape: tuple[int, int]
     has_coverage: bool
+    extra_consumers: tuple[WindowMonthConsumer, ...] = ()
 
 
 def _process_month_stream_job(
@@ -518,7 +519,7 @@ def _process_month_stream_job(
         has_coverage=job.has_coverage,
         grid_shape=job.grid_shape,
     )
-    consumers: list[WindowMonthConsumer] = [state.as_consumer()]
+    consumers: list[WindowMonthConsumer] = [state.as_consumer(), *job.extra_consumers]
     stream_month_windows(
         da_feature,
         valid_obs,
@@ -597,12 +598,15 @@ def stream_section_month_rows(
     in_flight_slots = 1 if workers <= 1 else 2 * workers
     budget_bytes = resolve_worker_byte_budget(config, in_flight_slots=in_flight_slots)
 
-    build_section_consumers(export_enabled=export_enabled, extra_consumers=extra_consumers)
-
     spill_dir: Path | None = None
     if not export_enabled:
         spill_dir = Path(tempfile.mkdtemp(prefix="hf_scientific_spill_"))
 
+    validated_extra = tuple(
+        build_section_consumers(
+            export_enabled=export_enabled, extra_consumers=extra_consumers
+        )
+    )
     jobs = [
         _MonthStreamJob(
             time_index=time_index,
@@ -621,6 +625,7 @@ def stream_section_month_rows(
             budget_bytes=budget_bytes,
             grid_shape=grid_shape,
             has_coverage=has_coverage,
+            extra_consumers=validated_extra,
         )
         for time_index in range(len(timestamps))
     ]

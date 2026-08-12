@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, ThreadPoolExecutor, wait
 from dataclasses import dataclass
+from pathlib import Path
 import warnings
 from typing import Iterator, Literal, Mapping, Sequence
 
@@ -20,11 +21,22 @@ import hydrofragments.metrics.persistence as persistence
 from hydrofragments.metrics.dynamics import DynamicsSupport, EndDryState, _month_key
 from hydrofragments.metrics.persistence import compute_refuge_area
 from hydrofragments.output.checkpoints import (
+    PoolCheckpointConsumer,
+    SpatialRasterCheckpoint,
     SpatialRasterCheckpointAccumulator,
     checkpoint_products_for_run,
     grid_from_dataarray,
 )
 from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
+
+
+@dataclass
+class SectionSpatialCollector:
+    """Optional spatial checkpoint handles populated during section analysis."""
+
+    raster_checkpoint: SpatialRasterCheckpoint | None = None
+    pool_checkpoint_root: "Path | None" = None
+    grid: object | None = None
 
 
 def _monthly_dataset(
@@ -607,6 +619,7 @@ def analyze_section_rows(
     executor_kind: Literal["thread", "process"] = "thread",
     dynamics_collector: DynamicsSupportCollector | None = None,
     end_dry_anchors: pd.DataFrame | None = None,
+    spatial_collector: SectionSpatialCollector | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -633,6 +646,8 @@ def analyze_section_rows(
     """
     want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
     if dynamics_collector is not None:
+        want_patches = True
+    if "monthly_pools" in config.output.spatial_products:
         want_patches = True
     want_width = selected_ids is not None and "pool_width" in selected_ids
     want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
@@ -699,6 +714,17 @@ def analyze_section_rows(
     )
     want_raster_checkpoint = bool(checkpoint_products)
     raster_checkpoint: SpatialRasterCheckpointAccumulator | None = None
+    pool_consumer: PoolCheckpointConsumer | None = None
+    extra_consumers: list[object] = []
+    if export_enabled and "monthly_pools" in config.output.spatial_products:
+        template = da_feature.isel(time=0)
+        pool_consumer = PoolCheckpointConsumer.create(
+            grid=grid_from_dataarray(template),
+            config=config,
+            input_fingerprint=f"{section}:{grid_shape}",
+            export_enabled=True,
+        )
+        extra_consumers.append(pool_consumer.as_consumer())
     if want_raster_checkpoint:
         template = da_feature.isel(time=0)
         raster_checkpoint = SpatialRasterCheckpointAccumulator.create(
@@ -734,23 +760,37 @@ def analyze_section_rows(
         workers=config.compute.workers,
         executor_kind=executor_kind,
         export_enabled=export_enabled,
+        extra_consumers=extra_consumers,
         raster_feeder=raster_checkpoint,
         occurrence_feeder=occurrence_acc,
         dynamics_feeder=dynamics_collector,
     )
 
+    if spatial_collector is not None and pool_consumer is not None:
+        spatial_collector.grid = pool_consumer.grid
+
     pp_mean = float("nan")
     refuge = None
-    if raster_checkpoint is not None and want_persistence:
-        occurrence = raster_checkpoint.finalize_occurrence()
+    occurrence = None
+    if raster_checkpoint is not None:
+        if want_persistence:
+            occurrence = raster_checkpoint.finalize_occurrence()
         if not export_enabled:
             raster_checkpoint.cleanup()
         else:
-            raster_checkpoint.finalize_checkpoint()
+            finalized = raster_checkpoint.finalize_checkpoint()
+            if spatial_collector is not None:
+                spatial_collector.raster_checkpoint = finalized
+                spatial_collector.grid = finalized.metadata.grid
     elif occurrence_acc is not None:
         occurrence = occurrence_acc.finalize(config=config)
-    else:
-        occurrence = None
+
+    if pool_consumer is not None and export_enabled:
+        pool_consumer.finalize()
+        if spatial_collector is not None:
+            spatial_collector.pool_checkpoint_root = pool_consumer.root
+            if spatial_collector.grid is None:
+                spatial_collector.grid = pool_consumer.grid
 
     if occurrence is not None:
         refuge = compute_refuge_area(
@@ -799,5 +839,6 @@ def analyze_section_rows(
 
 __all__ = [
     "DynamicsSupportCollector",
+    "SectionSpatialCollector",
     "analyze_section_rows",
 ]

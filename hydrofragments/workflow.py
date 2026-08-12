@@ -22,15 +22,17 @@ Phase timings recorded in the run manifest's ``timings_seconds``:
   one annual Zarr group per calendar year not already completed").
 - ``metric_processing``: opening the verified cache footprints/water cube,
   deriving hydro-year and dual-composite inputs, and the single
-  :func:`hydrofragments.api.analyze` call.
-- ``output_write``: writing the metrics table, metric-coverage table, and
-  DEA-enriched run manifest.
+  :func:`hydrofragments.api._run_core_analysis` call.
+- ``output_write``: atomic bundle finalization (tables, spatial products,
+  validated manifest).
 - ``total``: wall-clock sum of the four phases above.
 """
 from __future__ import annotations
 
+import importlib.metadata
+import os
+import subprocess
 import time
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -41,29 +43,71 @@ import hydroseason
 import hydroseason._io_dea_stats  # noqa: F401 -- accessed as module attrs below
 from hydroseason._io_dea_stats import DEAStatsUnavailable, WoStatisticsUnavailable
 
-from hydrofragments.api import analyze, open_water_cube
+_DEA_PRODUCT = "ga_ls_wo_fq_myear_3"
+_DEA_STAC_URL = "https://explorer.sandbox.dea.ga.gov.au/stac"
+_DEFAULT_CHANNEL_BUFFER_M = 60.0
+_GIT_SHA_ENV = "HYDROFRAGMENTS_GIT_SHA"
+_PACKAGE_METADATA_REVISION_KEYS = (
+    "Source-Revision-Id",
+    "Revision-Id",
+    "Git-Commit",
+)
+
+
+def resolve_git_sha() -> str:
+    """Resolve one git revision for an entire analysis run.
+
+    Precedence: CI environment variable, installed package metadata, local
+    Git ``HEAD``, then the literal ``unknown``.
+    """
+
+    env_value = os.environ.get(_GIT_SHA_ENV, "").strip()
+    if env_value:
+        return env_value
+
+    try:
+        metadata = importlib.metadata.metadata("hydrofragments")
+        for key in _PACKAGE_METADATA_REVISION_KEYS:
+            value = metadata.get(key, "").strip()
+            if value:
+                return value
+    except importlib.metadata.PackageNotFoundError:
+        pass
+
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+        if completed.returncode == 0:
+            head = completed.stdout.strip()
+            if head:
+                return head
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    return "unknown"
+
+
+from hydrofragments.api import _run_core_analysis, open_water_cube
 from hydrofragments.config import HydroConfig
 from hydrofragments.io.cache_footprints import open_verified_cache_footprints
 from hydrofragments.io.dea import open_wo_statistics_for_zoning
 from hydrofragments.metrics import ApsecRecord
 from hydrofragments.models import AnalysisInputs, HydroResult
-from hydrofragments.output.manifest import (
-    build_dea_provenance,
-    build_run_manifest,
-    write_run_metadata,
-)
-from hydrofragments.output.tables import write_metric_coverage, write_output_tables
+from hydrofragments.output.finalize import finalize_analysis_bundle
+from hydrofragments.output.manifest import build_dea_provenance
 from hydrofragments.spatial import (
     SpatialContext,
     create_channel_context,
     reach_monthly_wet_profile,
 )
 from hydrofragments.spatial.zones import zones_from_wo_statistics
-
-
-_DEA_PRODUCT = "ga_ls_wo_fq_myear_3"
-_DEA_STAC_URL = "https://explorer.sandbox.dea.ga.gov.au/stac"
-_DEFAULT_CHANNEL_BUFFER_M = 60.0
 
 
 def _default_config(*, output_dir: str | Path) -> HydroConfig:
@@ -362,16 +406,19 @@ def analyze_from_dea(
         channel_wet_profiles=channel_wet_profiles,
         channel_segment_lengths_m=channel_segment_lengths_m,
     )
-    result = analyze(
-        cube, aoi_id, config=resolved_config, inputs=inputs, pixel_size_m=resolution,
+    core = _run_core_analysis(
+        cube,
+        aoi_id,
+        config=resolved_config,
+        inputs=inputs,
+        pixel_size_m=resolution,
+        git_sha=resolve_git_sha(),
+        zone_result=zone_result,
     )
     timings["metric_processing"] = time.perf_counter() - t0
 
     # --- Phase 5: output write --------------------------------------------------
     t0 = time.perf_counter()
-    write_output_tables(result.metrics_table, result.output_dir)
-    write_metric_coverage(result.metric_coverage, result.output_dir)
-
     dea_provenance = None
     if stats is not None and zone_result is not None:
         dea_provenance = build_dea_provenance(
@@ -397,37 +444,17 @@ def analyze_from_dea(
                 else None
             ),
         )
-    timings["output_write"] = time.perf_counter() - t0
-    timings["total"] = sum(timings.values())
-
-    manifest_arguments: dict[str, Any] = {
-        "run_id": result.run_id,
-        "package_version": result.manifest.get("package_version", ""),
-        "git_sha": "unknown",
-        "input_fingerprint": {
-            "source": cube.source,
-            "cadence": cube.cadence,
-            "shape": dict(cube.water.sizes),
-        },
-        "planned_backend": "cpu",
-        "actual_backend_by_stage": {"analyze": "cpu"},
-        "timings_seconds": timings,
-        "dea_provenance": dea_provenance,
-    }
-    write_run_metadata(result.output_dir, resolved_config, **manifest_arguments)
-
-    # write_run_metadata() writes the DEA-enriched manifest (timings_seconds,
-    # dea_provenance) to disk but returns only file paths, not the manifest
-    # dict itself -- build the identical dict here (same config, same
-    # arguments) so the HydroResult this function returns to the caller
-    # carries the SAME enriched manifest that was just written, not
-    # analyze()'s own pre-enrichment manifest. Without this, a caller reading
-    # result.manifest in-memory (as opposed to reopening run_manifest.json
-    # from disk) would silently see neither timings_seconds nor
-    # dea_provenance, contradicting this module's own docstring contract
-    # ("Phase timings recorded in the run manifest's timings_seconds").
-    enriched_manifest = build_run_manifest(resolved_config, **manifest_arguments)
-    result = replace(result, manifest=enriched_manifest)
+    result = finalize_analysis_bundle(
+        resolved_config,
+        core,
+        cube=cube,
+        inputs=inputs,
+        pixel_size_m=resolution,
+        zone_result=zone_result,
+        dea_provenance=dea_provenance,
+        timings_seconds=timings,
+    )
+    timings.update(result.manifest.get("timings_seconds", {}))
 
     return result
 
@@ -445,4 +472,4 @@ def _as_spatial_mask(mask: "np.ndarray", reference: "Any"):
     return xr.DataArray(mask, dims=spatial_dims, coords=coords)
 
 
-__all__ = ["analyze_from_dea"]
+__all__ = ["analyze_from_dea", "resolve_git_sha"]

@@ -198,7 +198,8 @@ def resolve_checkpoint_root(
     if config.compute.checkpoint_path:
         return Path(config.compute.checkpoint_path), True
     if export_enabled and config.output.output_dir:
-        return Path(config.output.output_dir) / ".spatial_checkpoints", True
+        target = Path(config.output.output_dir)
+        return target.parent / f"{target.name}.spatial_checkpoints", True
     return Path(tempfile.mkdtemp(prefix="hf_spatial_ckpt_")), False
 
 

@@ -6,7 +6,10 @@ from dataclasses import dataclass, field, fields, replace
 from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
+
+if TYPE_CHECKING:
+    from hydrofragments.spatial.zones import ZoneResult
 from uuid import uuid4
 
 import numpy as np
