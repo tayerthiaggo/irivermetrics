@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
+from affine import Affine
 
 from hydrofragments.models import MetricRecord
+from hydrofragments.output.spatial import SpatialGrid
 from hydrofragments.schema import (
     MetricDependency,
     MetricFamily,
@@ -260,3 +263,63 @@ def test_pyarrow_is_declared_for_canonical_parquet_output() -> None:
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
 
     assert '"pyarrow>=' in pyproject
+
+
+def test_write_output_tables_uses_vector_exporter_for_monthly_pools(
+    tmp_path: Path,
+) -> None:
+    from hydrofragments.config import HydroConfig
+    from hydrofragments.output.checkpoints import PoolCheckpointConsumer
+    from hydrofragments.output.tables import write_output_tables
+    from hydrofragments.output.vectors import export_vectors_from_checkpoint
+    from rasterio.crs import CRS
+
+    test_crs = CRS.from_string(
+        "+proj=tmerc +lat_0=0 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    )
+    grid = SpatialGrid(
+        crs=test_crs,
+        transform=Affine(30.0, 0.0, 0.0, 0.0, -30.0, 180.0),
+        height=6,
+        width=6,
+        y_dim="y",
+        x_dim="x",
+        y=np.arange(6, dtype=float) * 30.0,
+        x=np.arange(6, dtype=float) * 30.0,
+    )
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.1.0",
+            "input": {"kind": "watermask_tsfill"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "upstream",
+            },
+            "output": {
+                "output_dir": str(tmp_path),
+                "spatial_products": ["monthly_pools"],
+            },
+        }
+    )
+    consumer = PoolCheckpointConsumer.create(
+        grid=grid,
+        config=config,
+        input_fingerprint="tables",
+        root=tmp_path / "pool_checkpoint",
+        export_enabled=True,
+    )
+    checkpoint = consumer.as_consumer().finalize()
+
+    artifacts = write_output_tables(
+        [metric_record()],
+        tmp_path / "bundle",
+        include_vectors=True,
+        vector_checkpoint=checkpoint.root,
+        vector_exporter=lambda source, destination: export_vectors_from_checkpoint(
+            source, destination
+        ),
+    )
+
+    gpkg = artifacts.vectors_path / "spatial.gpkg"
+    assert gpkg.exists()

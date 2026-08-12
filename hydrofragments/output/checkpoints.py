@@ -979,9 +979,165 @@ class _RasterBlockConsumer:
         self._accumulator.abort()
 
 
+@dataclass
+class PoolCheckpointConsumer:
+    """Checkpoint consumer that polygonizes canonical labels per admitted window."""
+
+    root: Path
+    grid: SpatialGrid
+    config: HydroConfig
+    input_fingerprint: str
+    durable: bool
+    _visited_months: set[str] = field(default_factory=set)
+    _partition_months: list[str] = field(default_factory=list)
+    _aborted: bool = field(default=False, init=False)
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        grid: SpatialGrid,
+        config: HydroConfig,
+        input_fingerprint: str,
+        export_enabled: bool = False,
+        root: Path | None = None,
+    ) -> PoolCheckpointConsumer:
+        durable_root, durable = resolve_checkpoint_root(
+            config, export_enabled=export_enabled
+        )
+        checkpoint_root = root if root is not None else durable_root / "pool_vectors"
+        checkpoint_root.mkdir(parents=True, exist_ok=True)
+        consumer = cls(
+            root=checkpoint_root,
+            grid=grid,
+            config=config,
+            input_fingerprint=input_fingerprint,
+            durable=durable,
+        )
+        consumer._write_metadata(completed=False)
+        return consumer
+
+    def _write_metadata(self, *, completed: bool) -> None:
+        from hydrofragments.output.vectors import (
+            PoolVectorCheckpointMetadata,
+            SPATIAL_POOL_ALGORITHM_VERSION,
+        )
+
+        metadata = PoolVectorCheckpointMetadata(
+            grid=self.grid,
+            scientific_config_hash=self.config.config_hash,
+            algorithm_version=SPATIAL_POOL_ALGORITHM_VERSION,
+            input_fingerprint=self.input_fingerprint,
+            month_partitions=tuple(self._partition_months),
+            completed=completed,
+        )
+        (self.root / "metadata.json").write_text(metadata.to_json(), encoding="utf-8")
+
+    def _partition_path(self, month_key: str, window_id: str) -> Path:
+        return self.root / "partitions" / month_key / f"{window_id}.parquet"
+
+    def _record_month(self, month_key: str) -> None:
+        self._visited_months.add(month_key)
+        if month_key not in self._partition_months:
+            self._partition_months.append(month_key)
+
+    def _write_empty_month_partition(self, month_key: str) -> None:
+        from hydrofragments.output.vectors import _write_partition_parquet
+
+        path = self.root / "partitions" / month_key / "data.parquet"
+        if path.exists():
+            return
+        _write_partition_parquet([], path=path, crs=self.grid.crs)
+        self._record_month(month_key)
+
+    def consume(self, block: WindowMonthResult) -> None:
+        from hydrofragments.analysis.window_stream import WindowMonthResult as _WindowMonthResult
+        from hydrofragments.output.vectors import _write_partition_parquet, polygonize_pool_features
+
+        if not isinstance(block, _WindowMonthResult):
+            raise TypeError("expected WindowMonthResult")
+
+        month_key = pd.Timestamp(block.date).strftime("%Y-%m-%d")
+        self._record_month(month_key)
+
+        bundle = block.patch_bundle
+        if bundle is None or (not bundle.properties and bundle.labels is None and bundle.label_checkpoint is None):
+            if not np.any(block.water):
+                self._write_empty_month_partition(month_key)
+            return
+
+        labels = bundle.labels
+        if labels is None and bundle.label_checkpoint is not None:
+            import zarr
+
+            labels = np.asarray(
+                zarr.open(bundle.label_checkpoint.path, mode="r")[:],
+                dtype=np.int32,
+            )
+        if labels is None:
+            if not np.any(block.water):
+                self._write_empty_month_partition(month_key)
+            return
+
+        rows = polygonize_pool_features(
+            labels=labels,
+            properties=bundle.properties,
+            date=block.date,
+            window_id=block.window_id,
+            grid=self.grid,
+            row_slice=block.row_slice,
+            col_slice=block.col_slice,
+        )
+        partition_path = self._partition_path(month_key, block.window_id)
+        _write_partition_parquet(rows, path=partition_path, crs=self.grid.crs)
+        del labels, rows
+
+    def finalize(self) -> object:
+        for month_key in sorted(self._visited_months):
+            month_dir = self.root / "partitions" / month_key
+            if not month_dir.exists() or not any(month_dir.glob("*.parquet")):
+                self._write_empty_month_partition(month_key)
+        self._write_metadata(completed=True)
+        (self.root / "COMPLETED").write_text("ok", encoding="utf-8")
+        return self.finalize_checkpoint()
+
+    def finalize_checkpoint(self):
+        from hydrofragments.output.vectors import PoolVectorCheckpoint, PoolVectorCheckpointMetadata
+
+        metadata = PoolVectorCheckpointMetadata.from_json(
+            (self.root / "metadata.json").read_text(encoding="utf-8")
+        )
+        checkpoint = PoolVectorCheckpoint(root=self.root, metadata=metadata)
+        checkpoint.validate_complete()
+        return checkpoint
+
+    def abort(self) -> None:
+        self._aborted = True
+        if not self.durable and self.root.exists():
+            shutil.rmtree(self.root, ignore_errors=True)
+
+    def as_consumer(self) -> WindowMonthConsumer:
+        return _PoolBlockConsumer(self)
+
+
+class _PoolBlockConsumer:
+    def __init__(self, consumer: PoolCheckpointConsumer) -> None:
+        self._consumer = consumer
+
+    def consume(self, block: WindowMonthResult) -> None:
+        self._consumer.consume(block)
+
+    def finalize(self) -> object:
+        return self._consumer.finalize()
+
+    def abort(self) -> None:
+        self._consumer.abort()
+
+
 __all__ = [
     "CheckpointError",
     "CheckpointMetadata",
+    "PoolCheckpointConsumer",
     "SPATIAL_RASTER_ALGORITHM_VERSION",
     "SpatialRasterCheckpoint",
     "SpatialRasterCheckpointAccumulator",
