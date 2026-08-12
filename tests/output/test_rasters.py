@@ -16,7 +16,10 @@ import xarray as xr
 
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.persistence import compute_occurrence
-from hydrofragments.output.rasters import build_persistence_rasters
+from hydrofragments.output.rasters import (
+    build_persistence_rasters,
+    build_persistence_rasters_from_checkpoint,
+)
 
 
 def _config(refuge_threshold: float = 0.90, min_valid_obs: int = 1) -> HydroConfig:
@@ -122,3 +125,49 @@ def test_zarr_is_declared_for_canonical_raster_output():
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
 
     assert '"zarr>=' in pyproject
+
+
+def test_build_persistence_rasters_from_checkpoint_matches_direct_builder(tmp_path: Path):
+    from hydrofragments.output.checkpoints import SpatialRasterCheckpointAccumulator, grid_from_dataarray
+
+    config = _config(min_valid_obs=3)
+    occ = compute_occurrence(_monthly(), config=config)
+    direct = build_persistence_rasters(occ, config=config)
+
+    monthly = _monthly()
+    template = monthly["water"].isel(time=0)
+    accumulator = SpatialRasterCheckpointAccumulator.create(
+        grid=grid_from_dataarray(template),
+        config=config,
+        products=("persistence_rasters",),
+        input_fingerprint="rasters",
+        template=template,
+        root=tmp_path / "checkpoint",
+        export_enabled=True,
+    )
+    for time_index, timestamp in enumerate(monthly["time"].values):
+        ts = pd.Timestamp(timestamp)
+        accumulator.add_month(
+            calendar_month=int(ts.month),
+            calendar_year=int(ts.year),
+            water=np.asarray(monthly["water"].isel(time=time_index).values, dtype=bool),
+            valid_obs=np.asarray(monthly["valid_obs"].isel(time=time_index).values, dtype=bool),
+            timestamp=ts,
+        )
+    checkpoint = accumulator.finalize_checkpoint()
+    from_checkpoint = build_persistence_rasters_from_checkpoint(checkpoint, config=config)
+
+    np.testing.assert_allclose(
+        from_checkpoint["occurrence"].values,
+        direct["occurrence"].values,
+        rtol=0,
+        atol=1e-5,
+    )
+    np.testing.assert_array_equal(
+        from_checkpoint["valid_count"].values,
+        direct["valid_count"].values,
+    )
+    np.testing.assert_array_equal(
+        from_checkpoint["refuge_mask"].values,
+        direct["refuge_mask"].values,
+    )

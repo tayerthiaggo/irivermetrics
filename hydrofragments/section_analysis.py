@@ -19,6 +19,11 @@ import hydrofragments.metrics.patches as patch_metrics
 import hydrofragments.metrics.persistence as persistence
 from hydrofragments.metrics.dynamics import DynamicsSupport, EndDryState, _month_key
 from hydrofragments.metrics.persistence import compute_refuge_area
+from hydrofragments.output.checkpoints import (
+    SpatialRasterCheckpointAccumulator,
+    checkpoint_products_for_run,
+    grid_from_dataarray,
+)
 from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
 
 
@@ -601,6 +606,7 @@ def analyze_section_rows(
     analysis_mask: xr.DataArray | None = None,
     executor_kind: Literal["thread", "process"] = "thread",
     dynamics_collector: DynamicsSupportCollector | None = None,
+    end_dry_anchors: pd.DataFrame | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -643,6 +649,7 @@ def analyze_section_rows(
             raise ValueError("valid_obs must align with water")
 
     spatial_dims = tuple(dim for dim in da_feature.dims if dim != "time")
+    grid_shape = tuple(int(da_feature.sizes[dim]) for dim in spatial_dims)
     analysis_mask_np: np.ndarray | None = None
     if analysis_mask is not None:
         if tuple(analysis_mask.dims) != spatial_dims:
@@ -667,8 +674,6 @@ def analyze_section_rows(
             connectivity=config.patches.connectivity_rule,
         )
     else:
-        spatial_dims = tuple(dim for dim in da_feature.dims if dim != "time")
-        grid_shape = tuple(int(da_feature.sizes[dim]) for dim in spatial_dims)
         windows = _default_windows(grid_shape)
 
     local_label_threshold_bytes = _resolve_local_label_threshold_bytes(config)
@@ -682,8 +687,34 @@ def analyze_section_rows(
         config.validity.min_valid_fraction_month if valid_obs is not None else None
     )
 
-    occurrence_acc = _OccurrenceAccumulator() if want_persistence else None
     export_enabled = bool(config.output.spatial_products)
+    effective_selected = (
+        selected_ids
+        if selected_ids is not None
+        else _PERSISTENCE_METRIC_IDS | {"recurrence", "hydroperiod"}
+    )
+    checkpoint_products = checkpoint_products_for_run(
+        selected_metric_ids=effective_selected,
+        spatial_products=config.output.spatial_products,
+    )
+    want_raster_checkpoint = bool(checkpoint_products)
+    raster_checkpoint: SpatialRasterCheckpointAccumulator | None = None
+    if want_raster_checkpoint:
+        template = da_feature.isel(time=0)
+        raster_checkpoint = SpatialRasterCheckpointAccumulator.create(
+            grid=grid_from_dataarray(template),
+            config=config,
+            products=checkpoint_products,
+            input_fingerprint=f"{section}:{grid_shape}",
+            template=template,
+            analysis_mask=analysis_mask_np,
+            end_dry_anchors=end_dry_anchors,
+            export_enabled=export_enabled,
+        )
+
+    occurrence_acc = (
+        _OccurrenceAccumulator() if want_persistence and raster_checkpoint is None else None
+    )
 
     per_month = stream_section_month_rows(
         da_feature,
@@ -703,14 +734,25 @@ def analyze_section_rows(
         workers=config.compute.workers,
         executor_kind=executor_kind,
         export_enabled=export_enabled,
+        raster_feeder=raster_checkpoint,
         occurrence_feeder=occurrence_acc,
         dynamics_feeder=dynamics_collector,
     )
 
     pp_mean = float("nan")
     refuge = None
-    if occurrence_acc is not None:
+    if raster_checkpoint is not None and want_persistence:
+        occurrence = raster_checkpoint.finalize_occurrence()
+        if not export_enabled:
+            raster_checkpoint.cleanup()
+        else:
+            raster_checkpoint.finalize_checkpoint()
+    elif occurrence_acc is not None:
         occurrence = occurrence_acc.finalize(config=config)
+    else:
+        occurrence = None
+
+    if occurrence is not None:
         refuge = compute_refuge_area(
             occurrence, cell_area_m2=cell_area_m2, config=config
         )

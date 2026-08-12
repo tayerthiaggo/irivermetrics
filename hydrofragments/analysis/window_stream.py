@@ -587,6 +587,7 @@ def stream_section_month_rows(
     extra_consumers: Sequence[WindowMonthConsumer] = (),
     occurrence_feeder: Any | None = None,
     dynamics_feeder: Any | None = None,
+    raster_feeder: Any | None = None,
 ) -> list[dict[str, object]]:
     """Stream all months under a spatial byte budget; omit retained full-grid payloads."""
 
@@ -627,9 +628,24 @@ def stream_section_month_rows(
     def _feed_sidecars(row: dict[str, object]) -> None:
         if dynamics_feeder is not None:
             dynamics_feeder.add_month(row)
-        if occurrence_feeder is None:
-            return
         payload = row.get("occurrence_payload")
+        if raster_feeder is not None and isinstance(payload, dict):
+            timestamp = pd.Timestamp(row["timestamp"])
+            raster_feeder.add_month(
+                calendar_month=int(payload["calendar_month"]),
+                calendar_year=int(timestamp.year),
+                water=np.asarray(payload["water_month"], dtype=bool),
+                valid_obs=(
+                    np.asarray(payload["coverage_valid_obs_month"], dtype=bool)
+                    if payload["coverage_valid_obs_month"] is not None
+                    else np.ones_like(payload["water_month"], dtype=bool)
+                ),
+                timestamp=timestamp,
+            )
+        if occurrence_feeder is None:
+            if isinstance(payload, dict):
+                payload.clear()
+            return
         if not isinstance(payload, dict):
             return
         occurrence_feeder.add_month(

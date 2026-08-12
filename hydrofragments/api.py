@@ -1209,6 +1209,9 @@ def analyze(
             valid_obs=monthly["valid_obs"],
             analysis_mask=cube.analysis_mask,
             dynamics_collector=dynamics_collector,
+            end_dry_anchors=(
+                hydroyear_result.anchors if hydroyear_result is not None else None
+            ),
         )
         if need_section_rows:
             records = _records_from_section_rows(
