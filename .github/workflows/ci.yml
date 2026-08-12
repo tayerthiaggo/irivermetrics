@@ -61,6 +61,10 @@ jobs:
       - name: Run fast smoke tests
         run: pytest -q -m "not slow and not hardware"
 
+      - name: Run spatial writer smoke suites
+        run: |
+          pytest -q tests/output/test_spatial_grid.py tests/output/test_rasters.py tests/output/test_vectors.py tests/output/test_bundle.py tests/integration/test_spatial_exports.py
+
   package:
     runs-on: ubuntu-latest
     steps:

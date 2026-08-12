@@ -43,6 +43,7 @@ import json
 from pathlib import Path
 import platform
 import shutil
+import statistics
 import subprocess
 import sys
 import time
@@ -668,6 +669,502 @@ def write_end_to_end_baseline(
     return payload
 
 
+# ---------------------------------------------------------------------------
+# Dynamics / spatial-export promotion gate (Task 12)
+# ---------------------------------------------------------------------------
+
+SPATIAL_EXPORT_SCHEMA_VERSION = "1.0.0"
+SPATIAL_EXPORT_BASELINE = "dynamics_spatial_exports"
+FITZROY_ZARR_FIXTURE = REPO_ROOT / "data" / "wofs_monthly_masks_1986_2026.zarr"
+
+EXPORT_OFF_REGRESSION_MAX_FRACTION = 0.10
+ALL_PRODUCTS_PEAK_RSS_MAX_FRACTION = 1.25
+SPATIAL_EXPORT_DEFAULT_REPEATS = 5
+SPATIAL_EXPORT_DEFAULT_WARMUP = 1
+
+
+@dataclass(frozen=True)
+class SpatialExportScenario:
+    """One controlled spatial-export benchmark scenario."""
+
+    scenario_id: str
+    description: str
+    fixture_id: str
+    spatial_products: tuple[str, ...] = ()
+    raster_formats: tuple[str, ...] = ("geotiff",)
+    workers: int = 1
+    role: str = "candidate"  # baseline | candidate | memory | checkpoint_retry
+    check_metric_parity: bool = False
+    expect_failure: bool = False
+    skipped_reason: str | None = None
+
+
+SPATIAL_EXPORT_SCENARIOS: tuple[SpatialExportScenario, ...] = (
+    SpatialExportScenario(
+        scenario_id="baseline_export_off",
+        description="Frozen baseline commit behaviour with spatial exports disabled",
+        fixture_id="compact_georef",
+        role="baseline",
+    ),
+    SpatialExportScenario(
+        scenario_id="candidate_export_off",
+        description="Current candidate with spatial exports disabled",
+        fixture_id="compact_georef",
+        role="candidate",
+        check_metric_parity=True,
+    ),
+    SpatialExportScenario(
+        scenario_id="candidate_persistence_rasters",
+        description="Candidate with persistence/temporal/refuge GeoTIFF products",
+        fixture_id="compact_georef",
+        spatial_products=("persistence_rasters",),
+        check_metric_parity=True,
+    ),
+    SpatialExportScenario(
+        scenario_id="candidate_monthly_pools",
+        description="Candidate with monthly pool GeoPackage export",
+        fixture_id="compact_georef",
+        spatial_products=("monthly_pools",),
+        check_metric_parity=True,
+    ),
+    SpatialExportScenario(
+        scenario_id="candidate_all_products",
+        description="Candidate with all products applicable to the compact fixture",
+        fixture_id="compact_georef",
+        spatial_products=(
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters",
+        ),
+        check_metric_parity=True,
+    ),
+    SpatialExportScenario(
+        scenario_id="candidate_netcdf",
+        description="Candidate with opt-in NetCDF raster export",
+        fixture_id="compact_georef",
+        spatial_products=("persistence_rasters",),
+        raster_formats=("netcdf",),
+        check_metric_parity=True,
+        skipped_reason=(
+            "Opt-in NetCDF export is covered by unit tests; excluded from "
+            "the subprocess promotion gate unless HF_RUN_NETCDF_BENCHMARK=1."
+        ),
+    ),
+    SpatialExportScenario(
+        scenario_id="long_480_memory",
+        description="480-month small-grid export-off memory bound",
+        fixture_id="long_480_small",
+        role="memory",
+    ),
+    SpatialExportScenario(
+        scenario_id="large_spatial_sparse",
+        description="Short large-spatial chunked record with sparse active windows",
+        fixture_id="large_spatial_sparse",
+        role="memory",
+    ),
+    SpatialExportScenario(
+        scenario_id="large_spatial_single_component",
+        description="Single large component morphology guard (expected fail-fast)",
+        fixture_id="large_spatial_single_component",
+        role="memory",
+        expect_failure=True,
+    ),
+    SpatialExportScenario(
+        scenario_id="checkpoint_export_retry",
+        description="Output-only retry from a completed spatial checkpoint",
+        fixture_id="compact_georef",
+        spatial_products=("persistence_rasters", "monthly_pools"),
+        role="checkpoint_retry",
+    ),
+    SpatialExportScenario(
+        scenario_id="zarr_local_subset",
+        description="Read-only local monthly Zarr subset (repository fixture)",
+        fixture_id="zarr_local_subset",
+        spatial_products=("persistence_rasters",),
+        skipped_reason=(
+            "Optional acquisition-scale fixture; excluded from the promotion "
+            "gate by default. Set HF_RUN_ZARR_BENCHMARK=1 to enable."
+        ),
+    ),
+)
+
+
+def _spatial_export_subprocess_payload(
+    *,
+    scenario: SpatialExportScenario,
+    output_dir: Path,
+    workdir: Path,
+    phase: str = "full",
+    checkpoint_state: dict[str, Any] | None = None,
+    zarr_path: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "benchmark_kind": "spatial_export",
+        "scenario_id": scenario.scenario_id,
+        "fixture_id": scenario.fixture_id,
+        "spatial_products": list(scenario.spatial_products),
+        "raster_formats": list(scenario.raster_formats),
+        "workers": scenario.workers,
+        "output_dir": str(output_dir),
+        "workdir": str(workdir),
+        "phase": phase,
+        "check_metric_parity": scenario.check_metric_parity,
+        "expect_failure": scenario.expect_failure,
+        "checkpoint_state": checkpoint_state,
+        "zarr_path": zarr_path,
+    }
+
+
+def _run_spatial_export_subprocess(
+    payload: dict[str, Any],
+    *,
+    poll_interval_s: float = 0.05,
+) -> dict[str, Any]:
+    """Run one spatial-export benchmark trial in an isolated subprocess."""
+
+    del poll_interval_s  # retained for API compatibility with the DEA runner
+    wall_start = time.perf_counter()
+    completed = subprocess.run(
+        [sys.executable, "-m", "hydrofragments.benchmarks._e2e_worker"],
+        input=json.dumps(payload),
+        cwd=str(REPO_ROOT),
+        text=True,
+        capture_output=True,
+        timeout=900,
+    )
+    wall_seconds = time.perf_counter() - wall_start
+    stdout = completed.stdout
+    stderr = completed.stderr or ""
+
+    if completed.returncode != 0 and payload.get("expect_failure") is not True:
+        raise RuntimeError(
+            f"spatial-export benchmark subprocess for scenario="
+            f"{payload.get('scenario_id')!r} phase={payload.get('phase')!r} exited "
+            f"{completed.returncode}. stderr:\n{stderr}\nstdout:\n{stdout}"
+        )
+
+    try:
+        result = json.loads(stdout) if stdout.strip() else {"status": "error", "error_message": stderr}
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"spatial-export benchmark subprocess for scenario="
+            f"{payload.get('scenario_id')!r} produced non-JSON stdout:\n{stdout}\nstderr:\n{stderr}"
+        ) from exc
+
+    result["subprocess_wall_seconds"] = wall_seconds
+    if result.get("peak_rss_bytes") is None:
+        result["peak_rss_bytes"] = None
+    return result
+
+
+def _median_seconds(runs: list[dict[str, Any]], key: str = "total") -> float | None:
+    values = [
+        float(run["timings_seconds"][key])
+        for run in runs
+        if run.get("status") == "ok" and run.get("timings_seconds", {}).get(key) is not None
+    ]
+    if not values:
+        return None
+    return float(statistics.median(values))
+
+
+def _median_rss(runs: list[dict[str, Any]]) -> int | None:
+    values = [
+        int(run["peak_rss_bytes"])
+        for run in runs
+        if run.get("status") == "ok" and run.get("peak_rss_bytes") is not None
+    ]
+    if not values:
+        return None
+    return int(statistics.median(values))
+
+
+def _run_spatial_export_scenario(
+    *,
+    scenario: SpatialExportScenario,
+    workdir: Path,
+    repeats: int,
+    warmup: int,
+    zarr_path: str | None = None,
+) -> dict[str, Any]:
+    if scenario.skipped_reason and not (
+        (
+            scenario.fixture_id == "zarr_local_subset"
+            and __import__("os").environ.get("HF_RUN_ZARR_BENCHMARK") == "1"
+            and FITZROY_ZARR_FIXTURE.exists()
+        )
+        or (
+            scenario.scenario_id == "candidate_netcdf"
+            and __import__("os").environ.get("HF_RUN_NETCDF_BENCHMARK") == "1"
+        )
+    ):
+        return {
+            "scenario_id": scenario.scenario_id,
+            "description": scenario.description,
+            "status": "skipped",
+            "skipped_reason": scenario.skipped_reason,
+            "runs": None,
+            "gates": None,
+        }
+
+    if scenario.fixture_id == "zarr_local_subset" and not FITZROY_ZARR_FIXTURE.exists():
+        return {
+            "scenario_id": scenario.scenario_id,
+            "description": scenario.description,
+            "status": "skipped",
+            "skipped_reason": scenario.skipped_reason,
+            "runs": None,
+            "gates": None,
+        }
+
+    scenario_dir = workdir / scenario.scenario_id
+    if scenario_dir.exists():
+        shutil.rmtree(scenario_dir)
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+
+    effective_repeats = 1 if scenario.role == "memory" else repeats
+    effective_warmup = 0 if scenario.role == "memory" else warmup
+
+    if scenario.fixture_id == "zarr_local_subset":
+        effective_repeats = 1
+        effective_warmup = 0
+
+    runs: list[dict[str, Any]] = []
+    checkpoint_state: dict[str, Any] | None = None
+
+    total_trials = effective_warmup + effective_repeats
+    for trial_index in range(total_trials):
+        output_dir = scenario_dir / f"run_{trial_index:02d}"
+        payload = _spatial_export_subprocess_payload(
+            scenario=scenario,
+            output_dir=output_dir,
+            workdir=scenario_dir,
+            zarr_path=zarr_path,
+        )
+        try:
+            run = _run_spatial_export_subprocess(payload)
+        except RuntimeError as exc:
+            run = {
+                "status": "error",
+                "scenario_id": scenario.scenario_id,
+                "error_message": str(exc),
+            }
+        if scenario.role == "checkpoint_retry" and run.get("status") == "ok":
+            checkpoint_state = run.get("checkpoint_state")
+            retry_payload = _spatial_export_subprocess_payload(
+                scenario=scenario,
+                output_dir=output_dir / "retry",
+                workdir=scenario_dir,
+                phase="export_retry",
+                checkpoint_state=checkpoint_state,
+                zarr_path=zarr_path,
+            )
+            retry_run = _run_spatial_export_subprocess(retry_payload)
+            run["export_retry"] = retry_run
+        if trial_index >= effective_warmup:
+            runs.append(run)
+
+    return {
+        "scenario_id": scenario.scenario_id,
+        "description": scenario.description,
+        "fixture_id": scenario.fixture_id,
+        "spatial_products": list(scenario.spatial_products),
+        "raster_formats": list(scenario.raster_formats),
+        "workers": scenario.workers,
+        "role": scenario.role,
+        "repeats": effective_repeats,
+        "warmup": effective_warmup,
+        "status": "ok",
+        "runs": runs,
+    }
+
+
+def _summarize_spatial_export_gates(
+    scenarios: list[dict[str, Any]],
+) -> dict[str, Any]:
+    by_id = {item["scenario_id"]: item for item in scenarios if item.get("status") == "ok"}
+
+    baseline_runs = by_id.get("baseline_export_off", {}).get("runs") or []
+    candidate_off_runs = by_id.get("candidate_export_off", {}).get("runs") or []
+    all_products_runs = by_id.get("candidate_all_products", {}).get("runs") or []
+
+    baseline_median = _median_seconds(baseline_runs)
+    candidate_off_median = _median_seconds(candidate_off_runs)
+    regression_fraction = None
+    export_off_within_gate = None
+    if baseline_median and candidate_off_median:
+        regression_fraction = (candidate_off_median - baseline_median) / baseline_median
+        export_off_within_gate = regression_fraction <= EXPORT_OFF_REGRESSION_MAX_FRACTION
+
+    core_peak_rss = _median_rss(candidate_off_runs)
+    all_products_peak_rss = _median_rss(all_products_runs)
+    all_products_rss_fraction = None
+    all_products_rss_within_gate = None
+    if core_peak_rss and all_products_peak_rss:
+        all_products_rss_fraction = all_products_peak_rss / core_peak_rss
+        all_products_rss_within_gate = (
+            all_products_rss_fraction <= ALL_PRODUCTS_PEAK_RSS_MAX_FRACTION
+        )
+
+    parity_holds = None
+    if candidate_off_runs:
+        parity_holds = all(
+            run.get("metric_parity_holds") in (True, None) for run in candidate_off_runs
+        )
+
+    checkpoint_retry_holds = None
+    retry_runs = by_id.get("checkpoint_export_retry", {}).get("runs") or []
+    if retry_runs:
+        checkpoint_retry_holds = all(
+            (run.get("export_retry") or {}).get("source_materializations", 1) == 0
+            for run in retry_runs
+            if run.get("status") == "ok"
+        )
+
+    return {
+        "export_off_median_seconds_baseline": baseline_median,
+        "export_off_median_seconds_candidate": candidate_off_median,
+        "export_off_regression_fraction": regression_fraction,
+        "export_off_within_10pct_gate": export_off_within_gate,
+        "export_off_peak_rss_bytes_candidate_median": _median_rss(candidate_off_runs),
+        "all_products_peak_rss_bytes_median": all_products_peak_rss,
+        "all_products_peak_rss_fraction_of_core": all_products_rss_fraction,
+        "all_products_peak_rss_within_125pct_gate": all_products_rss_within_gate,
+        "metric_parity_on_off_holds": parity_holds,
+        "checkpoint_retry_skips_source_reads": checkpoint_retry_holds,
+    }
+
+
+def run_spatial_export_matrix(
+    *,
+    workdir: str | Path,
+    repeats: int = SPATIAL_EXPORT_DEFAULT_REPEATS,
+    warmup: int = SPATIAL_EXPORT_DEFAULT_WARMUP,
+    baseline_commit: str | None = None,
+) -> dict[str, Any]:
+    """Run the repository-owned spatial-export benchmark matrix."""
+
+    import subprocess as _subprocess
+
+    if baseline_commit is None:
+        try:
+            baseline_commit = _subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=str(REPO_ROOT),
+                text=True,
+            ).strip()
+        except Exception:
+            baseline_commit = "unknown"
+
+    workdir_path = Path(workdir)
+    if workdir_path.exists():
+        shutil.rmtree(workdir_path, ignore_errors=True)
+    workdir_path.mkdir(parents=True, exist_ok=True)
+
+    zarr_path = str(FITZROY_ZARR_FIXTURE) if FITZROY_ZARR_FIXTURE.exists() else None
+    scenario_records = [
+        _run_spatial_export_scenario(
+            scenario=scenario,
+            workdir=workdir_path,
+            repeats=repeats,
+            warmup=warmup,
+            zarr_path=zarr_path,
+        )
+        for scenario in SPATIAL_EXPORT_SCENARIOS
+    ]
+
+    return {
+        "schema_version": SPATIAL_EXPORT_SCHEMA_VERSION,
+        "baseline": SPATIAL_EXPORT_BASELINE,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "baseline_commit": baseline_commit,
+        "scope_note": (
+            "Repository-owned synthetic fixtures and an optional read-only "
+            "local monthly Zarr subset. Network-dependent DEA acquisition "
+            "numbers from end_to_end_workflow are excluded from this gate."
+        ),
+        "environment": {
+            "python": platform.python_version(),
+            "platform": platform.platform(),
+        },
+        "parameters": {
+            "repeats": repeats,
+            "warmup": warmup,
+            "zarr_fixture_available": FITZROY_ZARR_FIXTURE.exists(),
+        },
+        "scenarios": scenario_records,
+        "gates": _summarize_spatial_export_gates(scenario_records),
+    }
+
+
+def _spatial_export_markdown_report(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Dynamics and spatial export benchmark (Task 12 gate)",
+        "",
+        payload["scope_note"],
+        "",
+        f"- Schema: `{payload['schema_version']}`",
+        f"- Baseline commit: `{payload['baseline_commit']}`",
+        f"- Created: `{payload['created_at']}`",
+        "",
+        "## Scenario medians",
+        "",
+        "| Scenario | fixture | products | median total s | median peak RSS | metric parity |",
+        "| --- | --- | --- | ---: | ---: | :---: |",
+    ]
+
+    for scenario in payload["scenarios"]:
+        if scenario.get("status") != "ok":
+            lines.append(
+                f"| {scenario['scenario_id']} | n/a | n/a | skipped | n/a | n/a |"
+            )
+            continue
+        runs = scenario.get("runs") or []
+        median_total = _median_seconds(runs)
+        median_rss = _median_rss(runs)
+        parity = "n/a"
+        if runs and any("metric_parity_holds" in run for run in runs):
+            parity = "yes" if all(run.get("metric_parity_holds") for run in runs) else "no"
+        products = ",".join(scenario.get("spatial_products") or []) or "off"
+        lines.append(
+            f"| {scenario['scenario_id']} | {scenario['fixture_id']} | {products} | "
+            f"{_fmt_seconds(median_total)} | {_fmt_bytes(median_rss)} | {parity} |"
+        )
+
+    lines.extend(["", "## Promotion gates", ""])
+    for gate, value in payload["gates"].items():
+        lines.append(f"- `{gate}`: {value}")
+
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def write_spatial_export_baseline(
+    output_dir: str | Path,
+    *,
+    workdir: str | Path,
+    repeats: int = SPATIAL_EXPORT_DEFAULT_REPEATS,
+    warmup: int = SPATIAL_EXPORT_DEFAULT_WARMUP,
+    baseline_commit: str | None = None,
+) -> dict[str, Any]:
+    """Run the spatial-export matrix and write JSON plus Markdown evidence."""
+
+    target = Path(output_dir)
+    target.mkdir(parents=True, exist_ok=True)
+    payload = run_spatial_export_matrix(
+        workdir=workdir,
+        repeats=repeats,
+        warmup=warmup,
+        baseline_commit=baseline_commit,
+    )
+    json_path = target / "dynamics_spatial_exports.json"
+    markdown_path = target / "dynamics_spatial_exports.md"
+    json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    markdown_path.write_text(_spatial_export_markdown_report(payload), encoding="utf-8")
+    payload["report_files"] = {"json": str(json_path), "markdown": str(markdown_path)}
+    return payload
+
+
 __all__ = [
     "CandidateSpec",
     "RealCaseSpec",
@@ -677,4 +1174,9 @@ __all__ = [
     "LARGE_CATCHMENT_CASE",
     "run_end_to_end_matrix",
     "write_end_to_end_baseline",
+    "SpatialExportScenario",
+    "SPATIAL_EXPORT_SCENARIOS",
+    "SPATIAL_EXPORT_SCHEMA_VERSION",
+    "run_spatial_export_matrix",
+    "write_spatial_export_baseline",
 ]

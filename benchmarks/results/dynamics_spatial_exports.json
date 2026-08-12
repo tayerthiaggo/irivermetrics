@@ -1,0 +1,3336 @@
+{
+  "schema_version": "1.0.0",
+  "baseline": "dynamics_spatial_exports",
+  "created_at": "2026-08-12T12:40:52.207502+00:00",
+  "baseline_commit": "4fab7df",
+  "scope_note": "Repository-owned synthetic fixtures and an optional read-only local monthly Zarr subset. Network-dependent DEA acquisition numbers from end_to_end_workflow are excluded from this gate.",
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Windows-10-10.0.19045-SP0"
+  },
+  "parameters": {
+    "repeats": 5,
+    "warmup": 1,
+    "zarr_fixture_available": true
+  },
+  "scenarios": [
+    {
+      "scenario_id": "baseline_export_off",
+      "description": "Frozen baseline commit behaviour with spatial exports disabled",
+      "fixture_id": "compact_georef",
+      "spatial_products": [],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "baseline",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "baseline_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 2.034271099983016,
+            "bundle_validation": 0.007509099988965318,
+            "total": 2.0417801999719813
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/8bee5064a76647f1a69dd5d695418fac-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/8bee5064a76647f1a69dd5d695418fac-0.parquet": 29703,
+            "run_manifest.json": 6192
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526397440,
+          "subprocess_wall_seconds": 7.899887800012948
+        },
+        {
+          "status": "ok",
+          "scenario_id": "baseline_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 2.060042400000384,
+            "bundle_validation": 0.004494799999520183,
+            "total": 2.0645371999999043
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/94a43ce37b8645b7b2ce9251c2404811-0.parquet": 29703,
+            "run_manifest.json": 6192
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526770176,
+          "subprocess_wall_seconds": 7.938765800005058
+        },
+        {
+          "status": "ok",
+          "scenario_id": "baseline_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 2.0668431000085548,
+            "bundle_validation": 0.008605900016846135,
+            "total": 2.075449000025401
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/43ad9094cc344b02812d196e53372b3a-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/43ad9094cc344b02812d196e53372b3a-0.parquet": 29703,
+            "run_manifest.json": 6192
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526684160,
+          "subprocess_wall_seconds": 8.229967299994314
+        },
+        {
+          "status": "ok",
+          "scenario_id": "baseline_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 1.8347721000027377,
+            "bundle_validation": 0.005312599998433143,
+            "total": 1.8400847000011709
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/6f034ea823ae4723a478eb8556941a29-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/6f034ea823ae4723a478eb8556941a29-0.parquet": 29703,
+            "run_manifest.json": 6192
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526979072,
+          "subprocess_wall_seconds": 7.854545999987749
+        },
+        {
+          "status": "ok",
+          "scenario_id": "baseline_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 2.0181692999904044,
+            "bundle_validation": 0.007743399997707456,
+            "total": 2.025912699988112
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/9f1a8afcda44417b9ba22d6c9d8d6e64-0.parquet": 29703,
+            "run_manifest.json": 6190
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526503936,
+          "subprocess_wall_seconds": 7.539234299998498
+        }
+      ]
+    },
+    {
+      "scenario_id": "candidate_export_off",
+      "description": "Current candidate with spatial exports disabled",
+      "fixture_id": "compact_georef",
+      "spatial_products": [],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "candidate",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.6362235999840777,
+            "core_analysis": 2.035943299997598,
+            "bundle_validation": 0.007496399979572743,
+            "total": 2.0434396999771707
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/9db203200ca54467a68270feefbb09bf-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/9db203200ca54467a68270feefbb09bf-0.parquet": 29703,
+            "run_manifest.json": 6193
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526532608,
+          "subprocess_wall_seconds": 9.693762599985348
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.8392727000173181,
+            "core_analysis": 2.180237099993974,
+            "bundle_validation": 0.007455499988282099,
+            "total": 2.187692599982256
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/f1bcb13cf749454eb4bda67bda55b79e-0.parquet": 29703,
+            "run_manifest.json": 6193
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526659584,
+          "subprocess_wall_seconds": 9.939275700016879
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.75802229999681,
+            "core_analysis": 1.8636209999967832,
+            "bundle_validation": 0.007594399998197332,
+            "total": 1.8712153999949805
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/5cd3fe391b144dc1b87f7f3a2a0ec0bd-0.parquet": 29703,
+            "run_manifest.json": 6191
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526934016,
+          "subprocess_wall_seconds": 9.43206019999343
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7862204000120983,
+            "core_analysis": 2.1211017000023276,
+            "bundle_validation": 0.008568399993237108,
+            "total": 2.1296700999955647
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/0ab7799a22af45198c1fde0c7aaa7820-0.parquet": 29703,
+            "run_manifest.json": 6191
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 526974976,
+          "subprocess_wall_seconds": 9.949101900012465
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_export_off",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5712669999920763,
+            "core_analysis": 2.1768599999777507,
+            "bundle_validation": 0.007342400000197813,
+            "total": 2.1842023999779485
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/fd54e71cb9bc4f2db7c668afa9cb1d5d-0.parquet": 29703,
+            "run_manifest.json": 6193
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 527310848,
+          "subprocess_wall_seconds": 9.893855100002838
+        }
+      ]
+    },
+    {
+      "scenario_id": "candidate_persistence_rasters",
+      "description": "Candidate with persistence/temporal/refuge GeoTIFF products",
+      "fixture_id": "compact_georef",
+      "spatial_products": [
+        "persistence_rasters"
+      ],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "candidate",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "candidate_persistence_rasters",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7530986000201665,
+            "core_analysis": 2.1188349000003655,
+            "bundle_validation": 0.01339370000641793,
+            "total": 2.1322286000067834
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/aaff51976bf44adb982429de831961c9-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/aaff51976bf44adb982429de831961c9-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9275
+          },
+          "checkpoint_state": {
+            "run_id": "e04f1446e2e34e07953f4d25656d8f8b",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_01.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": null,
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 539840512,
+          "subprocess_wall_seconds": 9.720340100000612
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_persistence_rasters",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7114702000108082,
+            "core_analysis": 2.315330700017512,
+            "bundle_validation": 0.013638600008562207,
+            "total": 2.328969300026074
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/f283a3ef269b434d887f92e66f3efd70-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/f283a3ef269b434d887f92e66f3efd70-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9277
+          },
+          "checkpoint_state": {
+            "run_id": "8bdc8675810a4f47b2f8292364ad514e",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_02.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": null,
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 540012544,
+          "subprocess_wall_seconds": 9.902237100002822
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_persistence_rasters",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5845428000029642,
+            "core_analysis": 2.050118499988457,
+            "bundle_validation": 0.014275099994847551,
+            "total": 2.0643935999833047
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/8a5b5f5164114448959a614bfed22f0b-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/8a5b5f5164114448959a614bfed22f0b-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9275
+          },
+          "checkpoint_state": {
+            "run_id": "80d81640784d4ff6ba9087b3caa4251d",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_03.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": null,
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 540147712,
+          "subprocess_wall_seconds": 9.446818399999756
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_persistence_rasters",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7482369000208564,
+            "core_analysis": 2.342099600005895,
+            "bundle_validation": 0.014591699989978224,
+            "total": 2.356691299995873
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/19322373c96a4d01975b672f65300947-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/19322373c96a4d01975b672f65300947-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9273
+          },
+          "checkpoint_state": {
+            "run_id": "d44d06b451d448d28e7ea44d07c984b6",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_04.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": null,
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 539406336,
+          "subprocess_wall_seconds": 10.099040899978718
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_persistence_rasters",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5764697999984492,
+            "core_analysis": 2.220864699978847,
+            "bundle_validation": 0.013715699984459206,
+            "total": 2.2345803999633063
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/63310cd940a24a65a14d744afe6a0c53-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/63310cd940a24a65a14d744afe6a0c53-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9275
+          },
+          "checkpoint_state": {
+            "run_id": "ff07f9752f264d0d926214d696e2dadd",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_persistence_rasters\\run_05.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": null,
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 539750400,
+          "subprocess_wall_seconds": 9.636283200001344
+        }
+      ]
+    },
+    {
+      "scenario_id": "candidate_monthly_pools",
+      "description": "Candidate with monthly pool GeoPackage export",
+      "fixture_id": "compact_georef",
+      "spatial_products": [
+        "monthly_pools"
+      ],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "candidate",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "candidate_monthly_pools",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5692955999984406,
+            "core_analysis": 2.699804099975154,
+            "bundle_validation": 0.00841549999313429,
+            "total": 2.708219599968288
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/fdd366d7c2c340eca9e9cf5493e25efc-0.parquet": 29703,
+            "run_manifest.json": 6639,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "cf487090f8bb4e91ad5a45179e45fae8",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_01.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 554364928,
+          "subprocess_wall_seconds": 9.981654500006698
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_monthly_pools",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5697702000034042,
+            "core_analysis": 2.943056699994486,
+            "bundle_validation": 0.008935799996834248,
+            "total": 2.95199249999132
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/38acb1ece43446949a89d8bc4cdd3231-0.parquet": 29703,
+            "run_manifest.json": 6639,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "49d141779c1144df94e8052be07beb52",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_02.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556281856,
+          "subprocess_wall_seconds": 10.504195099987555
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_monthly_pools",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.824555600003805,
+            "core_analysis": 2.954796800011536,
+            "bundle_validation": 0.008277100016130134,
+            "total": 2.9630739000276662
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/cbcee238ad804220aec360fd94c988a7-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/cbcee238ad804220aec360fd94c988a7-0.parquet": 29703,
+            "run_manifest.json": 6639,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "a63a37ad9020445492a53d0791b138b0",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_03.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 554266624,
+          "subprocess_wall_seconds": 10.46316030001617
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_monthly_pools",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5958196000137832,
+            "core_analysis": 2.8126318999857176,
+            "bundle_validation": 0.009014499984914437,
+            "total": 2.821646399970632
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/21c80d94f1734d70a88b75a0597c347c-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/21c80d94f1734d70a88b75a0597c347c-0.parquet": 29703,
+            "run_manifest.json": 6639,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "dcbdc6a427374601afee8d0aee8e201c",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_04.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 554479616,
+          "subprocess_wall_seconds": 10.270967899996322
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_monthly_pools",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.5929332000087015,
+            "core_analysis": 2.638456899992889,
+            "bundle_validation": 0.009350899985292926,
+            "total": 2.6478077999781817
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/e5d8967c6ffd42c98e37da574efe7373-0.parquet": 29703,
+            "run_manifest.json": 6639,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "13538f24df7f4d0fbe979cb903332f80",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_monthly_pools\\run_05.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 554549248,
+          "subprocess_wall_seconds": 10.126859100011643
+        }
+      ]
+    },
+    {
+      "scenario_id": "candidate_all_products",
+      "description": "Candidate with all products applicable to the compact fixture",
+      "fixture_id": "compact_georef",
+      "spatial_products": [
+        "monthly_pools",
+        "persistence_rasters",
+        "temporal_rasters"
+      ],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "candidate",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "candidate_all_products",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.8632337999879383,
+            "core_analysis": 3.152828499994939,
+            "bundle_validation": 0.015970600012224168,
+            "total": 3.1687991000071634
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/9b26ee1e65df439cbe16c09e0a2ec0cb-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9733,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "c8580c3d13a5464da506c6572cb7bec1",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_01.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556310528,
+          "subprocess_wall_seconds": 11.048396500002127
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_all_products",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7217928000027314,
+            "core_analysis": 3.562904599995818,
+            "bundle_validation": 0.01809609998599626,
+            "total": 3.5810006999818143
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/66c095eb01b2408b92941a5ef01a2271-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/66c095eb01b2408b92941a5ef01a2271-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9733,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "51edd18108da4e71bc568e59411b93c4",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_02.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 557449216,
+          "subprocess_wall_seconds": 11.146722699981183
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_all_products",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.7749081999936607,
+            "core_analysis": 3.0717266999999993,
+            "bundle_validation": 0.012854800006607547,
+            "total": 3.084581500006607
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/21d4cc3abf8047b19fc02c701b382251-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/21d4cc3abf8047b19fc02c701b382251-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9733,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "245611273f3c44d4863d13ccf4960401",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_03.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 558067712,
+          "subprocess_wall_seconds": 10.7504374999844
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_all_products",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.586416099977214,
+            "core_analysis": 2.8350229999923613,
+            "bundle_validation": 0.01421309998841025,
+            "total": 2.8492360999807715
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/44f7ded1d0f7406c9a40676da04836b6-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9731,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "c1b92b892493444eb9fc50884808ed6e",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_04.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556408832,
+          "subprocess_wall_seconds": 10.11765679999371
+        },
+        {
+          "status": "ok",
+          "scenario_id": "candidate_all_products",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "monthly_pools",
+            "persistence_rasters",
+            "temporal_rasters"
+          ],
+          "timings_seconds": {
+            "parity_off_seconds": 1.839224600000307,
+            "core_analysis": 3.6408559999836143,
+            "bundle_validation": 0.015507699979934841,
+            "total": 3.656363699963549
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest_off": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metric_parity_holds": true,
+          "source_materializations": 24,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/8251db0ea77e464a838ccfc2f1ec3453-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9733,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "ad11965b8636423abec25545fda8d51c",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\candidate_all_products\\run_05.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15789457408,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 558682112,
+          "subprocess_wall_seconds": 11.809814999985974
+        }
+      ]
+    },
+    {
+      "scenario_id": "candidate_netcdf",
+      "description": "Candidate with opt-in NetCDF raster export",
+      "status": "skipped",
+      "skipped_reason": "Opt-in NetCDF export is covered by unit tests; excluded from the subprocess promotion gate unless HF_RUN_NETCDF_BENCHMARK=1.",
+      "runs": null,
+      "gates": null
+    },
+    {
+      "scenario_id": "long_480_memory",
+      "description": "480-month small-grid export-off memory bound",
+      "fixture_id": "long_480_small",
+      "spatial_products": [],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "memory",
+      "repeats": 1,
+      "warmup": 0,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "long_480_memory",
+          "phase": "full",
+          "fixture_id": "long_480_small",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 65.23358160001226,
+            "bundle_validation": 0.0074647000001277775,
+            "total": 65.24104630001239
+          },
+          "metrics_digest": "82bcfbbbad6f438dd0270374bb043804a5896973e63bac8840ec0edc56a7babb",
+          "coverage_digest": "99a154f0fb06bb9ebdc13bc6fa62aa250f2237a091bc4cd366a19799bf4ac204",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 480,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 480,
+            "y": 16,
+            "x": 16
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1215,
+            "metrics/metric_family=extent/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 35612,
+            "metrics/metric_family=fragmentation/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 36517,
+            "metrics/metric_family=morphology/value_type=monthly/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 39500,
+            "metrics/metric_family=persistence/value_type=raster_summary/1b64badcbbfb461a92a75ae4c3594b62-0.parquet": 35134,
+            "run_manifest.json": 6183
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 555429888,
+          "subprocess_wall_seconds": 70.97918399999617
+        }
+      ]
+    },
+    {
+      "scenario_id": "large_spatial_sparse",
+      "description": "Short large-spatial chunked record with sparse active windows",
+      "fixture_id": "large_spatial_sparse",
+      "spatial_products": [],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "memory",
+      "repeats": 1,
+      "warmup": 0,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "large_spatial_sparse",
+          "phase": "full",
+          "fixture_id": "large_spatial_sparse",
+          "spatial_products": [],
+          "timings_seconds": {
+            "core_analysis": 1.1504550999961793,
+            "bundle_validation": 0.004514000000199303,
+            "total": 1.1549690999963786
+          },
+          "metrics_digest": "64ac6d32feda74cef7fb604c86732e61960670fb37eee0e15d2d29c759b198e0",
+          "coverage_digest": "ccf02d78ec4ed233715cb73fd351c400d1246b17ef7e9109ae9df20d90239e94",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 4,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 4,
+            "y": 128,
+            "x": 128
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1221,
+            "metrics/metric_family=extent/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29947,
+            "metrics/metric_family=fragmentation/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 30000,
+            "metrics/metric_family=morphology/value_type=monthly/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29875,
+            "metrics/metric_family=persistence/value_type=raster_summary/48748387aa1049e5a86b1fce524c55c9-0.parquet": 29600,
+            "run_manifest.json": 6194
+          },
+          "checkpoint_state": null,
+          "peak_rss_bytes": 525905920,
+          "subprocess_wall_seconds": 6.9051175999920815
+        }
+      ]
+    },
+    {
+      "scenario_id": "large_spatial_single_component",
+      "description": "Single large component morphology guard (expected fail-fast)",
+      "fixture_id": "large_spatial_single_component",
+      "spatial_products": [],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "memory",
+      "repeats": 1,
+      "warmup": 0,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "expected_failure",
+          "scenario_id": "large_spatial_single_component",
+          "error_type": "ValueError",
+          "error_message": "Grid mismatch",
+          "subprocess_wall_seconds": 5.86219980000169,
+          "peak_rss_bytes": null
+        }
+      ]
+    },
+    {
+      "scenario_id": "checkpoint_export_retry",
+      "description": "Output-only retry from a completed spatial checkpoint",
+      "fixture_id": "compact_georef",
+      "spatial_products": [
+        "persistence_rasters",
+        "monthly_pools"
+      ],
+      "raster_formats": [
+        "geotiff"
+      ],
+      "workers": 1,
+      "role": "checkpoint_retry",
+      "repeats": 5,
+      "warmup": 1,
+      "status": "ok",
+      "runs": [
+        {
+          "status": "ok",
+          "scenario_id": "checkpoint_export_retry",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters",
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "core_analysis": 2.737687500019092,
+            "bundle_validation": 0.014718599995831028,
+            "total": 2.752406100014923
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/b202b7c1742c4217afa2ae0650bd2fee-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9715,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "dca69dfa5c5f4e60bb9eb1d3f0a096e9",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_01.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15793651712,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556638208,
+          "subprocess_wall_seconds": 8.694900100002997,
+          "export_retry": {
+            "status": "ok",
+            "scenario_id": "checkpoint_export_retry",
+            "phase": "export_retry",
+            "timings_seconds": {
+              "output_finalize": 0.7594315999886021,
+              "total": 0.7594315999886021
+            },
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+            "output_bytes_by_product": {
+              "config.json": 1420,
+              "metric_coverage.csv": 1233,
+              "metrics/metric_family=extent/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/34d36680198b44f0ad367b66ac368aed-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/34d36680198b44f0ad367b66ac368aed-0.parquet": 29703,
+              "rasters/hydroperiod_by_year.tif": 7332,
+              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+              "rasters/occurrence.tif": 1213,
+              "rasters/recurrence.tif": 7480,
+              "rasters/recurrence_valid_year_count.tif": 980,
+              "rasters/refuge_mask.tif": 885,
+              "rasters/valid_observation_count.tif": 1099,
+              "run_manifest.json": 9720,
+              "vectors/spatial.gpkg": 876544
+            },
+            "peak_rss_bytes": 456450048,
+            "subprocess_wall_seconds": 6.606986900005722
+          }
+        },
+        {
+          "status": "ok",
+          "scenario_id": "checkpoint_export_retry",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters",
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "core_analysis": 2.6009334000118542,
+            "bundle_validation": 0.010025399998994544,
+            "total": 2.610958800010849
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/f59998e91ba446199952ae69e47bd296-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/f59998e91ba446199952ae69e47bd296-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9715,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "7b8e02e559ee44c984a3272491a5df4d",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_02.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15793651712,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556482560,
+          "subprocess_wall_seconds": 8.382727899996098,
+          "export_retry": {
+            "status": "ok",
+            "scenario_id": "checkpoint_export_retry",
+            "phase": "export_retry",
+            "timings_seconds": {
+              "output_finalize": 0.7923114000004716,
+              "total": 0.7923114000004716
+            },
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+            "output_bytes_by_product": {
+              "config.json": 1420,
+              "metric_coverage.csv": 1233,
+              "metrics/metric_family=extent/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/2720fa866ee04cd2a582fa18239de9f1-0.parquet": 29703,
+              "rasters/hydroperiod_by_year.tif": 7332,
+              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+              "rasters/occurrence.tif": 1213,
+              "rasters/recurrence.tif": 7480,
+              "rasters/recurrence_valid_year_count.tif": 980,
+              "rasters/refuge_mask.tif": 885,
+              "rasters/valid_observation_count.tif": 1099,
+              "run_manifest.json": 9722,
+              "vectors/spatial.gpkg": 876544
+            },
+            "peak_rss_bytes": 456765440,
+            "subprocess_wall_seconds": 6.2566475000057835
+          }
+        },
+        {
+          "status": "ok",
+          "scenario_id": "checkpoint_export_retry",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters",
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "core_analysis": 2.6110834999999497,
+            "bundle_validation": 0.01294769998639822,
+            "total": 2.624031199986348
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/408687b80f734007bf3dd082df7724cd-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/408687b80f734007bf3dd082df7724cd-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9717,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "8170226fe4ce49aeac598e8856dbbf1c",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_03.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15793651712,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 556240896,
+          "subprocess_wall_seconds": 8.440566199977184,
+          "export_retry": {
+            "status": "ok",
+            "scenario_id": "checkpoint_export_retry",
+            "phase": "export_retry",
+            "timings_seconds": {
+              "output_finalize": 0.6190834000008181,
+              "total": 0.6190834000008181
+            },
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+            "output_bytes_by_product": {
+              "config.json": 1420,
+              "metric_coverage.csv": 1233,
+              "metrics/metric_family=extent/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/786315c92740436ca3d1fbc66c06945b-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/786315c92740436ca3d1fbc66c06945b-0.parquet": 29703,
+              "rasters/hydroperiod_by_year.tif": 7332,
+              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+              "rasters/occurrence.tif": 1213,
+              "rasters/recurrence.tif": 7480,
+              "rasters/recurrence_valid_year_count.tif": 980,
+              "rasters/refuge_mask.tif": 885,
+              "rasters/valid_observation_count.tif": 1099,
+              "run_manifest.json": 9722,
+              "vectors/spatial.gpkg": 876544
+            },
+            "peak_rss_bytes": 456929280,
+            "subprocess_wall_seconds": 6.594525499996962
+          }
+        },
+        {
+          "status": "ok",
+          "scenario_id": "checkpoint_export_retry",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters",
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "core_analysis": 2.4990237999882083,
+            "bundle_validation": 0.007815100019797683,
+            "total": 2.506838900008006
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/0b0e021d465a477b946ca656ce4de44e-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/0b0e021d465a477b946ca656ce4de44e-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9713,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "0625c747489a41918850ba6d5ded9c67",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_04.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15793651712,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 555892736,
+          "subprocess_wall_seconds": 8.350773999991361,
+          "export_retry": {
+            "status": "ok",
+            "scenario_id": "checkpoint_export_retry",
+            "phase": "export_retry",
+            "timings_seconds": {
+              "output_finalize": 0.7646422999969218,
+              "total": 0.7646422999969218
+            },
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+            "output_bytes_by_product": {
+              "config.json": 1420,
+              "metric_coverage.csv": 1233,
+              "metrics/metric_family=extent/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/81b1114966204ed39c869aaf4d32a93c-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/81b1114966204ed39c869aaf4d32a93c-0.parquet": 29703,
+              "rasters/hydroperiod_by_year.tif": 7332,
+              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+              "rasters/occurrence.tif": 1213,
+              "rasters/recurrence.tif": 7480,
+              "rasters/recurrence_valid_year_count.tif": 980,
+              "rasters/refuge_mask.tif": 885,
+              "rasters/valid_observation_count.tif": 1099,
+              "run_manifest.json": 9722,
+              "vectors/spatial.gpkg": 876544
+            },
+            "peak_rss_bytes": 457314304,
+            "subprocess_wall_seconds": 6.292971699993359
+          }
+        },
+        {
+          "status": "ok",
+          "scenario_id": "checkpoint_export_retry",
+          "phase": "full",
+          "fixture_id": "compact_georef",
+          "spatial_products": [
+            "persistence_rasters",
+            "monthly_pools"
+          ],
+          "timings_seconds": {
+            "core_analysis": 2.621878400008427,
+            "bundle_validation": 0.014680599997518584,
+            "total": 2.6365590000059456
+          },
+          "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+          "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+          "metrics_digest_off": null,
+          "coverage_digest_off": null,
+          "metric_parity_holds": null,
+          "source_materializations": 12,
+          "label_passes": 0,
+          "cube_shape": {
+            "time": 12,
+            "y": 65,
+            "x": 65
+          },
+          "output_bytes_by_product": {
+            "config.json": 1420,
+            "metric_coverage.csv": 1233,
+            "metrics/metric_family=extent/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30132,
+            "metrics/metric_family=fragmentation/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30252,
+            "metrics/metric_family=morphology/value_type=monthly/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 30039,
+            "metrics/metric_family=persistence/value_type=raster_summary/608338b1a98548c8bc19f0151aa9b9e3-0.parquet": 29703,
+            "rasters/hydroperiod_by_year.tif": 7332,
+            "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+            "rasters/occurrence.tif": 1213,
+            "rasters/recurrence.tif": 7480,
+            "rasters/recurrence_valid_year_count.tif": 980,
+            "rasters/refuge_mask.tif": 885,
+            "rasters/valid_observation_count.tif": 1099,
+            "run_manifest.json": 9715,
+            "vectors/spatial.gpkg": 876544
+          },
+          "checkpoint_state": {
+            "run_id": "d867e9f799f34b7f95f915be0d22f2e6",
+            "git_sha": "4fab7df588b295db5f511d7ba21b17dd9723c6d3",
+            "metrics_parquet": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metrics",
+            "coverage_csv": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05\\metric_coverage.csv",
+            "raster_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05.spatial_checkpoints\\spatial_rasters",
+            "pool_checkpoint_root": "benchmarks\\results\\spatial_export_workdir\\checkpoint_export_retry\\run_05.spatial_checkpoints\\pool_vectors",
+            "report_warnings": [
+              "some requested metrics are unavailable with current inputs",
+              "accelerator_fallback: CUDA detected; no stage has transfer-cost benefit evidence"
+            ],
+            "skipped_metrics": [
+              {
+                "metric_id": "extent_contraction",
+                "reason": "missing dependencies: requires_HY_anchor, requires_dual_composite"
+              },
+              {
+                "metric_id": "reconnection_timing",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "refuge_spatial_stability",
+                "reason": "missing dependencies: requires_HY_anchor"
+              },
+              {
+                "metric_id": "lpsec",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "inter_pool_gap",
+                "reason": "missing dependencies: requires_channel"
+              },
+              {
+                "metric_id": "pool_width",
+                "reason": "missing dependencies: requires_width_floor"
+              }
+            ],
+            "execution_plan_mapping": {
+              "planned_backend": "cpu",
+              "actual_backend_by_stage": {
+                "analyze": "cpu",
+                "graph": "cpu",
+                "masks": "cpu",
+                "monthly_reduction": "cpu",
+                "occurrence": "cpu",
+                "sentinel_normalization": "cpu",
+                "skeleton": "cpu",
+                "valid_counts": "cpu",
+                "vector": "cpu"
+              },
+              "backend_capabilities": {
+                "cuda_available": true,
+                "cuda_runtime_version": 12090,
+                "cupy_available": true,
+                "cupy_version": "14.1.1",
+                "device_count": 1,
+                "enabled_cuda_stages": [],
+                "free_memory_bytes": 15793651712,
+                "reason": "CUDA detected; no stage has transfer-cost benefit evidence",
+                "total_memory_bytes": 17170956288
+              }
+            },
+            "input_fingerprint": {
+              "cadence": "monthly",
+              "chunks": "none",
+              "shape": {
+                "time": 12,
+                "x": 65,
+                "y": 65
+              },
+              "source": "generic_binary"
+            },
+            "comparison_context": {
+              "aoi_id": "benchmark",
+              "crs": "PROJCS[\"GDA94 / Australian Albers\",GEOGCS[\"GDA94\",DATUM[\"Geocentric Datum of Australia 1994\",SPHEROID[\"GRS 1980\",6378137,298.257222101]],PRIMEM[\"Greenwich\",0],UNIT[\"degree\",0.0174532925199433],AUTHORITY[\"EPSG\",\"4283\"]],PROJECTION[\"Albers_Conic_Equal_Area\"],PARAMETER[\"latitude_of_center\",0],PARAMETER[\"longitude_of_center\",132],PARAMETER[\"standard_parallel_1\",-18],PARAMETER[\"standard_parallel_2\",-36],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH],AUTHORITY[\"EPSG\",\"3577\"]]",
+              "hydroseason_hy_count": 0,
+              "monthly_composite": "supplied",
+              "resolution_m": 30.0,
+              "source": "generic_binary",
+              "validity_policy": "p_native_season_stratified_v1"
+            }
+          },
+          "peak_rss_bytes": 557215744,
+          "subprocess_wall_seconds": 8.507392400002573,
+          "export_retry": {
+            "status": "ok",
+            "scenario_id": "checkpoint_export_retry",
+            "phase": "export_retry",
+            "timings_seconds": {
+              "output_finalize": 0.7228652999910992,
+              "total": 0.7228652999910992
+            },
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": "5d958a3341cba2c899295930b9864e99b8964fab6c73989640a94c7fa4f8982e",
+            "coverage_digest": "7f5cab534509d30abd718c94f08b5e2a979459bd9eb1737d2a81024fc641e606",
+            "output_bytes_by_product": {
+              "config.json": 1420,
+              "metric_coverage.csv": 1233,
+              "metrics/metric_family=extent/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30132,
+              "metrics/metric_family=fragmentation/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30252,
+              "metrics/metric_family=morphology/value_type=monthly/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 30039,
+              "metrics/metric_family=persistence/value_type=raster_summary/9779e2c2c2ef497fba4e3ce5fc70dd1a-0.parquet": 29703,
+              "rasters/hydroperiod_by_year.tif": 7332,
+              "rasters/hydroperiod_valid_month_count_by_year.tif": 917,
+              "rasters/occurrence.tif": 1213,
+              "rasters/recurrence.tif": 7480,
+              "rasters/recurrence_valid_year_count.tif": 980,
+              "rasters/refuge_mask.tif": 885,
+              "rasters/valid_observation_count.tif": 1099,
+              "run_manifest.json": 9722,
+              "vectors/spatial.gpkg": 876544
+            },
+            "peak_rss_bytes": 456065024,
+            "subprocess_wall_seconds": 6.244250599993393
+          }
+        }
+      ]
+    },
+    {
+      "scenario_id": "zarr_local_subset",
+      "description": "Read-only local monthly Zarr subset (repository fixture)",
+      "status": "skipped",
+      "skipped_reason": "Optional acquisition-scale fixture; excluded from the promotion gate by default. Set HF_RUN_ZARR_BENCHMARK=1 to enable.",
+      "runs": null,
+      "gates": null
+    }
+  ],
+  "gates": {
+    "export_off_median_seconds_baseline": 2.0417801999719813,
+    "export_off_median_seconds_candidate": 2.1296700999955647,
+    "export_off_regression_fraction": 0.04304572060439679,
+    "export_off_within_10pct_gate": true,
+    "export_off_peak_rss_bytes_candidate_median": 526934016,
+    "all_products_peak_rss_bytes_median": 557449216,
+    "all_products_peak_rss_fraction_of_core": 1.0579108561478787,
+    "all_products_peak_rss_within_125pct_gate": true,
+    "metric_parity_on_off_holds": true,
+    "checkpoint_retry_skips_source_reads": true
+  }
+}

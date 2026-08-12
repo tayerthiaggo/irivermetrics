@@ -7,8 +7,11 @@ from hydrofragments.benchmarks.end_to_end_workflow import (
     GILBERT_CASE,
     LARGE_CATCHMENT_CASE,
     RealCaseSpec,
+    SPATIAL_EXPORT_SCENARIOS,
     run_end_to_end_matrix,
+    run_spatial_export_matrix,
     write_end_to_end_baseline,
+    write_spatial_export_baseline,
 )
 
 __all__ = [
@@ -18,6 +21,9 @@ __all__ = [
     "GILBERT_CASE",
     "LARGE_CATCHMENT_CASE",
     "RealCaseSpec",
+    "SPATIAL_EXPORT_SCENARIOS",
     "run_end_to_end_matrix",
+    "run_spatial_export_matrix",
     "write_end_to_end_baseline",
+    "write_spatial_export_baseline",
 ]

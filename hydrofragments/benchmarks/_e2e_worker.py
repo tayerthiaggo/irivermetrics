@@ -146,6 +146,12 @@ def planning_footprint_native_wet_pixel_superset_metrics(footprint: Any) -> dict
 
 
 def _run(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("benchmark_kind") == "spatial_export":
+        return _run_spatial_export(payload)
+    return _run_dea_workflow(payload)
+
+
+def _run_dea_workflow(payload: dict[str, Any]) -> dict[str, Any]:
     import pandas as pd
     import rioxarray  # noqa: F401 -- registers xarray's .rio accessor as a side
     # effect of import. hydrofragments.io.dea.open_wo_statistics_for_zoning
@@ -387,6 +393,400 @@ def _as_spatial_mask(mask, reference):
     return xr.DataArray(mask, dims=spatial_dims, coords=coords)
 
 
+def _metrics_digest(metrics_table) -> str:
+    digest_columns = sorted(
+        c for c in metrics_table.columns if c not in ("run_id", "config_hash")
+    )
+    digest_frame = metrics_table[digest_columns].sort_values(
+        by=[c for c in ("metric", "date", "zone", "window_id") if c in digest_columns]
+    )
+    return hashlib.sha256(digest_frame.to_csv(index=False).encode("utf-8")).hexdigest()
+
+
+def _coverage_digest(coverage_table) -> str:
+    return hashlib.sha256(coverage_table.to_csv(index=False).encode("utf-8")).hexdigest()
+
+
+def _build_spatial_fixture(fixture_id: str, *, zarr_path: str | None = None):
+    """Build a repository-owned synthetic cube for spatial-export benchmarks."""
+
+    import pandas as pd
+    import rioxarray  # noqa: F401
+    import xarray as xr
+
+    from hydrofragments.api import open_water_cube
+
+    if fixture_id == "zarr_local_subset":
+        if not zarr_path:
+            raise ValueError("zarr_local_subset requires zarr_path")
+        cube = open_water_cube(zarr_path, chunks={"time": 12, "y": 128, "x": 128})
+        water = cube.water.isel(time=slice(0, 12), y=slice(0, 64), x=slice(0, 64))
+        valid = cube.valid_obs.isel(time=slice(0, 12), y=slice(0, 64), x=slice(0, 64))
+        return open_water_cube(water, valid_obs=valid, input_kind="watermask_tsfill")
+
+    if fixture_id == "compact_georef":
+        months, height, width = 12, 65, 65
+        times = pd.date_range("2020-01-01", periods=months, freq="MS")
+        y = 240.0 - np.arange(height) * 30.0 - 15.0
+        x = np.arange(width) * 30.0 + 15.0
+        rng = np.random.default_rng(1201)
+        water = (rng.random((months, height, width)) < 0.3).astype(np.uint8)
+        water_da = xr.DataArray(
+            water,
+            dims=("time", "y", "x"),
+            coords={"time": times, "y": y, "x": x},
+        ).rio.write_crs("EPSG:3577")
+        return open_water_cube(water_da, input_kind="generic_binary")
+
+    if fixture_id == "long_480_small":
+        months, height, width = 480, 16, 16
+        times = pd.date_range("1986-01-01", periods=months, freq="MS")
+        y = 240.0 - np.arange(height) * 30.0 - 15.0
+        x = np.arange(width) * 30.0 + 15.0
+        rng = np.random.default_rng(1480)
+        water = (rng.random((months, height, width)) < 0.2).astype(np.uint8)
+        water_da = xr.DataArray(
+            water,
+            dims=("time", "y", "x"),
+            coords={"time": times, "y": y, "x": x},
+        ).rio.write_crs("EPSG:3577")
+        return open_water_cube(water_da, input_kind="generic_binary")
+
+    if fixture_id == "large_spatial_sparse":
+        months, height, width = 4, 128, 128
+        times = pd.date_range("2020-01-01", periods=months, freq="MS")
+        y = 240.0 - np.arange(height) * 30.0 - 15.0
+        x = np.arange(width) * 30.0 + 15.0
+        rng = np.random.default_rng(8128)
+        water = (rng.random((months, height, width)) < 0.02).astype(np.uint8)
+        water_da = xr.DataArray(
+            water,
+            dims=("time", "y", "x"),
+            coords={"time": times, "y": y, "x": x},
+        ).rio.write_crs("EPSG:3577")
+        return open_water_cube(water_da, input_kind="generic_binary")
+
+    if fixture_id == "large_spatial_single_component":
+        import dask.array as da
+
+        months, height, width = 2, 96, 96
+        times = pd.date_range("2020-01-01", periods=months, freq="MS")
+        y = 240.0 - np.arange(height) * 30.0 - 15.0
+        x = np.arange(width) * 30.0 + 15.0
+        water = np.zeros((months, height, width), dtype=np.int8)
+        water[:, 4:92, 4:92] = 1
+        valid = np.ones((months, height, width), dtype=bool)
+        water_da = xr.DataArray(
+            da.from_array(water, chunks=(1, 48, 48)),
+            dims=("time", "y", "x"),
+            coords={"time": times, "y": y, "x": x},
+        ).rio.write_crs("EPSG:3577")
+        valid_da = xr.DataArray(
+            da.from_array(valid, chunks=(1, 48, 48)),
+            dims=("time", "y", "x"),
+            coords={"time": times, "y": y, "x": x},
+        )
+        return open_water_cube(water_da, valid_obs=valid_da, input_kind="generic_binary")
+
+    raise ValueError(f"unsupported spatial-export fixture_id: {fixture_id!r}")
+
+
+def _spatial_export_config(
+    *,
+    output_dir: Path,
+    spatial_products: tuple[str, ...],
+    raster_formats: tuple[str, ...],
+    workers: int,
+):
+    from hydrofragments.config import HydroConfig
+
+    return HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.1.0",
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "patches": {"min_patch_pixels": 1, "connectivity_rule": 8},
+            "compute": {
+                "workers": workers,
+                "target_chunk_bytes": 256_000,
+                "worker_memory_fraction": 0.25,
+            },
+            "output": {
+                "output_dir": str(output_dir),
+                "spatial_products": list(spatial_products),
+                "raster_formats": list(raster_formats),
+            },
+        }
+    )
+
+
+def _artifact_bytes(output_dir: Path) -> dict[str, int]:
+    sizes: dict[str, int] = {}
+    if not output_dir.exists():
+        return sizes
+    for path in sorted(output_dir.rglob("*")):
+        if path.is_file():
+            rel = path.relative_to(output_dir).as_posix()
+            sizes[rel] = path.stat().st_size
+    return sizes
+
+
+def _worker_peak_rss_bytes() -> int | None:
+    try:
+        import psutil
+
+        process = psutil.Process()
+        peak = process.memory_info().rss
+        for child in process.children(recursive=True):
+            try:
+                peak = max(peak, child.memory_info().rss)
+            except Exception:
+                pass
+        return int(peak)
+    except Exception:
+        return None
+
+
+def _run_spatial_export(payload: dict[str, Any]) -> dict[str, Any]:
+    import pandas as pd
+    import rioxarray  # noqa: F401
+
+    from hydrofragments.api import analyze
+    from hydrofragments.output.checkpoints import (
+        CheckpointMetadata,
+        SpatialRasterCheckpoint,
+    )
+    from hydrofragments.output.finalize import CoreAnalysisResult, finalize_analysis_bundle
+    from hydrofragments.output.manifest import validate_result_bundle
+    from hydrofragments.output.spatial import SpatialGrid
+
+    scenario_id = payload["scenario_id"]
+    fixture_id = payload["fixture_id"]
+    spatial_products = tuple(payload.get("spatial_products") or ())
+    raster_formats = tuple(payload.get("raster_formats") or ("geotiff",))
+    workers = int(payload.get("workers", 1))
+    output_dir = Path(payload["output_dir"])
+    phase = payload.get("phase", "full")
+    check_metric_parity = bool(payload.get("check_metric_parity"))
+    expect_failure = bool(payload.get("expect_failure"))
+    zarr_path = payload.get("zarr_path")
+
+    if phase == "export_retry":
+        checkpoint_state = payload.get("checkpoint_state") or {}
+        retry_output = output_dir
+        retry_output.mkdir(parents=True, exist_ok=True)
+        config = _spatial_export_config(
+            output_dir=retry_output,
+            spatial_products=spatial_products,
+            raster_formats=raster_formats,
+            workers=workers,
+        )
+        cube = _build_spatial_fixture(fixture_id, zarr_path=zarr_path)
+        grid = SpatialGrid.from_dataarray(cube.water.isel(time=0), require_georeference=True)
+        raster_root = Path(checkpoint_state["raster_checkpoint_root"])
+        metadata = CheckpointMetadata.from_json(
+            (raster_root / "metadata.json").read_text(encoding="utf-8")
+        )
+        raster_checkpoint = SpatialRasterCheckpoint(root=raster_root, metadata=metadata)
+        raster_checkpoint.validate_complete()
+        metrics_table = pd.read_parquet(checkpoint_state["metrics_parquet"])
+        coverage_table = pd.read_csv(checkpoint_state["coverage_csv"])
+        core = CoreAnalysisResult(
+            metrics_table=metrics_table,
+            metric_coverage=coverage_table,
+            run_id=str(checkpoint_state["run_id"]),
+            git_sha=str(checkpoint_state["git_sha"]),
+            report_warnings=tuple(checkpoint_state.get("report_warnings", ())),
+            skipped_metrics=tuple(
+                (item["metric_id"], item["reason"])
+                for item in checkpoint_state.get("skipped_metrics", [])
+            ),
+            execution_plan_mapping=checkpoint_state.get("execution_plan_mapping", {}),
+            input_fingerprint=checkpoint_state.get("input_fingerprint", {}),
+            comparison_context=checkpoint_state.get("comparison_context", {}),
+            raster_checkpoint=raster_checkpoint,
+            pool_checkpoint_root=(
+                Path(checkpoint_state["pool_checkpoint_root"])
+                if checkpoint_state.get("pool_checkpoint_root")
+                else None
+            ),
+            spatial_grid=grid,
+        )
+        timings: dict[str, float] = {}
+        t0 = time.perf_counter()
+        finalize_analysis_bundle(
+            config,
+            core,
+            cube=cube,
+            pixel_size_m=30.0,
+        )
+        timings["output_finalize"] = time.perf_counter() - t0
+        timings["total"] = timings["output_finalize"]
+        validate_result_bundle(retry_output)
+        return {
+            "status": "ok",
+            "scenario_id": scenario_id,
+            "phase": phase,
+            "timings_seconds": timings,
+            "source_materializations": 0,
+            "label_passes": 0,
+            "metrics_digest": _metrics_digest(metrics_table),
+            "coverage_digest": _coverage_digest(coverage_table),
+            "output_bytes_by_product": _artifact_bytes(retry_output),
+            "peak_rss_bytes": _worker_peak_rss_bytes(),
+        }
+
+    if "netcdf" in raster_formats:
+        try:
+            import h5netcdf  # noqa: F401
+        except ImportError:
+            return {
+                "status": "skipped",
+                "scenario_id": scenario_id,
+                "skipped_reason": "netcdf extra (h5netcdf) is not installed",
+            }
+
+    source_materializations = {"count": 0}
+    label_passes = {"count": 0}
+
+    from hydrofragments.analysis import window_stream
+
+    original_materialize = window_stream._materialize_window_month
+
+    def counted_materialize(*args, **kwargs):
+        source_materializations["count"] += 1
+        return original_materialize(*args, **kwargs)
+
+    from hydrofragments.metrics import patches as patch_metrics
+
+    original_measure = patch_metrics.measure_patch_properties
+
+    def counted_measure(*args, **kwargs):
+        label_passes["count"] += 1
+        return original_measure(*args, **kwargs)
+
+    timings = {}
+    metric_parity_holds = None
+    metrics_digest_off = None
+    coverage_digest_off = None
+
+    try:
+        cube = _build_spatial_fixture(fixture_id, zarr_path=zarr_path)
+        window_stream._materialize_window_month = counted_materialize
+        patch_metrics.measure_patch_properties = counted_measure
+
+        if check_metric_parity:
+            from hydrofragments.config import HydroConfig
+
+            off_config = HydroConfig.from_mapping(
+                {
+                    "config_schema_version": "1.1.0",
+                    "input": {"kind": "generic_binary"},
+                    "temporal": {
+                        "input_cadence": "monthly",
+                        "monthly_composite": "supplied",
+                        "composite_owner": "caller",
+                    },
+                    "patches": {"min_patch_pixels": 1, "connectivity_rule": 8},
+                    "compute": {"workers": workers},
+                }
+            )
+            t0 = time.perf_counter()
+            off_result = analyze(cube, "benchmark", config=off_config, pixel_size_m=30.0)
+            timings["parity_off_seconds"] = time.perf_counter() - t0
+            metrics_digest_off = _metrics_digest(off_result.metrics_table)
+            coverage_digest_off = _coverage_digest(off_result.metric_coverage)
+
+        config = _spatial_export_config(
+            output_dir=output_dir,
+            spatial_products=spatial_products,
+            raster_formats=raster_formats,
+            workers=workers,
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        t0 = time.perf_counter()
+        result = analyze(cube, "benchmark", config=config, pixel_size_m=30.0)
+        timings["core_analysis"] = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        validate_result_bundle(output_dir)
+        timings["bundle_validation"] = time.perf_counter() - t0
+        timings["total"] = sum(
+            value for key, value in timings.items() if key not in {"parity_off_seconds"}
+        )
+
+        metrics_digest = _metrics_digest(result.metrics_table)
+        coverage_digest = _coverage_digest(result.metric_coverage)
+        if metrics_digest_off is not None:
+            metric_parity_holds = (
+                metrics_digest_off == metrics_digest and coverage_digest_off == coverage_digest
+            )
+
+        checkpoint_state = None
+        if spatial_products:
+            durable_root = output_dir.parent / f"{output_dir.name}.spatial_checkpoints"
+            raster_root = durable_root / "spatial_rasters"
+            pool_root = durable_root / "pool_vectors"
+            manifest = dict(result.manifest)
+            backend = dict(manifest.get("backend", {}))
+            checkpoint_state = {
+                "run_id": result.run_id,
+                "git_sha": str(manifest.get("git_sha", "unknown")),
+                "metrics_parquet": str(output_dir / "metrics"),
+                "coverage_csv": str(output_dir / "metric_coverage.csv"),
+                "raster_checkpoint_root": str(raster_root),
+                "pool_checkpoint_root": str(pool_root) if pool_root.exists() else None,
+                "report_warnings": list(manifest.get("warnings", [])),
+                "skipped_metrics": list(manifest.get("skipped_metrics", [])),
+                "execution_plan_mapping": {
+                    "planned_backend": backend.get("planned", "cpu"),
+                    "actual_backend_by_stage": dict(backend.get("actual_by_stage", {})),
+                    "backend_capabilities": dict(backend.get("capabilities", {})),
+                },
+                "input_fingerprint": dict(manifest.get("input_fingerprint", {})),
+                "comparison_context": dict(manifest.get("comparison", {})),
+            }
+
+        return {
+            "status": "ok",
+            "scenario_id": scenario_id,
+            "phase": phase,
+            "fixture_id": fixture_id,
+            "spatial_products": list(spatial_products),
+            "timings_seconds": timings,
+            "metrics_digest": metrics_digest,
+            "coverage_digest": coverage_digest,
+            "metrics_digest_off": metrics_digest_off,
+            "coverage_digest_off": coverage_digest_off,
+            "metric_parity_holds": metric_parity_holds,
+            "source_materializations": source_materializations["count"],
+            "label_passes": label_passes["count"],
+            "cube_shape": dict(cube.water.sizes),
+            "output_bytes_by_product": _artifact_bytes(output_dir),
+            "checkpoint_state": checkpoint_state,
+            "peak_rss_bytes": _worker_peak_rss_bytes(),
+        }
+    except Exception as exc:
+        if expect_failure:
+            return {
+                "status": "expected_failure",
+                "scenario_id": scenario_id,
+                "error_type": type(exc).__name__,
+                "error_message": str(exc),
+            }
+        raise
+    finally:
+        if "original_materialize" in locals():
+            window_stream._materialize_window_month = original_materialize
+        if "original_measure" in locals():
+            patch_metrics.measure_patch_properties = original_measure
+
+
 def main() -> int:
     raw = sys.stdin.read()
     payload = json.loads(raw)
@@ -405,7 +805,7 @@ def main() -> int:
         }
     sys.stdout.write(json.dumps(result))
     sys.stdout.flush()
-    return 0 if result.get("status") == "ok" else 1
+    return 0 if result.get("status") in {"ok", "skipped", "expected_failure"} else 1
 
 
 if __name__ == "__main__":
