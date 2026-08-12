@@ -117,3 +117,82 @@ def test_unknown_profile_is_rejected() -> None:
 
     with pytest.raises(RegistryError, match="unknown metric profile"):
         resolve_metrics(("everything",), available_dependencies=set())
+
+
+def test_dynamics_profile_includes_all_dynamics_metrics() -> None:
+    from hydrofragments.metrics.registry import PROFILES
+
+    assert PROFILES["dynamics"] == (
+        "extent_contraction",
+        "reconnection_timing",
+        "refuge_spatial_stability",
+    )
+
+
+def test_all_available_includes_new_dynamics_metrics() -> None:
+    from hydrofragments.metrics.registry import (
+        ALL_AVAILABLE_PROFILE,
+        PROFILES,
+        RUNTIME_WIRED_METRIC_IDS,
+    )
+
+    assert "reconnection_timing" in PROFILES[ALL_AVAILABLE_PROFILE]
+    assert "refuge_spatial_stability" in PROFILES[ALL_AVAILABLE_PROFILE]
+    assert "reconnection_timing" in RUNTIME_WIRED_METRIC_IDS
+    assert "refuge_spatial_stability" in RUNTIME_WIRED_METRIC_IDS
+
+
+def test_obsolete_skip_reasons_removed_for_new_dynamics_metrics() -> None:
+    from hydrofragments.metrics.registry import NOT_RUNTIME_WIRED_REASONS
+
+    assert "reconnection_timing" not in NOT_RUNTIME_WIRED_REASONS
+    assert "refuge_spatial_stability" not in NOT_RUNTIME_WIRED_REASONS
+
+
+def test_metric_overrides_are_applied_before_dependency_resolution() -> None:
+    from hydrofragments.config import MetricOverrides
+    from hydrofragments.metrics.registry import resolve_metrics
+
+    plan = resolve_metrics(
+        ("contracts_core",),
+        available_dependencies={
+            "requires_validity",
+            "requires_patches",
+            "requires_HY_anchor",
+            "requires_dual_composite",
+        },
+        metric_overrides=MetricOverrides(add=("extent_contraction",), remove=()),
+    )
+
+    assert tuple(spec.metric_id for spec in plan.selected) == (
+        "occurrence",
+        "refuge_area",
+        "apsec",
+        "number_of_pools",
+        "lpi",
+        "awre",
+        "awmsi",
+        "extent_contraction",
+    )
+
+
+def test_removing_lpi_suppresses_output_but_keeps_reconnection_support() -> None:
+    from hydrofragments.config import MetricOverrides
+    from hydrofragments.metrics.registry import resolve_metrics
+
+    plan = resolve_metrics(
+        ("dynamics",),
+        available_dependencies={
+            "requires_HY_anchor",
+            "requires_dual_composite",
+            "requires_patches",
+        },
+        metric_overrides=MetricOverrides(remove=("lpi",)),
+    )
+
+    selected_ids = {spec.metric_id for spec in plan.selected}
+    internal_ids = {spec.metric_id for spec in plan.internal_support}
+
+    assert "lpi" not in selected_ids
+    assert "reconnection_timing" in selected_ids
+    assert "lpi" in internal_ids

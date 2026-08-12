@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from hydrofragments.schema import (
     MetricDependency,
@@ -12,6 +12,9 @@ from hydrofragments.schema import (
     ValueType,
     validate_metric_id,
 )
+
+if TYPE_CHECKING:
+    from hydrofragments.config import MetricOverrides
 
 
 class RegistryError(ValueError):
@@ -44,6 +47,7 @@ class MetricSkip:
 class MetricPlan:
     selected: tuple[MetricSpec, ...]
     skipped: tuple[MetricSkip, ...]
+    internal_support: tuple[MetricSpec, ...] = ()
 
 
 _METRICS = (
@@ -198,18 +202,24 @@ RUNTIME_WIRED_METRIC_IDS = (
     "recurrence",
     "hydroperiod",
     "extent_contraction",
+    "reconnection_timing",
+    "refuge_spatial_stability",
     "lpsec",
     "inter_pool_gap",
     "pool_width",
 )
+
+# Metrics that may be computed internally to support selected output metrics
+# without being emitted as metric rows.
+HIDDEN_SUPPORT: dict[str, tuple[str, ...]] = {
+    "reconnection_timing": ("lpi",),
+}
 
 # Explicit, non-runtime-wired skip reasons for every registry metric that is
 # not in RUNTIME_WIRED_METRIC_IDS. Used to populate HydroResult.metric_coverage
 # rows for registry entries that a default "all_available" run never attempts.
 NOT_RUNTIME_WIRED_REASONS = {
     "mesh": "skipped (validation disabled)",
-    "reconnection_timing": "skipped (not runtime wired)",
-    "refuge_spatial_stability": "skipped (not runtime wired)",
     "realised_connectivity": "skipped (runtime deferred)",
     "tcf": "skipped (runtime deferred)",
 }
@@ -231,6 +241,8 @@ PROFILES = {
     "pixel_temporal": ("recurrence", "hydroperiod"),
     "dynamics": (
         "extent_contraction",
+        "reconnection_timing",
+        "refuge_spatial_stability",
     ),
     "channel": ("lpsec", "inter_pool_gap"),
     "secondary": ("mesh", "pool_width"),
@@ -246,12 +258,10 @@ def _dependencies(values: Iterable[MetricDependency | str]) -> set[MetricDepende
         raise RegistryError(f"unknown metric dependency: {error}") from error
 
 
-def resolve_metrics(
+def _resolve_metric_ids(
     profiles: Iterable[str],
-    *,
-    available_dependencies: Iterable[MetricDependency | str],
-) -> MetricPlan:
-    available = _dependencies(available_dependencies)
+    metric_overrides: "MetricOverrides | None",
+) -> tuple[list[str], set[str]]:
     metric_ids: list[str] = []
     for profile in profiles:
         if profile not in PROFILES:
@@ -260,6 +270,27 @@ def resolve_metrics(
             if metric_id not in metric_ids:
                 metric_ids.append(metric_id)
 
+    removed: set[str] = set()
+    if metric_overrides is not None:
+        for metric_id in metric_overrides.add:
+            if metric_id not in metric_ids:
+                metric_ids.append(metric_id)
+        removed = set(metric_overrides.remove)
+
+    output_ids = [metric_id for metric_id in metric_ids if metric_id not in removed]
+    internal_ids: set[str] = set()
+    for metric_id in output_ids:
+        for support_id in HIDDEN_SUPPORT.get(metric_id, ()):
+            if support_id in removed or support_id not in output_ids:
+                internal_ids.add(support_id)
+    return output_ids, internal_ids
+
+
+def _plan_for_ids(
+    metric_ids: Iterable[str],
+    *,
+    available: set[MetricDependency],
+) -> tuple[list[MetricSpec], list[MetricSkip]]:
     selected: list[MetricSpec] = []
     skipped: list[MetricSkip] = []
     for metric_id in metric_ids:
@@ -273,7 +304,30 @@ def resolve_metrics(
             skipped.append(MetricSkip(metric_id=metric_id, reason=reason))
         else:
             selected.append(spec)
-    return MetricPlan(selected=tuple(selected), skipped=tuple(skipped))
+    return selected, skipped
+
+
+def resolve_metrics(
+    profiles: Iterable[str],
+    *,
+    available_dependencies: Iterable[MetricDependency | str],
+    metric_overrides: "MetricOverrides | None" = None,
+) -> MetricPlan:
+    available = _dependencies(available_dependencies)
+    output_ids, internal_ids = _resolve_metric_ids(profiles, metric_overrides)
+
+    selected, skipped = _plan_for_ids(output_ids, available=available)
+    selected_ids = {spec.metric_id for spec in selected}
+    internal_support, internal_skipped = _plan_for_ids(
+        sorted(internal_ids - selected_ids),
+        available=available,
+    )
+    skipped.extend(internal_skipped)
+    return MetricPlan(
+        selected=tuple(selected),
+        skipped=tuple(skipped),
+        internal_support=tuple(internal_support),
+    )
 
 
 def registry_wide_plan(
@@ -303,6 +357,7 @@ def registry_wide_plan(
 
 __all__ = [
     "ALL_AVAILABLE_PROFILE",
+    "HIDDEN_SUPPORT",
     "METRIC_REGISTRY",
     "NOT_RUNTIME_WIRED_REASONS",
     "PROFILES",

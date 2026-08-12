@@ -249,7 +249,7 @@ def validate_inputs(
         dual_composites_available=dual_composites_available,
         wet_any_month=wet_any_month,
     )
-    plan = resolve_metrics(config.metric_profiles, available_dependencies=available)
+    plan = resolve_metrics(config.metric_profiles, available_dependencies=available, metric_overrides=config.metric_overrides)
     skipped = tuple((item.metric_id, item.reason) for item in plan.skipped)
     if plan.skipped:
         warnings.append("some requested metrics are unavailable with current inputs")
@@ -935,7 +935,9 @@ def analyze(
         ),
     )
     metric_plan = resolve_metrics(
-        config.metric_profiles, available_dependencies=available_dependencies
+        config.metric_profiles,
+        available_dependencies=available_dependencies,
+        metric_overrides=config.metric_overrides,
     )
     selected_ids = {spec.metric_id for spec in metric_plan.selected}
     coverage_plan = registry_wide_plan(available_dependencies=available_dependencies)

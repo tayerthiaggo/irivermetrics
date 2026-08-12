@@ -6,7 +6,7 @@ from enum import Enum
 import re
 
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 
 class SchemaError(ValueError):
@@ -46,6 +46,12 @@ class EdgeFlag(str, Enum):
     N1 = "N1"
     N2_UNSTABLE = "N2_unstable"
     LOW_VALID_OBS = "low_valid_obs"
+    MISSING_HY_ANCHOR = "missing_HY_anchor"
+    NO_PREVIOUS_HY = "no_previous_HY"
+    NONCONSECUTIVE_HY = "nonconsecutive_HY"
+    LOW_COMMON_VALID_SUPPORT = "low_common_valid_support"
+    EMPTY_REFUGE_UNION = "empty_refuge_union"
+    NO_THRESHOLD_CROSSING = "no_threshold_crossing"
 
 
 class WarningFlag(str, Enum):

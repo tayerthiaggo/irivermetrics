@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 GOLDEN_MINIMAL_CONFIG_HASH = (
-    "d260917dd92c8dd79578a9b2504fc50b45e6645e3b9edee0ffead357375ed823"
+    "cd1f86765a2e2410206f89f0b12cb0c0cada5ae0205b6350af0fb8911f73c72b"
 )
 
 
@@ -83,3 +83,55 @@ def test_metric_profile_order_is_canonicalized_as_a_set() -> None:
     )
 
     assert left.config_hash == right.config_hash
+
+
+def test_dynamics_threshold_changes_alter_scientific_hash() -> None:
+    from hydrofragments.config import HydroConfig
+
+    baseline = HydroConfig.from_mapping(config_mapping())
+    changed = HydroConfig.from_mapping(
+        config_mapping()
+        | {
+            "config_schema_version": "1.1.0",
+            "dynamics": {"reconnection_lpi_threshold_pct": 60.0},
+        }
+    )
+
+    assert changed.config_hash != baseline.config_hash
+
+
+def test_equivalent_config_schema_versions_normalize_to_same_scientific_hash() -> None:
+    from hydrofragments.config import HydroConfig
+
+    legacy = HydroConfig.from_mapping(config_mapping())
+    explicit = HydroConfig.from_mapping(
+        config_mapping()
+        | {
+            "config_schema_version": "1.1.0",
+            "output": {"spatial_products": [], "raster_formats": ["geotiff"]},
+        }
+    )
+
+    assert legacy.scientific_config() == explicit.scientific_config()
+    assert legacy.config_hash == explicit.config_hash
+
+
+def test_output_product_changes_alter_execution_hash_only() -> None:
+    from hydrofragments.config import HydroConfig
+
+    baseline = HydroConfig.from_mapping(config_mapping())
+    with_exports = HydroConfig.from_mapping(
+        config_mapping()
+        | {
+            "config_schema_version": "1.1.0",
+            "output": {
+                "output_dir": "/tmp/out",
+                "spatial_products": ["monthly_pools", "zones"],
+                "raster_formats": ["geotiff", "netcdf"],
+            },
+        }
+    )
+
+    assert with_exports.scientific_config() == baseline.scientific_config()
+    assert with_exports.config_hash == baseline.config_hash
+    assert with_exports.execution_hash != baseline.execution_hash

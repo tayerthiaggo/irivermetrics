@@ -113,10 +113,15 @@ EXPECTED_DTYPES = {
 
 def base_record(**changes: object):
     from hydrofragments.models import MetricRecord
-    from hydrofragments.schema import MetricDependency, MetricFamily, ValueType
+    from hydrofragments.schema import (
+        MetricDependency,
+        MetricFamily,
+        SCHEMA_VERSION,
+        ValueType,
+    )
 
     values: dict[str, object] = {
-        "schema_version": "1.0.0",
+        "schema_version": SCHEMA_VERSION,
         "run_id": "run-001",
         "config_hash": "a" * 64,
         "package_version": "0.1.0",
@@ -139,7 +144,7 @@ def base_record(**changes: object):
 def test_output_schema_columns_and_dtypes_are_exact() -> None:
     from hydrofragments.schema import OUTPUT_COLUMNS, OUTPUT_DTYPES, SCHEMA_VERSION
 
-    assert SCHEMA_VERSION == "1.0.0"
+    assert SCHEMA_VERSION == "1.1.0"
     assert OUTPUT_COLUMNS == EXPECTED_COLUMNS
     assert OUTPUT_DTYPES == EXPECTED_DTYPES
 
@@ -185,6 +190,12 @@ def test_output_enums_are_exact() -> None:
         "N1",
         "N2_unstable",
         "low_valid_obs",
+        "missing_HY_anchor",
+        "no_previous_HY",
+        "nonconsecutive_HY",
+        "low_common_valid_support",
+        "empty_refuge_union",
+        "no_threshold_crossing",
     }
     assert {item.value for item in WarningFlag} == {
         "no_channel",

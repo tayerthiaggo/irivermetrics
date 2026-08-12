@@ -5,9 +5,37 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 import hashlib
+import importlib
 import json
 import math
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
+
+ACCEPTED_CONFIG_SCHEMA_VERSIONS = frozenset({"1.0.0", "1.1.0"})
+SCIENTIFIC_HASH_SCHEMA_VERSION = "1.1.0"
+HASH_ALGORITHM_VERSION = "sha256-json-v1"
+
+SpatialProduct = Literal[
+    "monthly_pools",
+    "zones",
+    "persistence_rasters",
+    "temporal_rasters",
+    "refuge_stability_rasters",
+    "reach_profiles",
+]
+RasterFormat = Literal["geotiff", "netcdf"]
+
+SPATIAL_PRODUCTS = frozenset(
+    {
+        "monthly_pools",
+        "zones",
+        "persistence_rasters",
+        "temporal_rasters",
+        "refuge_stability_rasters",
+        "reach_profiles",
+    }
+)
+RASTER_FORMATS = frozenset({"geotiff", "netcdf"})
+OUTPUT_FORMATS = frozenset({"parquet", "csv"})
 
 
 class ConfigError(ValueError):
@@ -82,6 +110,8 @@ class DynamicsConfig:
     composite_sensitivity_tolerance_pp: float = 10.0
     contraction_method: str = "linear"
     minimum_points: int = 3
+    reconnection_lpi_threshold_pct: float = 50.0
+    reconnection_lpsec_threshold_pct: float = 50.0
 
 
 @dataclass(frozen=True)
@@ -139,6 +169,8 @@ class OutputConfig:
     include_patch_table: bool = False
     include_vectors: bool = False
     output_dir: str | None = None
+    spatial_products: tuple[str, ...] = ()
+    raster_formats: tuple[str, ...] = ("geotiff",)
 
 
 @dataclass(frozen=True)
@@ -210,6 +242,80 @@ def _fraction(value: object, path: str) -> float:
     return result
 
 
+def _percentage(value: object, path: str) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError) as error:
+        raise ConfigError(f"{path} must be a number between 0 and 100") from error
+    if not math.isfinite(result):
+        raise ConfigError(f"{path} must be finite")
+    if not 0.0 <= result <= 100.0:
+        raise ConfigError(f"{path} must be between 0 and 100")
+    return result
+
+
+def _literal_sequence(
+    value: object,
+    *,
+    path: str,
+    allowed: frozenset[str],
+) -> tuple[str, ...]:
+    if isinstance(value, str):
+        raise ConfigError(f"{path} must be a sequence, not a string")
+    try:
+        items = [str(item) for item in value]
+    except TypeError as error:
+        raise ConfigError(f"{path} must be a sequence") from error
+    unknown = sorted({item for item in items if item not in allowed})
+    if unknown:
+        raise ConfigError(f"{path} has unsupported value: {unknown[0]}")
+    return tuple(sorted(set(items)))
+
+
+def _validate_override_ids(
+    *,
+    add: tuple[str, ...],
+    remove: tuple[str, ...],
+    add_raw: object,
+    remove_raw: object,
+) -> None:
+    from hydrofragments.metrics.registry import METRIC_REGISTRY
+
+    for label, raw, resolved in (
+        ("add", add_raw, add),
+        ("remove", remove_raw, remove),
+    ):
+        if raw is None:
+            continue
+        if isinstance(raw, str):
+            raise ConfigError(f"metric_overrides.{label} must be a sequence, not a string")
+        try:
+            items = [str(item) for item in raw]
+        except TypeError as error:
+            raise ConfigError(f"metric_overrides.{label} must be a sequence") from error
+        if len(items) != len(set(items)):
+            raise ConfigError(f"metric_overrides.{label} contains duplicate metric ids")
+    overlap = sorted(set(add).intersection(remove))
+    if overlap:
+        raise ConfigError(
+            "metric_overrides contains contradictory add/remove entries: "
+            + overlap[0]
+        )
+    for metric_id in add + remove:
+        if metric_id not in METRIC_REGISTRY:
+            raise ConfigError(f"unknown metric override id: {metric_id}")
+
+
+def _netcdf_writer_available() -> bool:
+    for module_name in ("netCDF4", "h5netcdf"):
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            continue
+        return True
+    return False
+
+
 def _canonical_json(value: Mapping[str, Any]) -> str:
     try:
         return json.dumps(
@@ -257,6 +363,11 @@ class HydroConfig:
         config_schema_version = str(
             _required(source, "config_schema_version", "config")
         )
+        if config_schema_version not in ACCEPTED_CONFIG_SCHEMA_VERSIONS:
+            raise ConfigError(
+                "config.config_schema_version has unsupported value: "
+                f"{config_schema_version}"
+            )
 
         input_raw = _section(
             source,
@@ -453,6 +564,8 @@ class HydroConfig:
                 "composite_sensitivity_tolerance_pp",
                 "contraction_method",
                 "minimum_points",
+                "reconnection_lpi_threshold_pct",
+                "reconnection_lpsec_threshold_pct",
             },
         )
         dynamics = DynamicsConfig(
@@ -466,6 +579,14 @@ class HydroConfig:
                 dynamics_raw.get("minimum_points")
                 if dynamics_raw.get("minimum_points") is not None
                 else 3
+            ),
+            reconnection_lpi_threshold_pct=_percentage(
+                dynamics_raw.get("reconnection_lpi_threshold_pct", 50.0),
+                "dynamics.reconnection_lpi_threshold_pct",
+            ),
+            reconnection_lpsec_threshold_pct=_percentage(
+                dynamics_raw.get("reconnection_lpsec_threshold_pct", 50.0),
+                "dynamics.reconnection_lpsec_threshold_pct",
             ),
         )
         if dynamics.contraction_method not in {"linear", "theil_sen"}:
@@ -589,13 +710,54 @@ class HydroConfig:
         output_raw = _section(
             source,
             "output",
-            {"formats", "include_patch_table", "include_vectors", "output_dir"},
+            {
+                "formats",
+                "include_patch_table",
+                "include_vectors",
+                "output_dir",
+                "spatial_products",
+                "raster_formats",
+            },
         )
+        output_formats = _literal_sequence(
+            output_raw.get("formats", ("parquet",)),
+            path="output.formats",
+            allowed=OUTPUT_FORMATS,
+        )
+        include_vectors_raw = output_raw.get("include_vectors", False)
+        include_vectors_flag = bool(include_vectors_raw)
+        spatial_products_raw = output_raw.get("spatial_products")
+        if spatial_products_raw is None:
+            spatial_products: tuple[str, ...] = (
+                ("monthly_pools",) if include_vectors_flag else ()
+            )
+        else:
+            spatial_products = _literal_sequence(
+                spatial_products_raw,
+                path="output.spatial_products",
+                allowed=SPATIAL_PRODUCTS,
+            )
+        if include_vectors_flag and "monthly_pools" not in spatial_products:
+            raise ConfigError(
+                "output.include_vectors conflicts with output.spatial_products"
+            )
+        raster_formats = _literal_sequence(
+            output_raw.get("raster_formats", ("geotiff",)),
+            path="output.raster_formats",
+            allowed=RASTER_FORMATS,
+        )
+        output_dir = output_raw.get("output_dir")
+        if spatial_products and not output_dir:
+            raise ConfigError(
+                "output.output_dir is required when output.spatial_products is non-empty"
+            )
         output = OutputConfig(
-            formats=tuple(sorted(set(output_raw.get("formats", ("parquet",))))),
+            formats=output_formats,
             include_patch_table=bool(output_raw.get("include_patch_table", False)),
-            include_vectors=bool(output_raw.get("include_vectors", False)),
-            output_dir=output_raw.get("output_dir"),
+            include_vectors=include_vectors_flag or "monthly_pools" in spatial_products,
+            output_dir=output_dir,
+            spatial_products=spatial_products,
+            raster_formats=raster_formats or ("geotiff",),
         )
 
         profiles_raw = source.get("metric_profiles", ("all_available",))
@@ -611,12 +773,20 @@ class HydroConfig:
         reasons_raw = _mapping(
             overrides_raw.get("reasons", {}), "metric_overrides.reasons"
         )
+        add_raw = overrides_raw.get("add", ())
+        remove_raw = overrides_raw.get("remove", ())
         metric_overrides = MetricOverrides(
-            add=tuple(sorted(set(overrides_raw.get("add", ())))),
-            remove=tuple(sorted(set(overrides_raw.get("remove", ())))),
+            add=tuple(sorted(set(add_raw))),
+            remove=tuple(sorted(set(remove_raw))),
             reasons=tuple(
                 sorted((str(key), str(value)) for key, value in reasons_raw.items())
             ),
+        )
+        _validate_override_ids(
+            add=metric_overrides.add,
+            remove=metric_overrides.remove,
+            add_raw=add_raw,
+            remove_raw=remove_raw,
         )
 
         return cls(
@@ -648,7 +818,6 @@ class HydroConfig:
                 "node_source": self.channel.node_source,
                 "source": self.channel.source,
             },
-            "config_schema_version": self.config_schema_version,
             "connectivity": {"edge_rule": self.connectivity.edge_rule},
             "dynamics": {
                 "composite_sensitivity_tolerance_pp": (
@@ -656,7 +825,14 @@ class HydroConfig:
                 ),
                 "contraction_method": self.dynamics.contraction_method,
                 "minimum_points": self.dynamics.minimum_points,
+                "reconnection_lpi_threshold_pct": (
+                    self.dynamics.reconnection_lpi_threshold_pct
+                ),
+                "reconnection_lpsec_threshold_pct": (
+                    self.dynamics.reconnection_lpsec_threshold_pct
+                ),
             },
+            "hash_algorithm_version": HASH_ALGORITHM_VERSION,
             "hydroyear": {
                 "algorithm": self.hydroyear.algorithm,
                 "parameters": dict(self.hydroyear.parameters),
@@ -710,7 +886,17 @@ class HydroConfig:
                 "t_persist": self.zones.t_persist,
                 "t_season": self.zones.t_season,
             },
+            "scientific_hash_schema_version": SCIENTIFIC_HASH_SCHEMA_VERSION,
         }
+
+    def validate_output_preflight(self) -> None:
+        """Validate optional output writers and spatial export prerequisites."""
+
+        if "netcdf" in self.output.raster_formats and not _netcdf_writer_available():
+            raise ConfigError(
+                "output.raster_formats includes 'netcdf' but no NetCDF writer is "
+                "installed; install the optional 'netcdf4' or 'h5netcdf' package"
+            )
 
     def execution_config(self) -> dict[str, Any]:
         """Return execution and output settings excluded from ``config_hash``."""
@@ -732,6 +918,8 @@ class HydroConfig:
                 "include_patch_table": self.output.include_patch_table,
                 "include_vectors": self.output.include_vectors,
                 "output_dir": self.output.output_dir,
+                "raster_formats": list(self.output.raster_formats),
+                "spatial_products": list(self.output.spatial_products),
             },
         }
 
@@ -745,7 +933,10 @@ class HydroConfig:
 
 
 __all__ = [
+    "ACCEPTED_CONFIG_SCHEMA_VERSIONS",
     "ConfigError",
+    "HASH_ALGORITHM_VERSION",
     "HydroConfig",
     "LowSupportBehavior",
+    "SCIENTIFIC_HASH_SCHEMA_VERSION",
 ]

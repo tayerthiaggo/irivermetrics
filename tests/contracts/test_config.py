@@ -147,3 +147,205 @@ def test_config_is_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         config.run_label = "changed"  # type: ignore[misc]
+
+
+def test_config_schema_1_0_0_disables_all_spatial_products() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config())
+
+    assert config.config_schema_version == "1.0.0"
+    assert config.output.spatial_products == ()
+    assert config.output.raster_formats == ("geotiff",)
+
+
+@pytest.mark.parametrize(
+    "spatial_products",
+    [
+        ["monthly_pools"],
+        ["zones", "persistence_rasters"],
+        ["temporal_rasters", "refuge_stability_rasters", "reach_profiles"],
+    ],
+)
+def test_non_empty_spatial_products_require_output_dir(
+    spatial_products: list[str],
+) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match="output.output_dir"):
+        HydroConfig.from_mapping(
+            minimal_config(
+                config_schema_version="1.1.0",
+                output={
+                    "spatial_products": spatial_products,
+                    "output_dir": None,
+                },
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("spatial_products", ["not_a_product"]),
+        ("raster_formats", ["shapefile"]),
+        ("formats", ["xml"]),
+    ],
+)
+def test_config_schema_1_1_0_rejects_unknown_output_literals(
+    field: str, value: list[str]
+) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError):
+        HydroConfig.from_mapping(
+            minimal_config(
+                config_schema_version="1.1.0",
+                output={field: value, "output_dir": "/tmp/out"},
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "product",
+    [
+        "monthly_pools",
+        "zones",
+        "persistence_rasters",
+        "temporal_rasters",
+        "refuge_stability_rasters",
+        "reach_profiles",
+    ],
+)
+def test_config_schema_1_1_0_accepts_spatial_product_literals(
+    product: str,
+) -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(
+            config_schema_version="1.1.0",
+            output={
+                "spatial_products": [product],
+                "output_dir": "/tmp/out",
+            },
+        )
+    )
+
+    assert config.output.spatial_products == (product,)
+
+
+def test_include_vectors_alias_maps_to_monthly_pools_once() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(
+            config_schema_version="1.1.0",
+            output={
+                "include_vectors": True,
+                "output_dir": "/tmp/out",
+            },
+        )
+    )
+
+    assert config.output.spatial_products == ("monthly_pools",)
+
+
+def test_include_vectors_alias_rejects_contradictory_spatial_products() -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match="include_vectors"):
+        HydroConfig.from_mapping(
+            minimal_config(
+                config_schema_version="1.1.0",
+                output={
+                    "include_vectors": True,
+                    "spatial_products": ["zones"],
+                    "output_dir": "/tmp/out",
+                },
+            )
+        )
+
+
+def test_netcdf_format_is_accepted_at_parse_time() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(
+            config_schema_version="1.1.0",
+            output={
+                "raster_formats": ["netcdf", "geotiff"],
+                "output_dir": "/tmp/out",
+            },
+        )
+    )
+
+    assert config.output.raster_formats == ("geotiff", "netcdf")
+
+
+def test_netcdf_preflight_requires_optional_runtime_support(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    config = HydroConfig.from_mapping(
+        minimal_config(
+            config_schema_version="1.1.0",
+            output={
+                "raster_formats": ["netcdf"],
+                "output_dir": "/tmp/out",
+            },
+        )
+    )
+    monkeypatch.setattr(
+        "hydrofragments.config._netcdf_writer_available",
+        lambda: False,
+    )
+
+    with pytest.raises(ConfigError, match="netcdf"):
+        config.validate_output_preflight()
+
+
+@pytest.mark.parametrize(
+    "threshold",
+    [float("nan"), float("inf"), -1.0, 101.0],
+)
+def test_dynamics_percentage_thresholds_reject_invalid_values(
+    threshold: float,
+) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match="dynamics"):
+        HydroConfig.from_mapping(
+            minimal_config(
+                config_schema_version="1.1.0",
+                dynamics={"reconnection_lpi_threshold_pct": threshold},
+            )
+        )
+
+
+def test_dynamics_threshold_defaults_are_locked() -> None:
+    from hydrofragments.config import HydroConfig
+
+    config = HydroConfig.from_mapping(minimal_config(config_schema_version="1.1.0"))
+
+    assert config.dynamics.reconnection_lpi_threshold_pct == 50.0
+    assert config.dynamics.reconnection_lpsec_threshold_pct == 50.0
+
+
+@pytest.mark.parametrize(
+    "overrides,match",
+    [
+        ({"add": ["not_a_metric"]}, "unknown metric"),
+        ({"add": ["lpi", "lpi"]}, "duplicate"),
+        ({"remove": ["lpi", "lpi"]}, "duplicate"),
+        ({"add": ["lpi"], "remove": ["lpi"]}, "contradict"),
+    ],
+)
+def test_metric_override_validation_failures(
+    overrides: dict[str, list[str]], match: str
+) -> None:
+    from hydrofragments.config import ConfigError, HydroConfig
+
+    with pytest.raises(ConfigError, match=match):
+        HydroConfig.from_mapping(minimal_config(metric_overrides=overrides))
