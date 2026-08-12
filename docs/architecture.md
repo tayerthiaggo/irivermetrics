@@ -1,59 +1,32 @@
-# HydroFragments architecture (v1.2.0rc1)
+# HydroFragments Architecture
 
-HydroFragments is a **river surface-water** metrics toolkit. It is not a generic
-terrestrial/urban patch engine. v1.2 focuses on scientifically defensible extent,
-persistence, and morphology metrics with tidy output and explicit guards.
+HydroFragments provides a modular architecture for computing surface-water landscape dynamics from satellite time series.
 
-## Package layout
+## Package Layout
 
-```
+```text
 hydrofragments/
-  api.py              # open_water_cube, validate_inputs, analyze, compare_results
-  config.py           # HydroConfig, config_hash
-  schema.py           # tidy output contract
-  models.py           # WaterCube, HydroResult, MetricRecord
-  compat.py           # ecofragments migration helpers (no duplicate kernels)
-  io/                 # adapters, validity, alignment
-  temporal/           # cadence, compositing
-  compute/            # Dask policy, chunk budgets
-  patches/            # CPU reference labeling and morphology
-  metrics/            # registry + metric implementations
-  output/             # Parquet, manifest, rasters
-  guards/             # scientific + comparison guards
-  pipeline.py         # monthly checkpoint orchestration
-
-ecofragments/
-  main.py             # deprecated calculate_metrics facade only
-  utils/calc_metrics.py  # legacy kernels — characterisation tests only
+├── api.py               # Main public entrypoint (analyze, open_water_cube)
+├── config.py            # HydroConfig schema and validation
+├── models.py            # AnalysisInputs, WaterCube, MetricRecord data classes
+├── section_analysis.py  # Monthly section analysis engine
+├── workflow.py          # High-level DEA/WOfS workflow orchestrator
+├── metrics/             # Vectorized metric implementations
+│   ├── extent.py        # Surface area, APSEC, coverage fraction
+│   ├── persistence.py   # Occurrence frequency, refuge area
+│   ├── patch_bundle.py  # Patch labeling and connected components
+│   ├── morphology.py   # AWRe, AWMSI, pool width statistics
+│   ├── dynamics.py     # Transition rates and temporal classes
+│   └── connectivity.py # River connectivity indices (RC, TCF, DCI)
+├── spatial/             # Spatial operations and channel centrelines
+├── io/                  # Raster and Zarr IO adapters
+└── output/              # Tidy Parquet/CSV and JSON manifest generation
 ```
 
-## Public API
+## Core Execution Flow
 
-| Entry point | Role |
-|-------------|------|
-| `open_water_cube()` | Canonical `WaterCube` boundary |
-| `validate_inputs()` | Contract checks without metric compute |
-| `analyze()` | Core execution; tidy metrics + manifest |
-| `compare_results()` | Refuses incompatible runs by default |
-
-## Compatibility facade
-
-`ecofragments.calculate_metrics` routes to `hydrofragments.compat.calculate_metrics_compat`.
-It emits `DeprecationWarning`, returns a **non-canonical** wide pivot of retained
-metrics, and raises `LegacyMetricMigrationError` for dropped legacy metrics.
-
-Dropped metrics are never recomputed: `PF`, `PLF`, `AWMPA`, `AWMPL`, `AWMPW`, `LPSEC`
-(channel core), NNI, graph centralities.
-
-## Compute model
-
-- Temporal reductions and occurrence stay lazy until the monthly checkpoint.
-- Patch morphology runs on bounded CPU component crops (exact reference).
-- Accelerator planning defaults to `auto`: CUDA is probed when available, but
-  stages run on GPU only after parity and transfer-cost evidence enables them.
-
-## Deferred tranches
-
-Pixel-temporal (recurrence/hydroperiod), HY/dry-down, channel/zones, connectivity,
-and CUDA each have independent decision gates documented in
-`docs/audit/implementation_plan.md`.
+1. **Input Intake:** `open_water_cube()` wraps input DataArrays into a validated `WaterCube`.
+2. **Configuration:** `HydroConfig` configures spatial, temporal, compute, and output settings.
+3. **Monthly Analysis Engine:** `analyze_section_rows()` in `section_analysis.py` processes data month-by-month, bounding memory usage.
+4. **Metric Resolution:** Selected metric families are calculated via optimized NumPy/SciPy/xarray operations.
+5. **Output Assembly:** `write_output_tables()` exports tidy Parquet/CSV metrics tables and JSON provenance manifests.

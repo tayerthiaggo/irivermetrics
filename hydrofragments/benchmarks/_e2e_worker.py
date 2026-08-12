@@ -188,7 +188,7 @@ def _run(payload: dict[str, Any]) -> dict[str, Any]:
 
     resolved_config = HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "watermask_tsfill"},
             "temporal": {
                 "input_cadence": "monthly",

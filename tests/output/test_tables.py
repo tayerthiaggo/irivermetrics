@@ -21,7 +21,7 @@ def metric_record(**changes: object) -> MetricRecord:
     values: dict[str, object] = {
         "run_id": "run-001",
         "config_hash": "a" * 64,
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "catchment_id": "fitzroy",
         "aoi_id": "reach-01",

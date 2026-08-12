@@ -15,7 +15,7 @@ from hydrofragments.config import HydroConfig
 def config() -> HydroConfig:
     return HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",
@@ -38,7 +38,7 @@ def config() -> HydroConfig:
 def manifest_arguments() -> dict[str, object]:
     return {
         "run_id": "run-001",
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "created_at": datetime(2026, 7, 15, 1, 2, 3, tzinfo=timezone.utc),
         "input_fingerprint": {
@@ -85,7 +85,7 @@ def test_build_manifest_contains_complete_reproducibility_context() -> None:
     assert manifest["execution_config"] == resolved.execution_config()
     assert manifest["input_fingerprint"]["digest"] == "sha256:input"
     assert manifest["versions"] == {
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "hydroseason": hydroseason.__version__,
     }
@@ -192,7 +192,7 @@ def test_full_core_bundle_reopens_without_source_data(tmp_path: Path) -> None:
     record = MetricRecord(
         run_id="run-001",
         config_hash=resolved.config_hash,
-        package_version="1.2.0",
+        package_version="0.1.0",
         git_sha="abc123",
         catchment_id="fitzroy",
         aoi_id="reach-01",

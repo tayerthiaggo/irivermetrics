@@ -81,7 +81,7 @@ def _default_config(*, output_dir: str | Path) -> HydroConfig:
     """
     return HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "watermask_tsfill"},
             "temporal": {
                 "input_cadence": "monthly",

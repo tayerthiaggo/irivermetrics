@@ -17,7 +17,7 @@ from hydrofragments.output.manifest import build_run_manifest
 def _config() -> HydroConfig:
     return HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",
@@ -40,7 +40,7 @@ def _config() -> HydroConfig:
 def _base_arguments() -> dict[str, object]:
     return {
         "run_id": "run-hy-001",
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "created_at": datetime(2026, 7, 16, 0, 0, 0, tzinfo=timezone.utc),
         "input_fingerprint": {"digest": "sha256:input"},
@@ -56,7 +56,7 @@ def test_manifest_records_hydroseason_version_when_supplied():
         dependency_versions={"hydroseason": hydroseason.__version__},
     )
     assert manifest["versions"] == {
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "hydroseason": hydroseason.__version__,
     }
@@ -81,7 +81,7 @@ def test_manifest_hydroyear_config_appears_in_resolved_config():
 def test_manifest_versions_unchanged_when_dependency_versions_omitted():
     manifest = build_run_manifest(_config(), **_base_arguments())
     assert manifest["versions"] == {
-        "package_version": "1.2.0",
+        "package_version": "0.1.0",
         "git_sha": "abc123",
         "hydroseason": hydroseason.__version__,
     }

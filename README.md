@@ -1,36 +1,29 @@
 # HydroFragments
 
-> **Status (v1.2.0rc1):** Public package namespace is `hydrofragments`. The legacy
-> `ecofragments.calculate_metrics` facade remains for one deprecation cycle and
-> returns a **non-canonical** wide pivot of retained v1.2 metrics only. Canonical
-> output is tidy Parquet via `hydrofragments.analyze()`. See
-> [docs/migration_v1_2.md](docs/migration_v1_2.md).
+HydroFragments `0.1.0` quantifies river surface-water patch dynamics from aligned water and valid-observation time series.
 
-HydroFragments quantifies **surface-water patch dynamics** in intermittent rivers
-from binary or WaterMask-TSFill monthly water time series. Scope is river
-surface water only — not generic terrestrial/urban patch metrics, and not flow,
-depth, or ecological condition.
+> iRiverMetrics is now HydroFragments.
 
-## Shipped in v1.2.0 core (`contracts_core`)
+## What it measures
 
-- Occurrence (season-stratified, valid-observation denominator)
-- Refuge area
-- APSEC (fixed AOI denominator)
-- Number of pools, LPI, AWRe, AWMSI
+HydroFragments derives surface-water landscape metrics across seven metric families:
+- **Extent:** Water surface area, percentage of section covered (APSEC), and valid observation bounds.
+- **Persistence:** Season-stratified water occurrence frequency and refuge area.
+- **Fragmentation:** Pool count (number of pools), largest patch index (LPI), and patch size distributions.
+- **Morphology:** Area-weighted relative edge (AWRe), area-weighted mean shape index (AWMSI), and pool width statistics.
+- **Dynamics:** Wetting and drying transition rates and temporal persistence classes.
+- **Channel:** Channel-aligned wet reach profile and pool spacing along drainage centrelines.
+- **Connectivity:** Structural river connectivity indices (RC, TCF, DCI).
 
-Explicitly deferred: LPSEC, HY/dry-down, connectivity (RC/TCF/DCI runtime),
-MESH/width distributions, and CUDA acceleration.
+## Installation
 
-## Install
+CI-tested on Python 3.10 and 3.11.
 
 ```bash
 git clone https://github.com/tayerthiaggo/HydroFragments.git
 cd HydroFragments
 python -m pip install -e ".[test]"
 ```
-
-CPU-only install: no CuPy/CUDA packages are required. Optional GPU extras are not
-enabled in this release candidate.
 
 ## Quickstart
 
@@ -72,30 +65,33 @@ result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
 print(result.metrics_table[["date", "metric", "value"]].head())
 ```
 
-## Legacy import (deprecated)
+## Outputs
 
-```python
-from ecofragments import calculate_metrics  # emits DeprecationWarning
-```
+`analyze()` writes reproducible tidy tables and JSON manifests to `config.output.output_dir`:
+- `metrics.parquet` / `metrics.csv`: Tidy metric values with timestamps, AOI IDs, and unit attributes.
+- `metric_coverage.parquet` / `metric_coverage.csv`: Observation validity and coverage fraction records.
+- `manifest.json`: Full run provenance, hash digest, software environment, and input configuration snapshot.
 
-Dropped legacy metrics (`PF`, `PLF`, `AWMPA`, `AWMPL`, `AWMPW`) raise
-`LegacyMetricMigrationError` when explicitly requested. They are never restored
-in compatibility output.
+## Scientific scope and limitations
+
+HydroFragments quantifies surface-water patch geometry and landscape structure in intermittent river corridors from satellite-derived surface water masks. It does not model subsurface hydrology, water depth, flow velocity, or ecological condition.
 
 ## Documentation
 
-- [Docs index](docs/index.md)
+- [Docs Index](docs/index.md)
+- [Project Overview](docs/project-overview.md)
 - [Architecture](docs/architecture.md)
-- [Input format](docs/input_format.md)
-- [Migration v1.2](docs/migration_v1_2.md)
-- [Historical `calculate_metrics` reference](docs/module2.md) (legacy, quarantined)
+- [Input Format](docs/input_format.md)
+- [Metric Specification](docs/metric_specification.md)
+- [Scientific Foundation](docs/scientific-foundation.md)
+- [Validation Status](docs/validation_status.md)
+- [Testing Guide](docs/testing.md)
+- [Changelog](CHANGELOG.md)
 
 ## Citation
 
-Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D.
-(2023) Ecohydrological metrics derived from multispectral images to characterize
-surface water in an intermittent river, *Journal of Hydrology*, DOI
-[10.1016/j.jhydrol.2023.129087](https://doi.org/10.1016/j.jhydrol.2023.129087).
+Tayer T.C., Beesley L.S., Douglas M.M., Bourke S.A., Meredith K., McFarlane D. (2023) Ecohydrological metrics derived from multispectral images to characterize surface water in an intermittent river, *Journal of Hydrology*, DOI [10.1016/j.jhydrol.2023.129087](https://doi.org/10.1016/j.jhydrol.2023.129087).
 
-Lineage note: this repository is a clean HydroFragments v1.2 rewrite; predecessor
-public history is not preserved (Decision Q10 option C).
+## License
+
+[MIT License](LICENSE)

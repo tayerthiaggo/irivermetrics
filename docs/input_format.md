@@ -1,66 +1,26 @@
-# Input format (HydroFragments v1.2)
+# HydroFragments Input Formats
 
-## Canonical object
+HydroFragments accepts 3D raster time series representing surface water observations across time, y, and x dimensions.
 
-`open_water_cube()` returns a `WaterCube` with:
+## Input Kinds
 
-- `water` — boolean or encoded water state
-- `valid_obs` — boolean valid-observation mask
-- `cadence` — `monthly` or `submonthly`
-- optional provenance metadata
+HydroFragments supports three input kinds configured via `HydroConfig`:
 
-## Supported sources
+1. **`generic_binary`:**
+   - Boolean or 0/1 integer arrays.
+   - `1` (or `True`) = wet pixel, `0` (or `False`) = dry pixel.
 
-### WaterMask-TSFill Zarr / Dataset
+2. **`watermask_tsfill`:**
+   - Standard WaterMask-TSFill monthly composite arrays.
+   - Values: `0` = dry, `1` = wet, `254` / `255` = invalid/unobserved.
 
-Variables: `water_mask`, optional `observed`, `confidence`, `method_flag`.
+3. **`dea_wofs`:**
+   - Digital Earth Australia WOfS bitflag arrays.
+   - Bit flags parsed automatically to derive water and valid observation masks.
 
-Sentinel values:
+## Spatial and Temporal Requirements
 
-| Value | Meaning |
-|-------|---------|
-| `0` | dry |
-| `1` | water |
-| `254` | outside AOI |
-| `255` | unobserved |
-
-Sentinels must be decoded **before** any signed cast. They are never counted as
-dry or water.
-
-### Generic binary pair
-
-`water` + `valid_obs` arrays or a single binary mask (`1` = water) with implicit
-`valid_obs=True` everywhere.
-
-### Generic probability (config-gated)
-
-Requires `input.kind = generic_probability` plus threshold provenance fields in
-`HydroConfig`.
-
-## Validity policy
-
-Locked policy name: `p_native_season_stratified_v1` (Decision U2/Q1).
-
-Temporal aggregates (occurrence, refuge area, recurrence, hydroperiod) use
-season-stratified valid-observation denominators — not total timestep count.
-
-## Spatial alignment
-
-- Raster, AOI, and optional drainage must agree in shape, CRS, transform, and time.
-- Misalignment raises; no silent resampling.
-- Geographic CRS inputs require explicit reprojection or per-pixel area policy.
-
-## Monthly compositing
-
-Already-monthly upstream products keep supplied provenance (`composite_owner:
-upstream`). HydroFragments does not invent a second monthly composite from a single
-upstream monthly mask.
-
-Dual-composite dry-down metrics remain blocked without raw observations or both
-required composites (Decision U3/Q3).
-
-## Configuration traceability
-
-Scientific settings hash to `config_hash` (see `hydrofragments.config.HydroConfig`).
-Execution paths, worker counts, and accelerator choice are excluded from
-`config_hash` but recorded separately in the run manifest.
+- **Dimensions:** DataArrays must have dimensions `("time", "y", "x")`.
+- **Coordinate Alignment:** `water` and `valid_obs` masks must share identical spatial coordinates and time stamps.
+- **CRS:** Projected coordinate reference systems with linear meter units (e.g., `EPSG:3577` Albers Equal Area) are required for accurate area and length calculations.
+- **Cadence:** Monthly composite series are standard. Irregular sub-monthly observations can be composited using `hydroseason` prior to metric analysis.

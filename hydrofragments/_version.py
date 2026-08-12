@@ -1,3 +1,3 @@
-"""Package version for HydroFragments v1.2 release candidate."""
+"""HydroFragments package version."""
 
-__version__ = "1.2.0rc1"
+__version__ = "0.1.0"

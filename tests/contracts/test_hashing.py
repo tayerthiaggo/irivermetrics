@@ -12,7 +12,7 @@ GOLDEN_MINIMAL_CONFIG_HASH = (
 
 def config_mapping() -> dict[str, object]:
     return {
-        "config_schema_version": "1.2.0",
+        "config_schema_version": "1.0.0",
         "input": {"kind": "generic_binary"},
         "temporal": {
             "input_cadence": "monthly",

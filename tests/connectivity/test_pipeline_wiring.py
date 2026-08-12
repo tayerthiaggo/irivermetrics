@@ -16,7 +16,7 @@ from hydrofragments.spatial.context import SpatialContext
 def _minimal_config() -> HydroConfig:
     return HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",

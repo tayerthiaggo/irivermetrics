@@ -7,7 +7,7 @@ import pytest
 
 def minimal_config(**overrides: object) -> dict[str, object]:
     config: dict[str, object] = {
-        "config_schema_version": "1.2.0",
+        "config_schema_version": "1.0.0",
         "input": {"kind": "generic_binary"},
         "temporal": {
             "input_cadence": "monthly",

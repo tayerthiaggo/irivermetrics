@@ -119,7 +119,7 @@ def test_detect_hy_anchors_records_hydroseason_version():
 def test_local_hydrofragments_config_maps_to_hydroseason_config():
     local = HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",

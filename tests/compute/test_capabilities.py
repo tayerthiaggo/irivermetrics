@@ -91,7 +91,7 @@ def test_analyze_manifest_records_actual_backend_for_each_stage(tmp_path) -> Non
     cube = WaterCube(water, valid_obs, "generic_binary", "monthly")
     config = HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",

@@ -1,19 +1,15 @@
-"""M13 — automated vocabulary scan for prohibited manager/paper-facing claims.
+"""Automated vocabulary scan for prohibited manager/paper-facing claims.
 
-Per docs/audit/manager_interpretation_audit.md and scientific_metrics_audit.md,
-certain claim shapes must never appear in manager- or publication-facing
+Certain claim shapes must never appear in manager- or publication-facing
 documentation because the underlying evidence does not support them:
 
 - depth/volume inference from width or extent
 - flow/discharge/recession-as-hydrograph claims for dry-down/contraction
 - "permanent" refuge designations
-- unsupported novelty claims (HY detection duplicating Tayer 2025/2026)
+- unsupported novelty claims
 - predictive drying-date claims
 
-Scanned surface: docs/for-managers.md and docs/validation_status.md — the two
-audience-facing documents this milestone produces. Internal engineering docs
-(spec, audits) are allowed to discuss these concepts analytically and are not
-scanned.
+Scanned surface: docs/for-managers.md and docs/validation_status.md.
 
 Disclaiming a misreading ("width tells you nothing about depth") must stay
 legal; asserting it ("width means more water") must not. Each pattern below

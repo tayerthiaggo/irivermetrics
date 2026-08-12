@@ -96,7 +96,7 @@ def _synthetic_case(spec: BenchmarkSpec) -> tuple[xr.DataArray, xr.DataArray]:
 def _config() -> HydroConfig:
     return HydroConfig.from_mapping(
         {
-            "config_schema_version": "1.2.0",
+            "config_schema_version": "1.0.0",
             "input": {"kind": "generic_binary"},
             "temporal": {
                 "input_cadence": "monthly",
