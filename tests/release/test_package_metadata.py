@@ -3,7 +3,13 @@ from __future__ import annotations
 import importlib.metadata
 from pathlib import Path
 
-import pytest
+import tomllib
+from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
+
+
+def _load_pyproject() -> dict:
+    return tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
 
 
 def test_pyproject_names_only_current_package() -> None:
@@ -32,10 +38,31 @@ def test_installed_distribution_metadata_matches_release() -> None:
     assert "river" in summary.lower() or "surface water" in summary.lower()
 
 
-def test_cpu_only_import_has_no_cupy_dependency() -> None:
-    try:
-        import cupy  # noqa: F401
-    except ImportError:
-        pytest.skip("CuPy not installed; CPU-only path is the default here")
-    requires = importlib.metadata.requires("hydrofragments") or []
-    assert not any("cupy" in requirement.lower() for requirement in requires)
+def test_mandatory_dependencies_exclude_cupy() -> None:
+    project = _load_pyproject()
+    mandatory = [Requirement(req) for req in project["dependencies"]]
+    assert not any(req.name.lower().startswith("cupy") for req in mandatory)
+
+
+def test_cuda_extra_declares_cupy_optional_dependency() -> None:
+    project = _load_pyproject()
+    cuda = [Requirement(req) for req in project["optional-dependencies"]["cuda"]]
+    assert any(req.name.lower().startswith("cupy") for req in cuda)
+
+
+def test_requires_python_matches_pinned_native_stack() -> None:
+    project = _load_pyproject()
+    assert project["requires-python"] == ">=3.10,<3.14"
+
+    hydroseason_requires = importlib.metadata.metadata("hydroseason").get(
+        "Requires-Python", ""
+    )
+    assert hydroseason_requires.startswith(">=3.10")
+
+    hydrofragments_spec = SpecifierSet(project["requires-python"])
+    hydroseason_spec = SpecifierSet(hydroseason_requires)
+    for minor in (10, 11, 12, 13):
+        version = f"3.{minor}.0"
+        if hydrofragments_spec.contains(version):
+            assert hydroseason_spec.contains(version)
+    assert not hydrofragments_spec.contains("3.14.0")

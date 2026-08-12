@@ -3,7 +3,7 @@ name = "hydrofragments"
 version = "0.1.0"
 description = "HydroFragments: surface-water patch dynamics metrics for intermittent rivers"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.14"
 license = { file = "LICENSE" }
 authors = [{ name = "Thiaggo de Castro Tayer" }]
 keywords = ["hydrology", "surface-water", "remote-sensing", "intermittent-rivers"]
@@ -13,6 +13,8 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
@@ -76,5 +78,6 @@ include = ["hydrofragments*"]
 testpaths = ["tests"]
 addopts = "-q"
 markers = [
-  "slow: full pipeline integration tests (deselect with '-m not slow')"
+  "slow: full pipeline integration tests (deselect with '-m not slow')",
+  "hardware: optional GPU/CUDA hardware smoke tests"
 ]

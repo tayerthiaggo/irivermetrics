@@ -4,6 +4,20 @@ import json
 from pathlib import Path
 import sys
 
+import pytest
+import tomllib
+from packaging.requirements import Requirement
+
+
+@pytest.fixture(autouse=True)
+def _isolate_cupy_import_state():
+    saved = sys.modules.pop("cupy", None)
+    yield
+    if saved is not None:
+        sys.modules["cupy"] = saved
+    else:
+        sys.modules.pop("cupy", None)
+
 
 def test_cpu_baseline_is_deterministic_and_records_stage_backends() -> None:
     from hydrofragments.benchmarks.cpu_baseline import run_cpu_baseline
@@ -52,10 +66,10 @@ def test_cpu_baseline_writes_machine_and_human_reports(tmp_path) -> None:
 
 
 def test_cuda_dependencies_are_optional_in_project_metadata() -> None:
-    import tomllib
-
     project = tomllib.loads(
         Path("pyproject.toml").read_text(encoding="utf-8")
     )["project"]
-    assert not any("cupy" in requirement.lower() for requirement in project["dependencies"])
-    assert any("cupy" in requirement.lower() for requirement in project["optional-dependencies"]["cuda"])
+    mandatory = [Requirement(req) for req in project["dependencies"]]
+    cuda = [Requirement(req) for req in project["optional-dependencies"]["cuda"]]
+    assert not any(req.name.lower().startswith("cupy") for req in mandatory)
+    assert any(req.name.lower().startswith("cupy") for req in cuda)
