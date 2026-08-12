@@ -177,9 +177,9 @@ def test_analyze_section_rows_threads_configured_threshold_end_to_end(tmp_path):
     assert resolved == 64
 
     with patch.object(
-        patches_module,
+        labels_module,
         "label_components",
-        wraps=patches_module.label_components,
+        wraps=labels_module.label_components,
     ) as spy:
         analyze_section_rows(
             water,

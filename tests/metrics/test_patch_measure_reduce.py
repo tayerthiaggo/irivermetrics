@@ -49,6 +49,7 @@ from hydrofragments.metrics.patches import (
     reduce_patch_properties,
 )
 from hydrofragments.patches import label_components
+from hydrofragments.patches import labels as labels_module
 from tests.fixtures.analytic_masks import patch_bundle_width_fixture
 
 
@@ -229,6 +230,12 @@ def _config(tmp_path, *, profiles=("contracts_core", "secondary")):
     )
 
 
+def _config_at(tmp_path, subdir: str, *, profiles=("contracts_core", "secondary")):
+    path = tmp_path / subdir
+    path.mkdir(parents=True, exist_ok=True)
+    return _config(path, profiles=profiles)
+
+
 def _analyze_result_metric_values(result) -> dict[str, float]:
     frame = result.metrics_table
     values: dict[str, float] = {}
@@ -264,12 +271,13 @@ def test_analyze_with_fragmented_analysis_mask_matches_default_all_true_mask(
     )
     cube_default = open_water_cube(water, input_kind="generic_binary")
 
-    config = _config(tmp_path)
+    config_windowed = _config_at(tmp_path, "windowed")
+    config_default = _config_at(tmp_path, "default")
     result_windowed = analyze(
-        cube_windowed, aoi_id="windowed", config=config, pixel_size_m=30.0
+        cube_windowed, aoi_id="windowed", config=config_windowed, pixel_size_m=30.0
     )
     result_default = analyze(
-        cube_default, aoi_id="default", config=config, pixel_size_m=30.0
+        cube_default, aoi_id="default", config=config_default, pixel_size_m=30.0
     )
 
     windowed_values = _analyze_result_metric_values(result_windowed)
@@ -404,7 +412,7 @@ def test_one_label_components_call_per_window_regardless_of_metric_families(
     config = _config(tmp_path, profiles=("contracts_core", "secondary"))
 
     with mock.patch.object(
-        patches_module, "label_components", wraps=patches_module.label_components
+        labels_module, "label_components", wraps=labels_module.label_components
     ) as spy:
         analyze(cube, aoi_id="windowed", config=config, pixel_size_m=30.0)
 

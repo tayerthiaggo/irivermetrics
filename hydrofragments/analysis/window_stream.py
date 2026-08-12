@@ -21,6 +21,11 @@ from hydrofragments.metrics.patches import PatchProperties
 from hydrofragments.spatial.active_windows import AnalysisWindow
 
 DEFAULT_WORKER_MEMORY_FRACTION = 0.5
+# Values below this are treated as local-labeling-threshold overrides only
+# (see section_analysis._resolve_local_label_threshold_bytes), not as worker
+# memory budgets -- otherwise a 64-byte test override would shrink component
+# measurement budgets to unusable sizes.
+_MIN_WORKER_BUDGET_TARGET_BYTES = 1024
 
 # Names of export-only checkpoint consumers that must not be built when exports
 # are disabled (Task 7/8 will register real classes against these literals).
@@ -113,6 +118,8 @@ def resolve_worker_byte_budget(
         if config.compute.target_chunk_bytes is not None
         else ComputePolicy().target_chunk_bytes
     )
+    if target < _MIN_WORKER_BUDGET_TARGET_BYTES:
+        target = ComputePolicy().target_chunk_bytes
     fraction = (
         config.compute.worker_memory_fraction
         if config.compute.worker_memory_fraction is not None

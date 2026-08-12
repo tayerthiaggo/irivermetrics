@@ -537,8 +537,29 @@ def test_netcdf_optional_extra_declared() -> None:
     assert "h5netcdf>=1.4" in pyproject
 
 
+def _require_netcdf_backend() -> None:
+    """Skip unless h5py and h5netcdf are healthy in this pytest session."""
+    import importlib
+    import sys
+
+    try:
+        import h5py  # noqa: F401
+    except ImportError:
+        pytest.skip("h5py not installed")
+
+    for name in list(sys.modules):
+        if name == "h5netcdf" or name.startswith("h5netcdf."):
+            del sys.modules[name]
+    try:
+        h5netcdf = importlib.import_module("h5netcdf")
+    except ImportError:
+        pytest.skip("h5netcdf not installed")
+    if getattr(h5netcdf.core, "no_h5py", False):
+        pytest.skip("h5py backend not available for h5netcdf")
+
+
 def test_netcdf_roundtrip_when_extra_installed(tmp_path: Path) -> None:
-    pytest.importorskip("h5netcdf")
+    _require_netcdf_backend()
     template, grid = _georef_template((2, 2))
     dataset = xr.Dataset(
         {
@@ -578,3 +599,5 @@ def test_netcdf_missing_extra_raises_actionable_error(tmp_path: Path) -> None:
             if "h5netcdf" in sys.modules:
                 monkeypatch.delitem(sys.modules, "h5netcdf", raising=False)
             write_verified_netcdf(dataset, path, grid=grid, metadata=_metadata())
+
+    _require_netcdf_backend()

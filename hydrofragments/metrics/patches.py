@@ -117,7 +117,6 @@ def label_and_measure_window(
                 bucket,
                 pixel_size_m=pixel_size_m,
                 include_width=include_width,
-                max_component_bytes=max_component_bytes,
                 window_id=window_id,
             )
         )

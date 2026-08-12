@@ -105,7 +105,10 @@ def _hand_traceable_temporal_cube() -> WaterCube:
     )
 
 
-def _pixel_temporal_config(tmp_path) -> HydroConfig:
+def _pixel_temporal_config(tmp_path, *, subdir: str | None = None) -> HydroConfig:
+    output_dir = tmp_path / subdir if subdir is not None else tmp_path
+    if subdir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
     return HydroConfig.from_mapping(
         {
             "config_schema_version": "1.0.0",
@@ -115,7 +118,7 @@ def _pixel_temporal_config(tmp_path) -> HydroConfig:
                 "monthly_composite": "supplied",
                 "composite_owner": "caller",
             },
-            "output": {"output_dir": str(tmp_path)},
+            "output": {"output_dir": str(output_dir)},
             "metric_profiles": ["pixel_temporal"],
         }
     )
@@ -152,15 +155,21 @@ def test_temporal_summaries_materialize_in_bounded_calls(tmp_path, n_years):
 
 def test_temporal_summaries_materialization_does_not_scale_with_years(tmp_path):
     """Direct before/after comparator: 5-year run must not cost more computes than 2-year."""
-    calls_2y = _count_dask_computes(_dask_cube(2), _pixel_temporal_config(tmp_path))
-    calls_5y = _count_dask_computes(_dask_cube(5), _pixel_temporal_config(tmp_path))
+    calls_2y = _count_dask_computes(
+        _dask_cube(2), _pixel_temporal_config(tmp_path, subdir="2y")
+    )
+    calls_5y = _count_dask_computes(
+        _dask_cube(5), _pixel_temporal_config(tmp_path, subdir="5y")
+    )
     assert calls_2y == calls_5y, (
         f"materialization count scaled with year count ({calls_2y} vs {calls_5y}); "
         "temporal summaries are not batched into one compute"
     )
 
 
-def _recurrence_and_hydroperiod_values(tmp_path, cube: WaterCube) -> dict[str, float]:
+def _recurrence_and_hydroperiod_values(
+    tmp_path, cube: WaterCube, *, subdir: str | None = None
+) -> dict[str, float]:
     """Run ``analyze()`` and pull out {"recurrence": v, "hydroperiod_<year>": v, ...}.
 
     Reads straight from ``HydroResult.metrics_table`` (the tidy output
@@ -168,7 +177,7 @@ def _recurrence_and_hydroperiod_values(tmp_path, cube: WaterCube) -> dict[str, f
     is the same surface real callers and downstream tables consume -- not an
     internal shortcut into ``_temporal_profile_records`` itself.
     """
-    config = _pixel_temporal_config(tmp_path)
+    config = _pixel_temporal_config(tmp_path, subdir=subdir)
     result = analyze(cube, aoi_id="demo", config=config, pixel_size_m=30.0)
     table = result.metrics_table
     values: dict[str, float] = {}
@@ -302,8 +311,12 @@ def test_batched_temporal_summaries_match_eager_nondask_values(tmp_path, n_years
     ``_temporal_profile_records`` -> ``metrics_table`` path, and the
     resulting recurrence + per-year hydroperiod values must match exactly.
     """
-    dask_values = _recurrence_and_hydroperiod_values(tmp_path, _dask_cube(n_years))
-    eager_values = _recurrence_and_hydroperiod_values(tmp_path, _eager_cube(n_years))
+    dask_values = _recurrence_and_hydroperiod_values(
+        tmp_path, _dask_cube(n_years), subdir=f"dask_{n_years}y"
+    )
+    eager_values = _recurrence_and_hydroperiod_values(
+        tmp_path, _eager_cube(n_years), subdir=f"eager_{n_years}y"
+    )
 
     assert dask_values.keys() == eager_values.keys(), (
         "dask and eager runs emitted different sets of metric rows: "
