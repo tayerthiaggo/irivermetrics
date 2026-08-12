@@ -26,14 +26,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Mapping, Sequence
+from typing import Iterable, Mapping, Sequence
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 from scipy.stats import theilslopes
 
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import ApsecRecord
+from hydrofragments.schema import EdgeFlag
 
 
 class DualCompositeUnavailableError(ValueError):
@@ -281,6 +283,185 @@ class RefugeSpatialStabilityResult:
     jaccard: float | None
 
 
+@dataclass(frozen=True)
+class EndDryState:
+    """Water and validity at one hydrological year's end-dry anchor month."""
+
+    hy: int
+    date: datetime
+    water: "npt.NDArray[np.bool_]"
+    valid_obs: "npt.NDArray[np.bool_]"
+    hy_confidence: str
+    anchor_missing: bool = False
+
+
+@dataclass(frozen=True)
+class DynamicsSupport:
+    """Aligned monthly LPI/LPSEC support for reconnection timing."""
+
+    lpi_by_month: tuple[tuple[datetime, float], ...]
+    lpsec_by_month: tuple[tuple[datetime, float], ...] | None = None
+
+
+def _month_key(value: "datetime | date | pd.Timestamp") -> tuple[int, int]:
+    ts = pd.Timestamp(value)
+    return int(ts.year), int(ts.month)
+
+
+def _as_month_datetime(value: "datetime | date | pd.Timestamp") -> datetime:
+    ts = pd.Timestamp(value)
+    return datetime(int(ts.year), int(ts.month), 1)
+
+
+def _series_lookup(
+    series: Sequence[tuple["datetime | date", float]],
+) -> dict[tuple[int, int], float]:
+    return {_month_key(month): float(value) for month, value in series}
+
+
+def _sorted_series(
+    lookup: Mapping[tuple[int, int], float],
+) -> list[tuple[datetime, float]]:
+    return [
+        (_as_month_datetime(datetime(year, month, 1)), float(value))
+        for (year, month), value in sorted(lookup.items())
+    ]
+
+
+def _search_window_months(
+    *,
+    end_dry_month: "datetime | date",
+    next_end_dry_month: "datetime | date | None",
+    cube_month_keys: Sequence[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    end_key = _month_key(end_dry_month)
+    next_key = _month_key(next_end_dry_month) if next_end_dry_month is not None else None
+    window: list[tuple[int, int]] = []
+    for month_key in sorted(cube_month_keys):
+        if month_key <= end_key:
+            continue
+        if next_key is not None and month_key >= next_key:
+            break
+        window.append(month_key)
+    return window
+
+
+def _lpsec_complete_for_window(
+    *,
+    lpsec_lookup: Mapping[tuple[int, int], float],
+    window_months: Sequence[tuple[int, int]],
+) -> bool:
+    if not window_months:
+        return False
+    for month_key in window_months:
+        value = lpsec_lookup.get(month_key)
+        if value is None or not np.isfinite(value):
+            return False
+    return True
+
+
+def _slice_series_for_window(
+    lookup: Mapping[tuple[int, int], float],
+    *,
+    window_months: Sequence[tuple[int, int]],
+) -> list[tuple[datetime, float]]:
+    return [
+        (
+            _as_month_datetime(datetime(month_key[0], month_key[1], 1)),
+            float(lookup[month_key]),
+        )
+        for month_key in window_months
+        if month_key in lookup and np.isfinite(lookup[month_key])
+    ]
+
+
+@dataclass(frozen=True)
+class RefugeStabilityEvaluation:
+    """Scalar refuge stability with machine-readable edge semantics."""
+
+    jaccard: float | None
+    edge_flag: EdgeFlag | None
+    common_valid_fraction: float | None
+    n_common_valid_pixels: int | None
+    n_union_pixels: int | None
+
+
+def evaluate_refuge_spatial_stability(
+    *,
+    current: EndDryState,
+    previous: EndDryState | None,
+    analysis_mask: "npt.NDArray[np.bool_] | None",
+    min_valid_fraction: float,
+) -> RefugeStabilityEvaluation:
+    """Compute HY-pair refuge stability on common-valid support (spec §6.16)."""
+    if previous is None:
+        return RefugeStabilityEvaluation(
+            jaccard=None,
+            edge_flag=EdgeFlag.NO_PREVIOUS_HY,
+            common_valid_fraction=None,
+            n_common_valid_pixels=None,
+            n_union_pixels=None,
+        )
+    if current.anchor_missing or previous.anchor_missing:
+        return RefugeStabilityEvaluation(
+            jaccard=None,
+            edge_flag=EdgeFlag.MISSING_HY_ANCHOR,
+            common_valid_fraction=None,
+            n_common_valid_pixels=None,
+            n_union_pixels=None,
+        )
+    if current.hy != previous.hy + 1:
+        return RefugeStabilityEvaluation(
+            jaccard=None,
+            edge_flag=EdgeFlag.NONCONSECUTIVE_HY,
+            common_valid_fraction=None,
+            n_common_valid_pixels=None,
+            n_union_pixels=None,
+        )
+
+    mask = (
+        analysis_mask
+        if analysis_mask is not None
+        else np.ones_like(current.water, dtype=bool)
+    )
+    common_valid = mask & previous.valid_obs & current.valid_obs
+    mask_count = int(mask.sum())
+    common_count = int(common_valid.sum())
+    common_fraction = float(common_count / mask_count) if mask_count else float("nan")
+    if mask_count == 0 or common_fraction < min_valid_fraction:
+        return RefugeStabilityEvaluation(
+            jaccard=None,
+            edge_flag=EdgeFlag.LOW_COMMON_VALID_SUPPORT,
+            common_valid_fraction=common_fraction,
+            n_common_valid_pixels=common_count,
+            n_union_pixels=None,
+        )
+
+    previous_refuge = previous.water & common_valid
+    current_refuge = current.water & common_valid
+    union_count = int(np.logical_or(previous_refuge, current_refuge).sum())
+    if union_count == 0:
+        return RefugeStabilityEvaluation(
+            jaccard=float("nan"),
+            edge_flag=EdgeFlag.EMPTY_REFUGE_UNION,
+            common_valid_fraction=common_fraction,
+            n_common_valid_pixels=common_count,
+            n_union_pixels=0,
+        )
+
+    result = compute_refuge_spatial_stability(
+        current_end_dry_footprint=current_refuge,
+        previous_end_dry_footprint=previous_refuge,
+    )
+    return RefugeStabilityEvaluation(
+        jaccard=result.jaccard,
+        edge_flag=None,
+        common_valid_fraction=common_fraction,
+        n_common_valid_pixels=common_count,
+        n_union_pixels=union_count,
+    )
+
+
 def compute_refuge_spatial_stability(
     *,
     current_end_dry_footprint: "npt.NDArray[np.bool_]",
@@ -309,10 +490,14 @@ def compute_refuge_spatial_stability(
 
 __all__ = [
     "DualCompositeUnavailableError",
+    "DynamicsSupport",
+    "EndDryState",
     "ExtentContractionResult",
     "ReconnectionTimingResult",
     "RefugeSpatialStabilityResult",
+    "RefugeStabilityEvaluation",
     "compute_extent_contraction",
     "compute_reconnection_timing",
     "compute_refuge_spatial_stability",
+    "evaluate_refuge_spatial_stability",
 ]

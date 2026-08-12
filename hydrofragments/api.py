@@ -12,7 +12,7 @@ import pandas as pd
 import xarray as xr
 
 from hydrofragments._version import __version__
-from hydrofragments.section_analysis import analyze_section_rows
+from hydrofragments.section_analysis import DynamicsSupportCollector, analyze_section_rows
 from hydrofragments.config import HydroConfig
 from hydrofragments.compute import resolve_execution_plan
 from hydrofragments.guards import ComparisonGuardError, guard_comparison
@@ -49,7 +49,19 @@ from hydrofragments.schema import (
     WarningFlag,
 )
 from hydrofragments.spatial import SpatialContext
+from hydrofragments.metrics.dynamics import (
+    DynamicsSupport,
+    EndDryState,
+    compute_reconnection_timing,
+    evaluate_refuge_spatial_stability,
+    _lpsec_complete_for_window,
+    _month_key,
+    _search_window_months,
+    _series_lookup,
+    _slice_series_for_window,
+)
 from hydrofragments.temporal import detect_cadence, detect_hy_anchors
+from hydrofragments.temporal.hydroyear import HyAnchorResult
 
 
 def _describe_chunks(array: xr.DataArray) -> str:
@@ -678,34 +690,190 @@ def _temporal_profile_records(
     return records
 
 
-def _extent_contraction_records(
+_DYNAMICS_PROFILE_METRIC_IDS = frozenset(
+    {
+        "extent_contraction",
+        "reconnection_timing",
+        "refuge_spatial_stability",
+    }
+)
+_DYNAMICS_CUBE_METRIC_IDS = frozenset(
+    {"reconnection_timing", "refuge_spatial_stability"}
+)
+
+
+def _build_lpsec_by_month(
     *,
-    anchors: pd.DataFrame,
-    max_water: Sequence[ApsecRecord],
-    median: Sequence[ApsecRecord],
+    cube: WaterCube,
+    context: SpatialContext,
+    wet_profiles: Sequence[Sequence[bool]],
+    segment_lengths_m: Sequence[float],
+) -> tuple[tuple[datetime, float], ...]:
+    wet = np.asarray(wet_profiles, dtype=bool)
+    lengths = np.asarray(segment_lengths_m, dtype=float)
+    times = pd.to_datetime(cube.water["time"].values)
+    series: list[tuple[datetime, float]] = []
+    for timestamp, states in zip(times, wet):
+        wetted_length_m = float(lengths[states].sum())
+        lpsec = compute_lpsec(wetted_length_m, context=context)
+        series.append((timestamp.to_pydatetime(), float(lpsec.value)))
+    return tuple(series)
+
+
+def _dynamics_profile_records(
+    *,
+    selected_metric_ids: frozenset[str],
+    hy_anchors: HyAnchorResult,
+    monthly_support: DynamicsSupport,
+    refuge_states: Sequence[EndDryState],
     config: HydroConfig,
-    run_id: str,
-    catchment_id: str,
-    aoi_id: str,
-    source: str,
-    resolution_m: float,
-    crs: str,
-    git_sha: str,
+    run_context: Mapping[str, object],
+    max_water: Sequence[ApsecRecord] | None = None,
+    median: Sequence[ApsecRecord] | None = None,
+    analysis_mask: np.ndarray | None = None,
 ) -> list[MetricRecord]:
+    run_id = str(run_context["run_id"])
+    catchment_id = str(run_context["catchment_id"])
+    aoi_id = str(run_context["aoi_id"])
+    source = str(run_context["source"])
+    resolution_m = float(run_context["resolution_m"])
+    crs = str(run_context["crs"])
+    git_sha = str(run_context["git_sha"])
+
     records: list[MetricRecord] = []
-    for anchor in anchors.to_dict(orient="records"):
-        result = compute_extent_contraction(
-            max_water=max_water,
-            median=median,
-            anchor=anchor,
-            config=config,
+    anchors = hy_anchors.anchors.sort_values("hy", kind="stable")
+    anchor_rows = anchors.to_dict(orient="records")
+    end_dry_by_hy = {
+        int(state.hy): state
+        for state in refuge_states
+    }
+    lpi_lookup = _series_lookup(monthly_support.lpi_by_month)
+    lpsec_lookup = (
+        _series_lookup(monthly_support.lpsec_by_month)
+        if monthly_support.lpsec_by_month is not None
+        else {}
+    )
+    cube_month_keys = sorted(lpi_lookup)
+
+    for index, anchor in enumerate(anchor_rows):
+        hy = int(anchor["hy"])
+        end_dry_month = anchor.get("end_dry_month")
+        next_end_dry = (
+            anchor_rows[index + 1].get("end_dry_month")
+            if index + 1 < len(anchor_rows)
+            else None
         )
-        if result is None:
-            continue
-        for composite, value, low_df in (
-            ("max_water", result.slope_pct_per_month, result.low_df),
-            ("median", result.median_slope_pct_per_month, result.median_low_df),
-        ):
+        confidence = str(anchor.get("confidence", "unassigned"))
+
+        if "extent_contraction" in selected_metric_ids:
+            if max_water is not None and median is not None:
+                result = compute_extent_contraction(
+                    max_water=max_water,
+                    median=median,
+                    anchor=anchor,
+                    config=config,
+                )
+                if result is not None:
+                    for composite, value, low_df in (
+                        ("max_water", result.slope_pct_per_month, result.low_df),
+                        ("median", result.median_slope_pct_per_month, result.median_low_df),
+                    ):
+                        records.append(
+                            MetricRecord(
+                                run_id=run_id,
+                                config_hash=config.config_hash,
+                                package_version=__version__,
+                                git_sha=git_sha,
+                                catchment_id=catchment_id,
+                                aoi_id=aoi_id,
+                                zone="AOI",
+                                hy=result.hy,
+                                metric="extent_contraction",
+                                metric_family=MetricFamily.DYNAMICS,
+                                value=None
+                                if low_df or not np.isfinite(value)
+                                else float(value),
+                                unit="percent_per_month",
+                                value_type=ValueType.HY_SUMMARY,
+                                hy_confidence=result.hy_confidence,
+                                composite_sensitive=result.composite_sensitive,
+                                monthly_composite=composite,
+                                metric_dependency=MetricDependency.HY_ANCHOR,
+                                is_reportable=not low_df and np.isfinite(value),
+                                warning_flags=(
+                                    (WarningFlag.COMPOSITE_SENSITIVE,)
+                                    if result.composite_sensitive
+                                    else ()
+                                ),
+                                source=source,
+                                resolution_m=resolution_m,
+                                crs=crs,
+                                area_unit="m2",
+                                length_unit="m",
+                                min_patch_pixels=config.patches.min_patch_pixels,
+                                min_patch_area_m2=resolution_m**2
+                                * config.patches.min_patch_pixels,
+                                connectivity_rule=config.patches.connectivity_rule,
+                            )
+                        )
+
+        if "reconnection_timing" in selected_metric_ids:
+            edge_flag = None
+            value = None
+            is_reportable = False
+            warning_flags: tuple[WarningFlag, ...] = ()
+            reconnection_metric_used = None
+            proxy_reconnection_flag = None
+            connected_threshold = None
+
+            if end_dry_month is None or pd.isna(end_dry_month):
+                edge_flag = EdgeFlag.MISSING_HY_ANCHOR
+            else:
+                end_dry_dt = pd.Timestamp(end_dry_month).to_pydatetime()
+                window_months = _search_window_months(
+                    end_dry_month=end_dry_dt,
+                    next_end_dry_month=next_end_dry,
+                    cube_month_keys=cube_month_keys,
+                )
+                lpi_window = _slice_series_for_window(
+                    lpi_lookup, window_months=window_months
+                )
+                lpsec_window = _slice_series_for_window(
+                    lpsec_lookup, window_months=window_months
+                )
+                use_lpsec = _lpsec_complete_for_window(
+                    lpsec_lookup=lpsec_lookup,
+                    window_months=window_months,
+                )
+                if use_lpsec:
+                    result = compute_reconnection_timing(
+                        lpi_series=lpi_window,
+                        end_dry_month=end_dry_dt,
+                        lpi_threshold=config.dynamics.reconnection_lpi_threshold_pct,
+                        lpsec_series=lpsec_window,
+                        lpsec_threshold=config.dynamics.reconnection_lpsec_threshold_pct,
+                    )
+                    connected_threshold = (
+                        config.dynamics.reconnection_lpsec_threshold_pct
+                    )
+                else:
+                    result = compute_reconnection_timing(
+                        lpi_series=lpi_window,
+                        end_dry_month=end_dry_dt,
+                        lpi_threshold=config.dynamics.reconnection_lpi_threshold_pct,
+                    )
+                    connected_threshold = config.dynamics.reconnection_lpi_threshold_pct
+
+                reconnection_metric_used = result.reconnection_metric_used
+                proxy_reconnection_flag = result.proxy_reconnection_flag
+                if result.proxy_reconnection_flag:
+                    warning_flags = (WarningFlag.PROXY_RECONNECTION,)
+                if result.t_reconnect_months is None:
+                    edge_flag = EdgeFlag.NO_THRESHOLD_CROSSING
+                else:
+                    value = float(result.t_reconnect_months)
+                    is_reportable = True
+
             records.append(
                 MetricRecord(
                     run_id=run_id,
@@ -715,22 +883,25 @@ def _extent_contraction_records(
                     catchment_id=catchment_id,
                     aoi_id=aoi_id,
                     zone="AOI",
-                    hy=result.hy,
-                    metric="extent_contraction",
+                    date=pd.Timestamp(end_dry_month).to_pydatetime()
+                    if end_dry_month is not None and not pd.isna(end_dry_month)
+                    else None,
+                    hy=hy,
+                    hy_anchor="end_dry",
+                    metric="reconnection_timing",
                     metric_family=MetricFamily.DYNAMICS,
-                    value=None if low_df or not np.isfinite(value) else float(value),
-                    unit="percent_per_month",
-                    value_type=ValueType.HY_SUMMARY,
-                    hy_confidence=result.hy_confidence,
-                    composite_sensitive=result.composite_sensitive,
-                    monthly_composite=composite,
+                    value=value,
+                    unit="month",
+                    value_type=ValueType.HY_ANCHOR,
+                    hy_confidence=confidence,
+                    edge_flag=edge_flag,
+                    warning_flags=warning_flags,
+                    is_reportable=is_reportable,
+                    connected_wet_metric=reconnection_metric_used,
+                    connected_wet_threshold=connected_threshold,
+                    reconnection_metric_used=reconnection_metric_used,
+                    proxy_reconnection_flag=proxy_reconnection_flag,
                     metric_dependency=MetricDependency.HY_ANCHOR,
-                    is_reportable=not low_df and np.isfinite(value),
-                    warning_flags=(
-                        (WarningFlag.COMPOSITE_SENSITIVE,)
-                        if result.composite_sensitive
-                        else ()
-                    ),
                     source=source,
                     resolution_m=resolution_m,
                     crs=crs,
@@ -741,6 +912,78 @@ def _extent_contraction_records(
                     connectivity_rule=config.patches.connectivity_rule,
                 )
             )
+
+        if "refuge_spatial_stability" in selected_metric_ids:
+            current_state = end_dry_by_hy.get(hy)
+            previous_state = end_dry_by_hy.get(hy - 1)
+            if current_state is None:
+                evaluation = evaluate_refuge_spatial_stability(
+                    current=EndDryState(
+                        hy=hy,
+                        date=pd.Timestamp(end_dry_month).to_pydatetime()
+                        if end_dry_month is not None and not pd.isna(end_dry_month)
+                        else datetime(1, 1, 1),
+                        water=np.zeros((1, 1), dtype=bool),
+                        valid_obs=np.zeros((1, 1), dtype=bool),
+                        hy_confidence=confidence,
+                        anchor_missing=True,
+                    ),
+                    previous=previous_state,
+                    analysis_mask=analysis_mask,
+                    min_valid_fraction=config.validity.min_valid_fraction_month,
+                )
+            else:
+                evaluation = evaluate_refuge_spatial_stability(
+                    current=current_state,
+                    previous=previous_state,
+                    analysis_mask=analysis_mask,
+                    min_valid_fraction=config.validity.min_valid_fraction_month,
+                )
+
+            jaccard = evaluation.jaccard
+            is_reportable = (
+                evaluation.edge_flag is None
+                and jaccard is not None
+                and np.isfinite(jaccard)
+            )
+            records.append(
+                MetricRecord(
+                    run_id=run_id,
+                    config_hash=config.config_hash,
+                    package_version=__version__,
+                    git_sha=git_sha,
+                    catchment_id=catchment_id,
+                    aoi_id=aoi_id,
+                    zone="AOI",
+                    date=current_state.date if current_state is not None else None,
+                    hy=hy,
+                    hy_anchor="end_dry",
+                    metric="refuge_spatial_stability",
+                    metric_family=MetricFamily.DYNAMICS,
+                    value=float(jaccard)
+                    if is_reportable and jaccard is not None
+                    else None,
+                    unit="dimensionless",
+                    value_type=ValueType.HY_ANCHOR,
+                    hy_confidence=confidence,
+                    edge_flag=evaluation.edge_flag,
+                    is_reportable=is_reportable,
+                    valid_fraction_month=evaluation.common_valid_fraction,
+                    min_valid_fraction_month=config.validity.min_valid_fraction_month,
+                    n_valid_pixels=evaluation.n_common_valid_pixels,
+                    n_water_pixels=evaluation.n_union_pixels,
+                    metric_dependency=MetricDependency.HY_ANCHOR,
+                    source=source,
+                    resolution_m=resolution_m,
+                    crs=crs,
+                    area_unit="m2",
+                    length_unit="m",
+                    min_patch_pixels=config.patches.min_patch_pixels,
+                    min_patch_area_m2=resolution_m**2 * config.patches.min_patch_pixels,
+                    connectivity_rule=config.patches.connectivity_rule,
+                )
+            )
+
     return records
 
 
@@ -940,31 +1183,47 @@ def analyze(
         metric_overrides=config.metric_overrides,
     )
     selected_ids = {spec.metric_id for spec in metric_plan.selected}
+    internal_ids = {spec.metric_id for spec in metric_plan.internal_support}
+    compute_ids = selected_ids | internal_ids
     coverage_plan = registry_wide_plan(available_dependencies=available_dependencies)
 
+    need_section_rows = bool(compute_ids & _SECTION_ROW_METRIC_IDS)
+    need_dynamics_cube = bool(selected_ids & _DYNAMICS_CUBE_METRIC_IDS)
+    dynamics_collector = None
+    if need_dynamics_cube and hydroyear_result is not None:
+        dynamics_collector = DynamicsSupportCollector(
+            end_dry_anchors=hydroyear_result.anchors,
+        )
+
     records: list[MetricRecord] = []
-    if selected_ids & _SECTION_ROW_METRIC_IDS:
+    dynamics_support: DynamicsSupport | None = None
+    refuge_states: tuple[EndDryState, ...] = ()
+    if need_section_rows or need_dynamics_cube:
         rows = analyze_section_rows(
             monthly["water"],
             section=aoi_id,
             section_area_km2=section_area_km2,
             pixel_size_m=pixel_size_m,
             config=config,
-            selected_ids=selected_ids,
+            selected_ids=compute_ids,
             valid_obs=monthly["valid_obs"],
             analysis_mask=cube.analysis_mask,
+            dynamics_collector=dynamics_collector,
         )
-        records = _records_from_section_rows(
-            rows,
-            run_id=run_id,
-            config=config,
-            catchment_id=catchment,
-            aoi_id=aoi_id,
-            resolution_m=pixel_size_m,
-            crs=crs,
-            source=cube.source,
-            git_sha=git_sha,
-        )
+        if need_section_rows:
+            records = _records_from_section_rows(
+                rows,
+                run_id=run_id,
+                config=config,
+                catchment_id=catchment,
+                aoi_id=aoi_id,
+                resolution_m=pixel_size_m,
+                crs=crs,
+                source=cube.source,
+                git_sha=git_sha,
+            )
+        if dynamics_collector is not None:
+            dynamics_support, refuge_states = dynamics_collector.finalize()
     records = [record for record in records if record.metric in selected_ids]
     if {"lpsec", "inter_pool_gap"} & selected_ids:
         if not isinstance(drainage, SpatialContext) or not drainage.has_real_channel:
@@ -1004,25 +1263,50 @@ def analyze(
                 git_sha=git_sha,
             )
         )
-    if (
-        "extent_contraction" in selected_ids
-        and hydroyear_result is not None
-        and max_water_apsec is not None
-        and median_apsec is not None
-    ):
+    if selected_ids & _DYNAMICS_PROFILE_METRIC_IDS and hydroyear_result is not None:
+        if dynamics_support is None:
+            dynamics_support = DynamicsSupport(lpi_by_month=())
+        lpsec_by_month = dynamics_support.lpsec_by_month
+        if (
+            isinstance(drainage, SpatialContext)
+            and drainage.has_real_channel
+            and channel_wet_profiles is not None
+            and channel_segment_lengths_m is not None
+        ):
+            lpsec_by_month = _build_lpsec_by_month(
+                cube=cube,
+                context=drainage,
+                wet_profiles=channel_wet_profiles,
+                segment_lengths_m=channel_segment_lengths_m,
+            )
+        dynamics_support = DynamicsSupport(
+            lpi_by_month=dynamics_support.lpi_by_month,
+            lpsec_by_month=lpsec_by_month,
+        )
+        analysis_mask_np = None
+        if cube.analysis_mask is not None:
+            analysis_mask_np = np.asarray(cube.analysis_mask.values, dtype=bool)
         records.extend(
-            _extent_contraction_records(
-                anchors=hydroyear_result.anchors,
+            _dynamics_profile_records(
+                selected_metric_ids=frozenset(
+                    selected_ids & _DYNAMICS_PROFILE_METRIC_IDS
+                ),
+                hy_anchors=hydroyear_result,
+                monthly_support=dynamics_support,
+                refuge_states=refuge_states,
+                config=config,
+                run_context={
+                    "run_id": run_id,
+                    "catchment_id": catchment,
+                    "aoi_id": aoi_id,
+                    "source": cube.source,
+                    "resolution_m": pixel_size_m,
+                    "crs": crs,
+                    "git_sha": git_sha,
+                },
                 max_water=max_water_apsec,
                 median=median_apsec,
-                config=config,
-                run_id=run_id,
-                catchment_id=catchment,
-                aoi_id=aoi_id,
-                source=cube.source,
-                resolution_m=pixel_size_m,
-                crs=crs,
-                git_sha=git_sha,
+                analysis_mask=analysis_mask_np,
             )
         )
     frame = records_to_frame(records)

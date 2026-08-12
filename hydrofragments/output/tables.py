@@ -15,6 +15,7 @@ from hydrofragments.models import MetricRecord
 from hydrofragments.schema import (
     OUTPUT_COLUMNS,
     OUTPUT_DTYPES,
+    SCHEMA_VERSION,
     SchemaError,
     validate_metric_id,
 )
@@ -26,6 +27,7 @@ _PACKAGE_METADATA_REVISION_KEYS = (
     "Git-Commit",
 )
 _SUPPORTED_TABLE_FORMATS = frozenset({"parquet", "csv"})
+_SUPPORTED_METRIC_SCHEMA_VERSIONS = frozenset({"1.0.0", SCHEMA_VERSION})
 
 
 PARQUET_PARTITION_COLUMNS = ("metric_family", "value_type")
@@ -138,6 +140,19 @@ def _row_mapping(row: Row) -> dict[str, object]:
 
 
 def _validate_rows(rows: list[dict[str, object]]) -> None:
+    schema_versions: set[str] = set()
+    for row in rows:
+        version = row.get("schema_version")
+        if version is None or version is pd.NA:
+            continue
+        schema_versions.add(str(version))
+    if len(schema_versions) > 1:
+        raise TableSchemaError("mixed metric schema versions are not supported")
+    unsupported = schema_versions - _SUPPORTED_METRIC_SCHEMA_VERSIONS
+    if unsupported:
+        raise TableSchemaError(
+            "unsupported metric schema version: " + ", ".join(sorted(unsupported))
+        )
     for index, row in enumerate(rows):
         flags = row["warning_flags"]
         if hasattr(flags, "tolist"):

@@ -586,6 +586,7 @@ def stream_section_month_rows(
     export_enabled: bool = False,
     extra_consumers: Sequence[WindowMonthConsumer] = (),
     occurrence_feeder: Any | None = None,
+    dynamics_feeder: Any | None = None,
 ) -> list[dict[str, object]]:
     """Stream all months under a spatial byte budget; omit retained full-grid payloads."""
 
@@ -623,7 +624,9 @@ def stream_section_month_rows(
         for time_index in range(len(timestamps))
     ]
 
-    def _feed_occurrence(row: dict[str, object]) -> None:
+    def _feed_sidecars(row: dict[str, object]) -> None:
+        if dynamics_feeder is not None:
+            dynamics_feeder.add_month(row)
         if occurrence_feeder is None:
             return
         payload = row.get("occurrence_payload")
@@ -641,7 +644,7 @@ def stream_section_month_rows(
         payload.clear()
 
     def _public_row(row: dict[str, object]) -> dict[str, object]:
-        _feed_occurrence(row)
+        _feed_sidecars(row)
         return {k: v for k, v in row.items() if k != "occurrence_payload"}
 
     if workers <= 1:

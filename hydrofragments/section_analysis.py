@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 import warnings
-from typing import Iterator, Literal, Sequence
+from typing import Iterator, Literal, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,7 @@ from hydrofragments.analysis.window_stream import stream_section_month_rows
 from hydrofragments.metrics.extent import compute_apsec
 import hydrofragments.metrics.patches as patch_metrics
 import hydrofragments.metrics.persistence as persistence
+from hydrofragments.metrics.dynamics import DynamicsSupport, EndDryState, _month_key
 from hydrofragments.metrics.persistence import compute_refuge_area
 from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
 
@@ -523,6 +524,64 @@ class _OccurrenceAccumulator:
         )
 
 
+class DynamicsSupportCollector:
+    """Capture monthly LPI and end-dry refuge states during the streaming pass."""
+
+    def __init__(
+        self,
+        *,
+        end_dry_anchors: pd.DataFrame,
+    ) -> None:
+        self._end_dry_lookup: dict[tuple[int, int], dict[str, object]] = {}
+        for anchor in end_dry_anchors.to_dict(orient="records"):
+            end_dry = anchor.get("end_dry_month")
+            if end_dry is None or pd.isna(end_dry):
+                continue
+            self._end_dry_lookup[_month_key(end_dry)] = anchor
+        self._lpi: list[tuple[pd.Timestamp, float]] = []
+        self._refuge_states: list[EndDryState] = []
+
+    def add_month(self, row: Mapping[str, object]) -> None:
+        timestamp = pd.Timestamp(row["timestamp"])
+        lpi = row.get("lpi")
+        if lpi is not None and np.isfinite(lpi):
+            self._lpi.append((timestamp, float(lpi)))
+
+        payload = row.get("occurrence_payload")
+        if not isinstance(payload, dict):
+            return
+        anchor = self._end_dry_lookup.get(_month_key(timestamp))
+        if anchor is None:
+            return
+        water = np.asarray(payload["water_month"], dtype=bool)
+        valid_obs = payload.get("coverage_valid_obs_month")
+        if valid_obs is None:
+            valid_array = np.ones_like(water, dtype=bool)
+        else:
+            valid_array = np.asarray(valid_obs, dtype=bool)
+        end_dry = anchor.get("end_dry_month")
+        self._refuge_states.append(
+            EndDryState(
+                hy=int(anchor["hy"]),
+                date=pd.Timestamp(end_dry).to_pydatetime(),
+                water=water,
+                valid_obs=valid_array,
+                hy_confidence=str(anchor.get("confidence", "unassigned")),
+                anchor_missing=end_dry is None or pd.isna(end_dry),
+            )
+        )
+
+    def finalize(self) -> tuple[DynamicsSupport, tuple[EndDryState, ...]]:
+        lpi_by_month = tuple(
+            (timestamp.to_pydatetime(), value)
+            for timestamp, value in sorted(self._lpi, key=lambda item: item[0])
+        )
+        refuge_states = tuple(
+            sorted(self._refuge_states, key=lambda state: state.hy)
+        )
+        return DynamicsSupport(lpi_by_month=lpi_by_month), refuge_states
+
+
 def _default_windows(
     grid_shape: tuple[int, int],
 ) -> tuple[AnalysisWindow, ...]:
@@ -541,6 +600,7 @@ def analyze_section_rows(
     valid_obs: xr.DataArray | None = None,
     analysis_mask: xr.DataArray | None = None,
     executor_kind: Literal["thread", "process"] = "thread",
+    dynamics_collector: DynamicsSupportCollector | None = None,
 ) -> list[dict[str, object]]:
     """Compute retained v1.2 metrics in a legacy-compatible wide row shape.
 
@@ -566,6 +626,8 @@ def analyze_section_rows(
     measurement exactly.
     """
     want_patches = selected_ids is None or bool(selected_ids & _PATCH_METRIC_IDS)
+    if dynamics_collector is not None:
+        want_patches = True
     want_width = selected_ids is not None and "pool_width" in selected_ids
     want_persistence = selected_ids is None or bool(selected_ids & _PERSISTENCE_METRIC_IDS)
     want_apsec = selected_ids is None or "apsec" in selected_ids
@@ -642,6 +704,7 @@ def analyze_section_rows(
         executor_kind=executor_kind,
         export_enabled=export_enabled,
         occurrence_feeder=occurrence_acc,
+        dynamics_feeder=dynamics_collector,
     )
 
     pp_mean = float("nan")
@@ -693,5 +756,6 @@ def analyze_section_rows(
 
 
 __all__ = [
+    "DynamicsSupportCollector",
     "analyze_section_rows",
 ]

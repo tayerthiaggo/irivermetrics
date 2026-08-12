@@ -236,6 +236,26 @@ def test_write_output_tables_accepts_formats_tuple(tmp_path: Path) -> None:
     assert artifacts.csv_path.exists()
 
 
+def test_records_to_frame_accepts_homogeneous_legacy_schema() -> None:
+    from hydrofragments.output.tables import records_to_frame
+
+    row = metric_record().to_mapping()
+    row["schema_version"] = "1.0.0"
+    frame = records_to_frame([row])
+    assert frame.loc[0, "schema_version"] == "1.0.0"
+
+
+def test_records_to_frame_rejects_mixed_schema_versions() -> None:
+    from hydrofragments.output.tables import TableSchemaError, records_to_frame
+
+    current = metric_record().to_mapping()
+    legacy = metric_record(metric="occurrence").to_mapping()
+    legacy["schema_version"] = "1.0.0"
+
+    with pytest.raises(TableSchemaError, match="mixed metric schema versions"):
+        records_to_frame([current, legacy])
+
+
 def test_pyarrow_is_declared_for_canonical_parquet_output() -> None:
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
 
