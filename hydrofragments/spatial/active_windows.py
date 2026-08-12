@@ -52,9 +52,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
+import dask.array as da
 import numpy as np
 from scipy import ndimage
 import xarray as xr
+
+from hydrofragments.compute.policy import ComputePolicy
+from hydrofragments.patches.labels import label_components
 
 BBox = tuple[int, int, int, int]  # (row0, col0, row1, col1); row1/col1 exclusive
 
@@ -160,6 +164,28 @@ def _merge_overlapping(bboxes: list[BBox]) -> list[BBox]:
     return current
 
 
+def _mask_nbytes(mask: xr.DataArray) -> int:
+    data = mask.data
+    if isinstance(data, da.Array):
+        return int(data.nbytes)
+    return int(np.asarray(data).nbytes)
+
+
+def _component_bboxes_from_labels(labels: np.ndarray, *, connectivity: Literal[4, 8]) -> list[BBox]:
+    count = int(labels.max())
+    if count == 0:
+        return []
+    bboxes: list[BBox] = []
+    for slices in ndimage.find_objects(labels):
+        if slices is None:
+            continue
+        row_slice, col_slice = slices
+        bboxes.append(
+            (int(row_slice.start), int(col_slice.start), int(row_slice.stop), int(col_slice.stop))
+        )
+    return bboxes
+
+
 def independent_active_windows(
     analysis_mask: xr.DataArray,
     *,
@@ -188,12 +214,45 @@ def independent_active_windows(
     if align_pixels < 1:
         raise ValueError("align_pixels must be at least 1")
 
-    mask = np.asarray(analysis_mask.values, dtype=bool)
-    height, width = mask.shape
+    nbytes = _mask_nbytes(analysis_mask)
+    threshold = ComputePolicy().target_chunk_bytes
+    data = analysis_mask.data
+    if isinstance(data, da.Array) and nbytes > threshold:
+        label_result = label_components(
+            data.astype(bool),
+            connectivity=connectivity,
+            min_patch_pixels=1,
+            local_label_threshold_bytes=threshold,
+        )
+        raw_bboxes = _component_bboxes_from_labels(label_result.labels, connectivity=connectivity)
+    else:
+        mask = np.asarray(analysis_mask.values, dtype=bool)
+        height, width = mask.shape
+        raw_bboxes = _component_bboxes(mask, connectivity=connectivity)
+        if not raw_bboxes:
+            return ()
+        expanded = [
+            _expand_and_align(
+                bbox,
+                halo_pixels=halo_pixels,
+                align_pixels=align_pixels,
+                height=height,
+                width=width,
+            )
+            for bbox in raw_bboxes
+        ]
+        merged = _merge_overlapping(expanded)
+        merged.sort(key=lambda bbox: (bbox[0], bbox[1]))
+        return tuple(
+            AnalysisWindow(window_id=f"window-{index + 1:04d}", bbox=bbox)
+            for index, bbox in enumerate(merged)
+        )
 
-    raw_bboxes = _component_bboxes(mask, connectivity=connectivity)
     if not raw_bboxes:
         return ()
+
+    height = int(analysis_mask.sizes[analysis_mask.dims[0]])
+    width = int(analysis_mask.sizes[analysis_mask.dims[1]])
 
     expanded = [
         _expand_and_align(

@@ -176,7 +176,12 @@ def _measure_component(
 
 
 def measure_components(
-    crops: Iterable[ComponentCrop], *, pixel_size_m: float, include_width: bool = False
+    crops: Iterable[ComponentCrop],
+    *,
+    pixel_size_m: float,
+    include_width: bool = False,
+    max_component_bytes: int | None = None,
+    window_id: str | None = None,
 ) -> tuple[PatchProperties, ...]:
     """Measure complete bounded crops with the CPU reference implementation."""
     if pixel_size_m <= 0:
@@ -184,6 +189,21 @@ def measure_components(
     materialized = tuple(crops)
     if not materialized:
         return ()
+    from hydrofragments.analysis.window_stream import MemoryBudgetExceeded
+
+    for crop in materialized:
+        estimated = int(np.ceil(crop.mask.nbytes * 4.0))
+        if max_component_bytes is not None and estimated > max_component_bytes:
+            raise MemoryBudgetExceeded(
+                f"component crop for label={crop.label} in window={window_id!r} "
+                f"requires {estimated} live bytes but worker budget is "
+                f"{max_component_bytes}",
+                window_id=window_id,
+                estimated_live_bytes=estimated,
+                budget_bytes=max_component_bytes,
+                mitigation="increase target_chunk_bytes/worker_memory_fraction or "
+                "subdivide the analysis window",
+            )
     major_axis_lengths = _bulk_major_axis_lengths(materialized)
     perimeters = _bulk_pixel_edge_perimeters(materialized)
     return tuple(

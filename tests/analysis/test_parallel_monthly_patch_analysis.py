@@ -327,16 +327,11 @@ def test_analyze_section_rows_order_is_deterministic_not_completion_order():
 
 def test_bounded_in_flight_payloads_never_exceed_two_times_workers():
     """Producer/consumer bound: at most `2 * config.compute.workers` month
-    payloads may be constructed-but-not-yet-consumed at any instant.
-
-    Instruments `_build_month_payload` (the per-month payload constructor)
-    to track a live "in flight" counter incremented on construction and
-    decremented once `_month_row` finishes consuming it, then asserts the
-    observed peak never exceeds the bound for a small worker count.
+    jobs may be in flight at any instant during streaming dispatch.
     """
     import threading
 
-    from hydrofragments import section_analysis as compat_module
+    from hydrofragments.analysis import window_stream as stream_module
 
     n_time, n_y, n_x = 12, 10, 10
     da_feature, valid_da = _catchment_shaped_cube(
@@ -349,27 +344,20 @@ def test_bounded_in_flight_payloads_never_exceed_two_times_workers():
     peak_in_flight = 0
     lock = threading.Lock()
 
-    real_build = compat_module._build_month_payload
-    real_row = compat_module._month_row
+    real_process = stream_module._process_month_stream_job
 
-    def counting_build(*args, **kwargs):
+    def counting_process(*args, **kwargs):
         nonlocal in_flight, peak_in_flight
-        payload = real_build(*args, **kwargs)
         with lock:
             in_flight += 1
             peak_in_flight = max(peak_in_flight, in_flight)
-        return payload
-
-    def counting_row(payload):
-        nonlocal in_flight
         try:
-            return real_row(payload)
+            return real_process(*args, **kwargs)
         finally:
             with lock:
                 in_flight -= 1
 
-    compat_module._build_month_payload = counting_build
-    compat_module._month_row = counting_row
+    stream_module._process_month_stream_job = counting_process
     try:
         rows = analyze_section_rows(
             da_feature,
@@ -382,11 +370,10 @@ def test_bounded_in_flight_payloads_never_exceed_two_times_workers():
             executor_kind="thread",
         )
     finally:
-        compat_module._build_month_payload = real_build
-        compat_module._month_row = real_row
+        stream_module._process_month_stream_job = real_process
 
     assert len(rows) == n_time
     assert peak_in_flight <= 2 * workers, (
-        f"expected at most {2 * workers} month payloads in flight at once; "
+        f"expected at most {2 * workers} month jobs in flight at once; "
         f"observed peak={peak_in_flight}"
     )

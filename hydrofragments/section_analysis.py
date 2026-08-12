@@ -13,6 +13,7 @@ import xarray as xr
 
 from hydrofragments.compute.policy import ComputePolicy
 from hydrofragments.config import HydroConfig
+from hydrofragments.analysis.window_stream import stream_section_month_rows
 from hydrofragments.metrics.extent import compute_apsec
 import hydrofragments.metrics.patches as patch_metrics
 import hydrofragments.metrics.persistence as persistence
@@ -522,6 +523,13 @@ class _OccurrenceAccumulator:
         )
 
 
+def _default_windows(
+    grid_shape: tuple[int, int],
+) -> tuple[AnalysisWindow, ...]:
+    height, width = grid_shape
+    return (AnalysisWindow(window_id="window-0001", bbox=(0, 0, height, width)),)
+
+
 def analyze_section_rows(
     da_feature: xr.DataArray,
     *,
@@ -596,14 +604,13 @@ def analyze_section_rows(
             xr.DataArray(analysis_mask_np, dims=("y", "x")),
             connectivity=config.patches.connectivity_rule,
         )
+    else:
+        spatial_dims = tuple(dim for dim in da_feature.dims if dim != "time")
+        grid_shape = tuple(int(da_feature.sizes[dim]) for dim in spatial_dims)
+        windows = _default_windows(grid_shape)
 
     local_label_threshold_bytes = _resolve_local_label_threshold_bytes(config)
 
-    # `da_feature["time"]` is always a plain (non-Dask) numpy coordinate --
-    # reading it does not materialise any pixel data. This gives the section's
-    # month count/timestamps up front so the loop below can bound each
-    # iteration to exactly one month, rather than requiring the whole
-    # (time, y, x) cube to be resident at once just to learn its length.
     timestamps = pd.to_datetime(da_feature["time"].values)
     n_time = len(timestamps)
 
@@ -614,61 +621,28 @@ def analyze_section_rows(
     )
 
     occurrence_acc = _OccurrenceAccumulator() if want_persistence else None
+    export_enabled = bool(config.output.spatial_products)
 
-    # Bounded producer/consumer dispatch (W3.2): each month's payload is
-    # built lazily -- one at a time, from the fused per-month
-    # `_monthly_dataset` compute -- and handed to `_month_row`, either
-    # in-process (workers <= 1, today's exact serial path and default) or
-    # via a bounded thread/process pool (workers > 1, gated by
-    # `config.compute.workers`; see `_run_month_rows`'s
-    # `2 * workers`-in-flight bound). `_month_row` never touches the shared
-    # `_OccurrenceAccumulator` -- that is a whole-series running sum fed
-    # below, in deterministic `time_index` order, from each result's
-    # returned `water_month`/`coverage_valid_obs_month` -- so results may
-    # come back in any completion order and still reproduce byte-identical
-    # occurrence/refuge-area output (the accumulator's sum is
-    # order-independent; see its docstring).
-    def _payloads() -> Iterator[_MonthPayload]:
-        for time_index in range(n_time):
-            yield _build_month_payload(
-                da_feature,
-                valid_obs=valid_obs,
-                time_index=time_index,
-                timestamp=timestamps[time_index],
-                config=config,
-                pixel_size_m=pixel_size_m,
-                a_ref_m2=a_ref_m2,
-                cell_area_m2=cell_area_m2,
-                min_valid_fraction=min_valid_fraction,
-                analysis_mask_np=analysis_mask_np,
-                windows=windows,
-                want_patches=want_patches,
-                want_width=want_width,
-                want_apsec=want_apsec,
-                local_label_threshold_bytes=local_label_threshold_bytes,
-            )
-
-    per_month = _run_month_rows(
-        _payloads(), workers=config.compute.workers, executor_kind=executor_kind
+    per_month = stream_section_month_rows(
+        da_feature,
+        valid_obs=valid_obs,
+        timestamps=timestamps,
+        config=config,
+        pixel_size_m=pixel_size_m,
+        a_ref_m2=a_ref_m2,
+        cell_area_m2=cell_area_m2,
+        min_valid_fraction=min_valid_fraction,
+        analysis_mask_np=analysis_mask_np,
+        windows=windows,
+        want_patches=want_patches,
+        want_width=want_width,
+        want_apsec=want_apsec,
+        local_label_threshold_bytes=local_label_threshold_bytes,
+        workers=config.compute.workers,
+        executor_kind=executor_kind,
+        export_enabled=export_enabled,
+        occurrence_feeder=occurrence_acc,
     )
-    # `_run_month_rows` already sorts by `time_index`; feeding the
-    # accumulator in that fixed order (rather than whatever order results
-    # happened to be produced/collected in) keeps behavior identical to the
-    # pre-refactor chronological loop even though the sum itself is
-    # order-independent.
-    if occurrence_acc is not None:
-        for month in per_month:
-            calendar_month = int(month["timestamp"].month)
-            water_month = month["water_month"]
-            occurrence_acc.add_month(
-                calendar_month=calendar_month,
-                water=water_month,
-                valid_obs=(
-                    month["coverage_valid_obs_month"]
-                    if month["coverage_valid_obs_month"] is not None
-                    else np.ones_like(water_month, dtype=bool)
-                ),
-            )
 
     pp_mean = float("nan")
     refuge = None

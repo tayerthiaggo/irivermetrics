@@ -16,6 +16,8 @@ from typing import Any, Iterable, Sequence
 
 import numpy as np
 
+from pathlib import Path
+
 from hydrofragments.patches import (
     PatchProperties,
     bucket_component_crops,
@@ -23,6 +25,7 @@ from hydrofragments.patches import (
     label_components,
     measure_components,
 )
+from hydrofragments.patches.labels import LabelCheckpointRef, label_components_to_checkpoint
 from hydrofragments.schema import EdgeFlag, WarningFlag
 
 
@@ -47,6 +50,81 @@ class PoolWidthDistribution:
     cv: float
     suppressed_pools: int
     warning_flags: tuple[WarningFlag, ...]
+
+
+@dataclass(frozen=True)
+class WindowLabelMeasureResult:
+    """Labels/properties for one admitted window."""
+
+    properties: tuple[PatchProperties, ...]
+    labels: np.ndarray | None = None
+
+
+def label_and_measure_window(
+    mask: Any,
+    *,
+    pixel_size_m: float,
+    connectivity: int = 8,
+    min_patch_pixels: int = 3,
+    target_component_pixels: int = 1_000_000,
+    include_width: bool = False,
+    local_label_threshold_bytes: int | None = None,
+    max_component_bytes: int | None = None,
+    window_id: str | None = None,
+    spill_dir: Path | None = None,
+) -> tuple[WindowLabelMeasureResult | None, LabelCheckpointRef | None]:
+    """Label one window mask once and measure properties without retaining labels."""
+
+    if pixel_size_m <= 0:
+        raise ValueError("pixel_size_m must be positive")
+    if not np.any(mask):
+        return None, None
+
+    label_result, checkpoint = label_components_to_checkpoint(
+        mask,
+        connectivity=connectivity,
+        min_patch_pixels=min_patch_pixels,
+        local_label_threshold_bytes=local_label_threshold_bytes,
+        spill_dir=spill_dir,
+    )
+    if checkpoint is not None:
+        import zarr
+
+        labels = zarr.open(checkpoint.path, mode="r")[:]
+        properties: list[PatchProperties] = []
+        crops = iter_component_crops(np.asarray(labels, dtype=np.int32))
+        for bucket in bucket_component_crops(
+            crops, target_pixels=target_component_pixels
+        ):
+            properties.extend(
+                measure_components(
+                    bucket,
+                    pixel_size_m=pixel_size_m,
+                    include_width=include_width,
+                    max_component_bytes=max_component_bytes,
+                    window_id=window_id,
+                )
+            )
+        return WindowLabelMeasureResult(properties=tuple(properties), labels=None), checkpoint
+
+    assert label_result is not None
+    labels = label_result.labels
+    properties: list[PatchProperties] = []
+    crops = iter_component_crops(labels)
+    for bucket in bucket_component_crops(crops, target_pixels=target_component_pixels):
+        properties.extend(
+            measure_components(
+                bucket,
+                pixel_size_m=pixel_size_m,
+                include_width=include_width,
+                max_component_bytes=max_component_bytes,
+                window_id=window_id,
+            )
+        )
+    return WindowLabelMeasureResult(
+        properties=tuple(properties),
+        labels=labels,
+    ), checkpoint
 
 
 @dataclass(frozen=True)
@@ -387,6 +465,7 @@ __all__ = [
     "compute_pool_width_distribution",
     "compute_patch_metrics",
     "evaluate_mesh_correlation_gate",
+    "label_and_measure_window",
     "measure_patch_properties",
     "reduce_patch_properties",
 ]

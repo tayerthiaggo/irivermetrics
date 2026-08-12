@@ -10,6 +10,8 @@ normalisation happen only after that global reconciliation.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+import tempfile
 
 import dask.array as da
 from dask_image import ndmeasure
@@ -151,6 +153,66 @@ def _filter_and_normalize(
     return LabelResult(labels=labels, count=count)
 
 
+@dataclass(frozen=True)
+class LabelCheckpointRef:
+    """On-disk normalized label checkpoint for a window exceeding RAM budget."""
+
+    path: str
+    count: int
+    shape: tuple[int, int]
+
+
+def label_components_to_checkpoint(
+    mask: np.ndarray | da.Array,
+    *,
+    connectivity: int = 8,
+    min_patch_pixels: int = 3,
+    local_label_threshold_bytes: int | None = None,
+    spill_dir: Path | None = None,
+) -> tuple[LabelResult | None, LabelCheckpointRef | None]:
+    """Return in-memory labels or a spill checkpoint when the window exceeds budget."""
+
+    if mask.ndim != 2:
+        raise ValueError("patch labeling requires a 2-D mask")
+
+    nbytes = mask.nbytes if hasattr(mask, "nbytes") else np.asarray(mask).nbytes
+    threshold = (
+        _default_local_label_threshold_bytes()
+        if local_label_threshold_bytes is None
+        else local_label_threshold_bytes
+    )
+
+    if nbytes <= threshold:
+        return label_components(
+            mask,
+            connectivity=connectivity,
+            min_patch_pixels=min_patch_pixels,
+            local_label_threshold_bytes=local_label_threshold_bytes,
+        ), None
+
+    result = label_components(
+        mask,
+        connectivity=connectivity,
+        min_patch_pixels=min_patch_pixels,
+        local_label_threshold_bytes=local_label_threshold_bytes,
+    )
+    parent = spill_dir if spill_dir is not None else Path(tempfile.mkdtemp())
+    checkpoint_path = parent / f"labels_{id(result.labels):x}.zarr"
+    import zarr
+
+    zarr.array(
+        result.labels.astype(np.int32, copy=False),
+        store=str(checkpoint_path),
+        overwrite=True,
+    )
+    checkpoint = LabelCheckpointRef(
+        path=str(checkpoint_path),
+        count=result.count,
+        shape=tuple(result.labels.shape),
+    )
+    return None, checkpoint
+
+
 def label_components(
     mask: np.ndarray | da.Array,
     *,
@@ -187,5 +249,5 @@ def label_components(
     )
 
 
-__all__ = ["LabelResult", "label_components"]
+__all__ = ["LabelCheckpointRef", "LabelResult", "label_components", "label_components_to_checkpoint"]
 
