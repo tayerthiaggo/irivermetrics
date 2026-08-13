@@ -71,4 +71,10 @@ temp/
 # Large data and benchmark output ignores
 data/wofs_monthly_masks_1986_2026.zarr
 benchmarks/results/end_to_end_workflow_workdir/
+benchmarks/results/spatial_export_workdir/
+benchmarks/results/test_workdir/
+benchmarks/results/quick_timing/
+.benchmark_worktrees/
 hydrofragments_out/
+examples/spatial_exports_out/
+*.spatial_checkpoints/

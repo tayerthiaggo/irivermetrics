@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 import numpy as np
 import xarray as xr
@@ -68,13 +69,47 @@ def _resolve_spatial_dims(data: xr.DataArray) -> tuple[str, str, np.ndarray, np.
     return y_dim, x_dim, _as_float_coords(data[y_dim]), _as_float_coords(data[x_dim])
 
 
+def _parse_crs(value: object) -> CRS | None:
+    if value is None:
+        return None
+    try:
+        return CRS.from_user_input(value)
+    except Exception:
+        return None
+
+
+def _attr_crs_candidates(mapping: Mapping[str, object] | None) -> tuple[object, ...]:
+    if not mapping:
+        return ()
+    return tuple(
+        mapping[key]
+        for key in ("crs", "crs_wkt", "spatial_ref")
+        if key in mapping and mapping[key] not in (None, "")
+    )
+
+
 def _resolve_crs(data: xr.DataArray) -> CRS | None:
-    if not hasattr(data, "rio"):
-        return None
-    crs = data.rio.crs
-    if crs is None:
-        return None
-    return CRS.from_user_input(crs)
+    candidates: list[object] = []
+    if hasattr(data, "rio"):
+        try:
+            rio_crs = data.rio.crs
+        except Exception:
+            rio_crs = None
+        if rio_crs is not None:
+            candidates.append(rio_crs)
+    candidates.extend(_attr_crs_candidates(dict(data.attrs)))
+    encoding = getattr(data, "encoding", None)
+    if isinstance(encoding, dict):
+        candidates.extend(_attr_crs_candidates(encoding))
+    parent = getattr(data, "_parent", None)
+    parent_attrs = getattr(parent, "attrs", None)
+    if isinstance(parent_attrs, dict):
+        candidates.extend(_attr_crs_candidates(parent_attrs))
+    for candidate in candidates:
+        parsed = _parse_crs(candidate)
+        if parsed is not None:
+            return parsed
+    return None
 
 
 @dataclass(frozen=True)

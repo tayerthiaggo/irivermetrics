@@ -546,6 +546,8 @@ def _require_netcdf_backend() -> None:
         import h5py  # noqa: F401
     except ImportError:
         pytest.skip("h5py not installed")
+    except OSError as exc:
+        pytest.skip(f"h5py backend unavailable: {exc}")
 
     for name in list(sys.modules):
         if name == "h5netcdf" or name.startswith("h5netcdf."):
@@ -556,6 +558,84 @@ def _require_netcdf_backend() -> None:
         pytest.skip("h5netcdf not installed")
     if getattr(h5netcdf.core, "no_h5py", False):
         pytest.skip("h5py backend not available for h5netcdf")
+
+
+def test_netcdf_roundtrip_accepts_leading_time_dimension(tmp_path: Path) -> None:
+    _require_netcdf_backend()
+    template, grid = _georef_template((2, 2))
+    hydroperiod = xr.DataArray(
+        np.arange(12, dtype=np.float32).reshape(3, 2, 2),
+        dims=("time", "y", "x"),
+        coords={
+            "time": pd.date_range("2020-01-01", periods=3, freq="MS"),
+            "y": template.y,
+            "x": template.x,
+        },
+    )
+    dataset = xr.Dataset({"hydroperiod": hydroperiod})
+    path = tmp_path / NETCDF_SPATIAL_FILENAME
+    write_verified_netcdf(dataset, path, grid=grid, metadata=_metadata())
+    reopened = xr.open_dataset(path)
+    try:
+        np.testing.assert_allclose(reopened["hydroperiod"].values, hydroperiod.values)
+        assert tuple(reopened["hydroperiod"].dims) == ("time", "y", "x")
+    finally:
+        reopened.close()
+
+
+def test_netcdf_roundtrip_from_rio_aligned_variables(tmp_path: Path) -> None:
+    """Export path merges rio-aligned arrays; reopen must still resolve CRS."""
+    _require_netcdf_backend()
+    template, grid = _georef_template((4, 4))
+    occurrence = xr.DataArray(
+        np.linspace(0.0, 100.0, 16, dtype=np.float32).reshape(4, 4),
+        dims=("y", "x"),
+        coords={"y": template.y, "x": template.x},
+    ).rio.write_crs(grid.crs)
+    dataset = xr.Dataset({"occurrence": occurrence})
+    path = tmp_path / NETCDF_SPATIAL_FILENAME
+    write_verified_netcdf(dataset, path, grid=grid, metadata=_metadata())
+    reopened = xr.open_dataset(path)
+    try:
+        round_trip = SpatialGrid.from_dataarray(
+            reopened["occurrence"], require_georeference=True
+        )
+        assert round_trip is not None
+        assert round_trip.crs == grid.crs
+    finally:
+        reopened.close()
+
+
+def test_netcdf_validation_failure_releases_temp_file(tmp_path: Path) -> None:
+    _require_netcdf_backend()
+    template, grid = _georef_template((2, 2))
+    dataset = xr.Dataset(
+        {
+            "occurrence": (
+                ("y", "x"),
+                np.ones((2, 2), dtype=np.float32),
+            )
+        },
+        coords={"y": template.y, "x": template.x},
+    )
+    path = tmp_path / NETCDF_SPATIAL_FILENAME
+    tmp_path_nc = path.with_name(f".{path.name}.tmp.nc")
+
+    original = SpatialGrid.validate_dataarray
+
+    def _fail(self, data):  # noqa: ANN001
+        raise ValueError("spatial output requires a resolvable CRS")
+
+    SpatialGrid.validate_dataarray = _fail  # type: ignore[method-assign]
+    try:
+        with pytest.raises(ValueError, match="resolvable CRS"):
+            write_verified_netcdf(dataset, path, grid=grid, metadata=_metadata())
+    finally:
+        SpatialGrid.validate_dataarray = original  # type: ignore[method-assign]
+
+    assert not path.exists()
+    if tmp_path_nc.exists():
+        tmp_path_nc.unlink()
 
 
 def test_netcdf_roundtrip_when_extra_installed(tmp_path: Path) -> None:

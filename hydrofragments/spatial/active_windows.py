@@ -58,7 +58,11 @@ from scipy import ndimage
 import xarray as xr
 
 from hydrofragments.compute.policy import ComputePolicy
-from hydrofragments.patches.labels import label_components
+from hydrofragments.patches.labels import (
+    label_bboxes_from_checkpoint,
+    label_components,
+    label_components_to_checkpoint,
+)
 
 BBox = tuple[int, int, int, int]  # (row0, col0, row1, col1); row1/col1 exclusive
 
@@ -218,13 +222,28 @@ def independent_active_windows(
     threshold = ComputePolicy().target_chunk_bytes
     data = analysis_mask.data
     if isinstance(data, da.Array) and nbytes > threshold:
-        label_result = label_components(
-            data.astype(bool),
-            connectivity=connectivity,
-            min_patch_pixels=1,
-            local_label_threshold_bytes=threshold,
-        )
-        raw_bboxes = _component_bboxes_from_labels(label_result.labels, connectivity=connectivity)
+        import shutil
+        from pathlib import Path
+        import tempfile
+
+        spill_dir = Path(tempfile.mkdtemp(prefix="hf_window_labels_"))
+        try:
+            _in_memory, checkpoint = label_components_to_checkpoint(
+                data.astype(bool),
+                connectivity=connectivity,
+                min_patch_pixels=1,
+                local_label_threshold_bytes=threshold,
+                spill_dir=spill_dir,
+            )
+            if checkpoint is not None:
+                raw_bboxes = label_bboxes_from_checkpoint(checkpoint)
+            else:
+                assert _in_memory is not None
+                raw_bboxes = _component_bboxes_from_labels(
+                    _in_memory.labels, connectivity=connectivity
+                )
+        finally:
+            shutil.rmtree(spill_dir, ignore_errors=True)
     else:
         mask = np.asarray(analysis_mask.values, dtype=bool)
         height, width = mask.shape

@@ -88,11 +88,10 @@ def label_and_measure_window(
         spill_dir=spill_dir,
     )
     if checkpoint is not None:
-        import zarr
+        from hydrofragments.patches.labels import iter_checkpoint_component_crops
 
-        labels = zarr.open(checkpoint.path, mode="r")[:]
         properties: list[PatchProperties] = []
-        crops = iter_component_crops(np.asarray(labels, dtype=np.int32))
+        crops = iter_checkpoint_component_crops(checkpoint)
         for bucket in bucket_component_crops(
             crops, target_pixels=target_component_pixels
         ):
@@ -117,6 +116,7 @@ def label_and_measure_window(
                 bucket,
                 pixel_size_m=pixel_size_m,
                 include_width=include_width,
+                max_component_bytes=max_component_bytes,
                 window_id=window_id,
             )
         )
@@ -294,6 +294,8 @@ def measure_patch_properties(
     target_component_pixels: int = 1_000_000,
     include_width: bool = False,
     local_label_threshold_bytes: int | None = None,
+    max_component_bytes: int | None = None,
+    window_id: str | None = None,
 ) -> Sequence[PatchProperties]:
     """Label, crop, and measure one 2-D mask exactly once.
 
@@ -320,7 +322,11 @@ def measure_patch_properties(
     ):
         properties.extend(
             measure_components(
-                bucket, pixel_size_m=pixel_size_m, include_width=include_width
+                bucket,
+                pixel_size_m=pixel_size_m,
+                include_width=include_width,
+                max_component_bytes=max_component_bytes,
+                window_id=window_id,
             )
         )
     return properties

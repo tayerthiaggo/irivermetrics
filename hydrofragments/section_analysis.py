@@ -14,20 +14,12 @@ import xarray as xr
 
 from hydrofragments.compute.policy import ComputePolicy
 from hydrofragments.config import HydroConfig
-from hydrofragments.analysis.window_stream import stream_section_month_rows
+from hydrofragments.compute.policy import resolve_worker_byte_budget
 from hydrofragments.metrics.extent import compute_apsec
 import hydrofragments.metrics.patches as patch_metrics
 import hydrofragments.metrics.persistence as persistence
 from hydrofragments.metrics.dynamics import DynamicsSupport, EndDryState, _month_key
 from hydrofragments.metrics.persistence import compute_refuge_area
-from hydrofragments.output.checkpoints import (
-    PoolCheckpointConsumer,
-    SpatialRasterCheckpoint,
-    SpatialRasterCheckpointAccumulator,
-    checkpoint_products_for_run,
-    grid_from_dataarray,
-    needs_spatial_raster_checkpoint,
-)
 from hydrofragments.spatial.active_windows import AnalysisWindow, independent_active_windows
 
 
@@ -35,7 +27,7 @@ from hydrofragments.spatial.active_windows import AnalysisWindow, independent_ac
 class SectionSpatialCollector:
     """Optional spatial checkpoint handles populated during section analysis."""
 
-    raster_checkpoint: SpatialRasterCheckpoint | None = None
+    raster_checkpoint: object | None = None
     pool_checkpoint_root: "Path | None" = None
     grid: object | None = None
 
@@ -111,6 +103,7 @@ def _measure_month_patch_properties(
     min_patch_pixels: int,
     include_width: bool,
     local_label_threshold_bytes: int | None,
+    max_component_bytes: int | None = None,
 ):
     """Measure one month's patch properties, windowed when profitable.
 
@@ -137,6 +130,7 @@ def _measure_month_patch_properties(
             min_patch_pixels=min_patch_pixels,
             include_width=include_width,
             local_label_threshold_bytes=local_label_threshold_bytes,
+            max_component_bytes=max_component_bytes,
         )
 
     assert windows is not None
@@ -148,6 +142,7 @@ def _measure_month_patch_properties(
             min_patch_pixels=min_patch_pixels,
             include_width=include_width,
             local_label_threshold_bytes=local_label_threshold_bytes,
+            max_component_bytes=max_component_bytes,
         )
 
     properties = []
@@ -162,6 +157,8 @@ def _measure_month_patch_properties(
                 min_patch_pixels=min_patch_pixels,
                 include_width=include_width,
                 local_label_threshold_bytes=local_label_threshold_bytes,
+                max_component_bytes=max_component_bytes,
+                window_id=window.window_id,
             )
         )
     return properties
@@ -206,6 +203,7 @@ class _MonthPayload:
     want_width: bool
     want_apsec: bool
     local_label_threshold_bytes: int | None
+    max_component_bytes: int | None = None
 
 
 def _build_month_payload(
@@ -225,6 +223,7 @@ def _build_month_payload(
     want_width: bool,
     want_apsec: bool,
     local_label_threshold_bytes: int | None,
+    max_component_bytes: int | None = None,
 ) -> _MonthPayload:
     """Materialise ONE month's bounded ``water``/``valid_obs`` payload.
 
@@ -258,6 +257,7 @@ def _build_month_payload(
         want_width=want_width,
         want_apsec=want_apsec,
         local_label_threshold_bytes=local_label_threshold_bytes,
+        max_component_bytes=max_component_bytes,
     )
 
 
@@ -310,6 +310,7 @@ def _month_row(payload: _MonthPayload) -> dict[str, object]:
             min_patch_pixels=config.patches.min_patch_pixels,
             include_width=payload.want_width,
             local_label_threshold_bytes=payload.local_label_threshold_bytes,
+            max_component_bytes=payload.max_component_bytes,
         )
         patch_result, width_result = patch_metrics.reduce_patch_properties(
             month_properties,
@@ -693,6 +694,10 @@ def analyze_section_rows(
         windows = _default_windows(grid_shape)
 
     local_label_threshold_bytes = _resolve_local_label_threshold_bytes(config)
+    in_flight_slots = 1 if config.compute.workers <= 1 else 2 * config.compute.workers
+    max_component_bytes = resolve_worker_byte_budget(
+        config, in_flight_slots=in_flight_slots
+    )
 
     timestamps = pd.to_datetime(da_feature["time"].values)
     n_time = len(timestamps)
@@ -709,40 +714,50 @@ def analyze_section_rows(
         if selected_ids is not None
         else _PERSISTENCE_METRIC_IDS | {"recurrence", "hydroperiod"}
     )
-    checkpoint_products = checkpoint_products_for_run(
-        selected_metric_ids=effective_selected,
-        spatial_products=config.output.spatial_products,
-    )
-    want_raster_checkpoint = needs_spatial_raster_checkpoint(
-        selected_metric_ids=effective_selected,
-        spatial_products=config.output.spatial_products,
-        export_enabled=export_enabled,
-        checkpoint_path=config.compute.checkpoint_path,
-    )
-    raster_checkpoint: SpatialRasterCheckpointAccumulator | None = None
-    pool_consumer: PoolCheckpointConsumer | None = None
+    raster_checkpoint = None
+    pool_consumer = None
     extra_consumers: list[object] = []
-    if export_enabled and "monthly_pools" in config.output.spatial_products:
-        template = da_feature.isel(time=0)
-        pool_consumer = PoolCheckpointConsumer.create(
-            grid=grid_from_dataarray(template),
-            config=config,
-            input_fingerprint=f"{section}:{grid_shape}",
-            export_enabled=True,
+    want_raster_checkpoint = False
+    if export_enabled or config.compute.checkpoint_path:
+        from hydrofragments.output.checkpoints import (
+            PoolCheckpointConsumer,
+            SpatialRasterCheckpointAccumulator,
+            checkpoint_products_for_run,
+            grid_from_dataarray,
+            needs_spatial_raster_checkpoint,
         )
-        extra_consumers.append(pool_consumer.as_consumer())
-    if want_raster_checkpoint:
-        template = da_feature.isel(time=0)
-        raster_checkpoint = SpatialRasterCheckpointAccumulator.create(
-            grid=grid_from_dataarray(template),
-            config=config,
-            products=checkpoint_products,
-            input_fingerprint=f"{section}:{grid_shape}",
-            template=template,
-            analysis_mask=analysis_mask_np,
-            end_dry_anchors=end_dry_anchors,
+
+        checkpoint_products = checkpoint_products_for_run(
+            selected_metric_ids=effective_selected,
+            spatial_products=config.output.spatial_products,
+        )
+        want_raster_checkpoint = needs_spatial_raster_checkpoint(
+            selected_metric_ids=effective_selected,
+            spatial_products=config.output.spatial_products,
             export_enabled=export_enabled,
+            checkpoint_path=config.compute.checkpoint_path,
         )
+        if export_enabled and "monthly_pools" in config.output.spatial_products:
+            template = da_feature.isel(time=0)
+            pool_consumer = PoolCheckpointConsumer.create(
+                grid=grid_from_dataarray(template),
+                config=config,
+                input_fingerprint=f"{section}:{grid_shape}",
+                export_enabled=True,
+            )
+            extra_consumers.append(pool_consumer.as_consumer())
+        if want_raster_checkpoint:
+            template = da_feature.isel(time=0)
+            raster_checkpoint = SpatialRasterCheckpointAccumulator.create(
+                grid=grid_from_dataarray(template),
+                config=config,
+                products=checkpoint_products,
+                input_fingerprint=f"{section}:{grid_shape}",
+                template=template,
+                analysis_mask=analysis_mask_np,
+                end_dry_anchors=end_dry_anchors,
+                export_enabled=export_enabled,
+            )
 
     occurrence_acc = (
         _OccurrenceAccumulator() if want_persistence and raster_checkpoint is None else None
@@ -756,6 +771,8 @@ def analyze_section_rows(
     )
 
     if needs_window_stream:
+        from hydrofragments.analysis.window_stream import stream_section_month_rows
+
         per_month = stream_section_month_rows(
             da_feature,
             valid_obs=valid_obs,
@@ -799,6 +816,7 @@ def analyze_section_rows(
                     want_width=want_width,
                     want_apsec=want_apsec,
                     local_label_threshold_bytes=local_label_threshold_bytes,
+                    max_component_bytes=max_component_bytes,
                 )
 
         per_month = _run_month_rows(

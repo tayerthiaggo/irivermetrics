@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 import time
 from pathlib import Path
@@ -24,7 +23,7 @@ from hydrofragments.output.bundle import (
     assert_output_dir_available,
     open_bundle_transaction,
 )
-from hydrofragments.output.checkpoints import SpatialRasterCheckpoint
+from hydrofragments.output.core import CoreAnalysisResult, build_in_memory_manifest
 from hydrofragments.output.manifest import build_run_manifest, validate_result_bundle
 from hydrofragments.output.rasters import export_rasters_from_checkpoint
 from hydrofragments.output.spatial import SpatialGrid
@@ -52,25 +51,6 @@ _ZONE_NAMES = {
 
 class SpatialProductUnavailable(ValueError):
     """Raised when a requested spatial product lacks runtime prerequisites."""
-
-
-@dataclass(frozen=True)
-class CoreAnalysisResult:
-    """In-memory analysis outcome before optional bundle publication."""
-
-    metrics_table: pd.DataFrame
-    metric_coverage: pd.DataFrame
-    run_id: str
-    git_sha: str
-    report_warnings: tuple[str, ...]
-    skipped_metrics: tuple[tuple[str, str], ...]
-    execution_plan_mapping: Mapping[str, object]
-    input_fingerprint: Mapping[str, object]
-    comparison_context: Mapping[str, object]
-    hydroyear_result: HyAnchorResult | None = None
-    raster_checkpoint: SpatialRasterCheckpoint | None = None
-    pool_checkpoint_root: Path | None = None
-    spatial_grid: SpatialGrid | None = None
 
 
 def _resolve_zone_result(
@@ -418,42 +398,6 @@ def _write_spatial_rasters(
         )
 
     return registrations
-
-
-def build_in_memory_manifest(
-    config: HydroConfig,
-    core: CoreAnalysisResult,
-    *,
-    created_at: datetime | None = None,
-) -> dict[str, object]:
-    """Build a complete manifest dictionary without filesystem writes."""
-
-    manifest = build_run_manifest(
-        config,
-        run_id=core.run_id,
-        package_version=__version__,
-        git_sha=core.git_sha,
-        input_fingerprint=core.input_fingerprint,
-        planned_backend=str(core.execution_plan_mapping.get("planned_backend", "cpu")),
-        actual_backend_by_stage=dict(
-            core.execution_plan_mapping.get("actual_backend_by_stage", {})
-        ),
-        backend_capabilities=dict(
-            core.execution_plan_mapping.get("backend_capabilities", {})
-        ),
-        skipped_metrics=[
-            {"metric_id": metric_id, "reason": reason}
-            for metric_id, reason in core.skipped_metrics
-        ],
-        warnings=list(core.report_warnings),
-        comparison_context=core.comparison_context,
-        artifacts={},
-        artifact_inventory=[],
-        created_at=created_at or datetime.now(timezone.utc),
-    )
-    manifest_dict = dict(manifest)
-    manifest_dict["manifest_path"] = None
-    return manifest_dict
 
 
 def finalize_analysis_bundle(

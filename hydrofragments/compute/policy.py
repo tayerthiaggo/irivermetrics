@@ -31,4 +31,33 @@ class ComputePolicy:
             )
 
 
-__all__ = ["ComputePolicy", "ComputePolicyError"]
+DEFAULT_WORKER_MEMORY_FRACTION = 0.5
+_MIN_WORKER_BUDGET_TARGET_BYTES = 1024
+
+
+def resolve_worker_byte_budget(config, *, in_flight_slots: int = 1) -> int:
+    """Derive per-slot admitted live bytes from compute policy fields."""
+
+    target = (
+        config.compute.target_chunk_bytes
+        if config.compute.target_chunk_bytes is not None
+        else ComputePolicy().target_chunk_bytes
+    )
+    if target < _MIN_WORKER_BUDGET_TARGET_BYTES:
+        target = ComputePolicy().target_chunk_bytes
+    fraction = (
+        config.compute.worker_memory_fraction
+        if config.compute.worker_memory_fraction is not None
+        else DEFAULT_WORKER_MEMORY_FRACTION
+    )
+    slots = max(1, in_flight_slots)
+    total = int(target * fraction)
+    return max(1, total // slots)
+
+
+__all__ = [
+    "ComputePolicy",
+    "ComputePolicyError",
+    "DEFAULT_WORKER_MEMORY_FRACTION",
+    "resolve_worker_byte_budget",
+]

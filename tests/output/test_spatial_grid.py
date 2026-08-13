@@ -58,6 +58,17 @@ def test_source_crs_is_preserved() -> None:
     assert "4326" in grid.crs.to_wkt()
 
 
+def test_wkt_attr_resolves_crs_without_rio_spatial_ref() -> None:
+    y = np.array([100.0, 70.0])
+    x = np.array([10.0, 40.0])
+    source = SpatialGrid.from_dataarray(_grid_array(y=y, x=x))
+    da = _grid_array(y=y, x=x, crs=None)
+    da.attrs["crs"] = source.crs.to_wkt()
+    grid = SpatialGrid.from_dataarray(da, require_georeference=True)
+    assert grid is not None
+    assert grid.crs == source.crs
+
+
 def test_missing_crs_fails_when_spatial_output_requested() -> None:
     da = _grid_array(
         y=np.array([100.0, 70.0]),

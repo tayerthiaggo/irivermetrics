@@ -421,3 +421,79 @@ def test_measured_patch_bundle_validation():
 def test_metric_partial_carries_additive_payload():
     partial = MetricPartial(name="coverage", payload={"valid_pixels": 3, "total_pixels": 9})
     assert partial.payload["valid_pixels"] == 3
+
+
+def test_export_off_oversize_width_crop_raises_memory_budget():
+    n_time, n_y, n_x = 1, 200, 200
+    water = np.ones((n_time, n_y, n_x), dtype="int8")
+    valid = np.ones_like(water, dtype=bool)
+    times = np.array(["2000-01-01"], dtype="datetime64[ns]")
+    da_feature = xr.DataArray(
+        water,
+        dims=("time", "y", "x"),
+        coords={"time": times, "y": np.arange(n_y), "x": np.arange(n_x)},
+    )
+    valid_da = xr.DataArray(valid, dims=("time", "y", "x"), coords=da_feature.coords)
+    config = HydroConfig.from_mapping(
+        {
+            "config_schema_version": "1.1.0",
+            "input": {"kind": "generic_binary"},
+            "temporal": {
+                "input_cadence": "monthly",
+                "monthly_composite": "supplied",
+                "composite_owner": "caller",
+            },
+            "patches": {
+                "min_patch_pixels": 1,
+                "connectivity_rule": 8,
+                "width_resolution_floor_pixels": 1.0,
+            },
+            "compute": {
+                "workers": 1,
+                "target_chunk_bytes": 2_048,
+                "worker_memory_fraction": 0.25,
+            },
+        }
+    )
+    with pytest.raises(MemoryBudgetExceeded):
+        analyze_section_rows(
+            da_feature,
+            section="S",
+            section_area_km2=float(n_y * n_x) * 900.0 / 1_000_000.0,
+            pixel_size_m=30.0,
+            config=config,
+            selected_ids={"pool_width", "number_of_pools"},
+            valid_obs=valid_da,
+        )
+
+
+def test_stream_month_windows_rejects_oversize_window_before_materialize(monkeypatch):
+    from hydrofragments.analysis import window_stream as stream_mod
+
+    da_feature, valid_da = _cube(n_time=1, n_y=32, n_x=32, seed=9)
+    calls = {"n": 0}
+    real = stream_mod._materialize_window_month
+
+    def wrapped(*args, **kwargs):
+        calls["n"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(stream_mod, "_materialize_window_month", wrapped)
+    with pytest.raises(MemoryBudgetExceeded):
+        stream_month_windows(
+            da_feature,
+            valid_da,
+            time_index=0,
+            timestamp=pd.Timestamp(da_feature["time"].values[0]),
+            windows=(AnalysisWindow(window_id="window-0001", bbox=(0, 0, 32, 32)),),
+            consumers=[_SpyConsumer()],
+            budget_bytes=16,
+            pixel_size_m=30.0,
+            connectivity=8,
+            min_patch_pixels=1,
+            want_patches=False,
+            want_width=False,
+            analysis_mask_np=None,
+            local_label_threshold_bytes=None,
+        )
+    assert calls["n"] == 0

@@ -8,7 +8,7 @@ import pytest
 
 from hydrofragments.compute.policy import ComputePolicy
 from hydrofragments.patches import labels as labels_module
-from hydrofragments.patches.labels import label_components
+from hydrofragments.patches.labels import label_components, label_components_to_checkpoint
 from tests.fixtures.analytic_masks import diagonal_pair_mask, mask_with_hole
 
 
@@ -261,6 +261,45 @@ def test_default_threshold_is_derived_from_compute_policy_target_chunk_bytes() -
         labels_module._default_local_label_threshold_bytes()
         == ComputePolicy().target_chunk_bytes
     )
+
+
+def test_large_mask_checkpoint_does_not_materialize_full_labels(
+    tmp_path, monkeypatch
+) -> None:
+    mask = da.ones((64, 64), chunks=(16, 16), dtype=bool)
+
+    def _boom(*_args, **_kwargs):
+        raise AssertionError("must not materialize full label raster")
+
+    monkeypatch.setattr(labels_module, "_materialize_global_labels", _boom)
+    result, checkpoint = label_components_to_checkpoint(
+        mask,
+        connectivity=8,
+        min_patch_pixels=1,
+        local_label_threshold_bytes=512,
+        spill_dir=tmp_path,
+    )
+    assert result is None
+    assert checkpoint is not None
+    stored = __import__("zarr").open(checkpoint.path, mode="r")
+    assert tuple(stored.shape) == (64, 64)
+    assert checkpoint.count == 1
+    assert int(np.asarray(stored[:]).max()) == 1
+
+
+def test_label_checkpoint_matches_eager_labels(tmp_path) -> None:
+    mask = _fragmented_mask()
+    eager = label_components(mask, connectivity=8, min_patch_pixels=3)
+    _, checkpoint = label_components_to_checkpoint(
+        da.from_array(mask, chunks=(4, 4)),
+        connectivity=8,
+        min_patch_pixels=3,
+        local_label_threshold_bytes=mask.nbytes - 1,
+        spill_dir=tmp_path,
+    )
+    assert checkpoint is not None
+    stored = np.asarray(__import__("zarr").open(checkpoint.path, mode="r")[:])
+    np.testing.assert_array_equal(stored, eager.labels)
 
 
 def test_default_threshold_routes_small_mask_to_scipy_without_override() -> None:

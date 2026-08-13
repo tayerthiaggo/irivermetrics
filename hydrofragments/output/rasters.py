@@ -917,6 +917,22 @@ def _require_h5netcdf() -> None:
         )
 
 
+def _spatial_slice_for_grid(data_array: xr.DataArray, grid: SpatialGrid) -> xr.DataArray:
+    """Return a 2-D (y, x) slice so stacked NetCDF variables can share the grid."""
+
+    indexers = {
+        dim: 0
+        for dim in data_array.dims
+        if dim not in (grid.y_dim, grid.x_dim)
+    }
+    sliced = data_array.isel(indexers) if indexers else data_array
+    if sliced.ndim != 2:
+        raise RasterExportError(
+            f"NetCDF variable {data_array.name} is not a spatial (y, x) field"
+        )
+    return sliced
+
+
 def write_verified_netcdf(
     dataset: xr.Dataset,
     destination: Path,
@@ -936,17 +952,20 @@ def write_verified_netcdf(
         tmp_path.unlink()
 
     export_ds = dataset.copy()
+    crs_wkt = grid.crs.to_wkt()
     export_ds.attrs.update(
         {
             "algorithm_version": metadata.get("algorithm_version", ""),
             "scientific_config_hash": metadata.get("scientific_config_hash", ""),
-            "crs": grid.crs.to_wkt(),
+            "crs": crs_wkt,
             "transform": list(grid.transform),
         }
     )
     encoding: dict[str, dict[str, object]] = {}
     block = _tile_block_size(grid.height, grid.width)
     for name, data_array in export_ds.data_vars.items():
+        export_ds[name].attrs["crs"] = crs_wkt
+        export_ds[name].attrs["crs_wkt"] = crs_wkt
         spatial_shape = tuple(
             int(data_array.sizes[dim])
             for dim in data_array.dims
@@ -964,21 +983,20 @@ def write_verified_netcdf(
     export_ds.to_netcdf(tmp_path, engine="h5netcdf", encoding=encoding)
 
     reopened = xr.open_dataset(tmp_path)
-    for name, data_array in export_ds.data_vars.items():
-        grid.validate_dataarray(reopened[name])
-        if export_ds[name].dtype != reopened[name].dtype:
-            reopened.close()
-            raise RasterExportError(f"NetCDF dtype mismatch for {name}")
-        expected = export_ds[name].values
-        actual = reopened[name].values
-        if np.issubdtype(expected.dtype, np.floating):
-            if not np.allclose(actual, expected, rtol=0, atol=1e-5, equal_nan=True):
-                reopened.close()
+    try:
+        for name, data_array in export_ds.data_vars.items():
+            grid.validate_dataarray(_spatial_slice_for_grid(reopened[name], grid))
+            if export_ds[name].dtype != reopened[name].dtype:
+                raise RasterExportError(f"NetCDF dtype mismatch for {name}")
+            expected = export_ds[name].values
+            actual = reopened[name].values
+            if np.issubdtype(expected.dtype, np.floating):
+                if not np.allclose(actual, expected, rtol=0, atol=1e-5, equal_nan=True):
+                    raise RasterExportError(f"NetCDF values mismatch for {name}")
+            elif not np.array_equal(actual, expected):
                 raise RasterExportError(f"NetCDF values mismatch for {name}")
-        elif not np.array_equal(actual, expected):
-            reopened.close()
-            raise RasterExportError(f"NetCDF values mismatch for {name}")
-    reopened.close()
+    finally:
+        reopened.close()
     tmp_path.replace(destination)
     return destination
 

@@ -171,7 +171,7 @@ class BundleTransaction:
             return
         self._aborted = True
         if self.staging_dir.exists():
-            shutil.rmtree(self.staging_dir)
+            shutil.rmtree(self.staging_dir, ignore_errors=True)
 
     def _ensure_open(self) -> None:
         if self._committed:

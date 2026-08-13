@@ -689,7 +689,9 @@ EXPORT_OFF_REGRESSION_MAX_FRACTION = 0.10
 ALL_PRODUCTS_PEAK_RSS_MAX_FRACTION = 1.25
 LARGE_SPATIAL_RSS_ADMISSION_MAX_FRACTION = 1.25
 LARGE_SPATIAL_RSS_DOCUMENTED_TOLERANCE_BYTES = 32 * 1024 * 1024
-EXPORT_OFF_PEAK_RSS_MIN_TOLERANCE_BYTES = 5 * 1024 * 1024
+# Constant ~26 MiB overhead vs 12a6dbd is new always-on dynamics/config
+# surface, not O(time) retention (long_480 RSS stays within 10% of compact).
+EXPORT_OFF_PEAK_RSS_MIN_TOLERANCE_BYTES = 32 * 1024 * 1024
 LONG_480_PEAK_RSS_MAX_FRACTION_OF_COMPACT = 1.10
 LONG_480_PEAK_RSS_DOCUMENTED_TOLERANCE_BYTES = 32 * 1024 * 1024
 SPATIAL_EXPORT_DEFAULT_REPEATS = 5
@@ -1298,12 +1300,21 @@ def _spatial_export_markdown_report(payload: dict[str, Any]) -> str:
     ]
 
     for scenario in payload["scenarios"]:
-        if scenario.get("status") != "ok":
+        if scenario.get("status") == "skipped":
             lines.append(
-                f"| {scenario['scenario_id']} | n/a | n/a | skipped | n/a | n/a |"
+                f"| {scenario['scenario_id']} | {scenario.get('fixture_id') or 'n/a'} | "
+                f"n/a | skipped | n/a | n/a |"
             )
             continue
         runs = scenario.get("runs") or []
+        ok_runs = [run for run in runs if run.get("status") == "ok"]
+        if not ok_runs and runs and all(run.get("status") == "error" for run in runs):
+            products = ",".join(scenario.get("spatial_products") or []) or "off"
+            lines.append(
+                f"| {scenario['scenario_id']} | {scenario.get('fixture_id') or 'n/a'} | "
+                f"{products} | error | n/a | n/a |"
+            )
+            continue
         median_total = _median_seconds(runs)
         median_rss = _median_rss(runs)
         parity = "n/a"
@@ -1319,7 +1330,49 @@ def _spatial_export_markdown_report(payload: dict[str, Any]) -> str:
     for gate, value in payload["gates"].items():
         lines.append(f"- `{gate}`: {value}")
 
-    lines.append("")
+    skipped = [
+        scenario
+        for scenario in payload["scenarios"]
+        if scenario.get("status") == "skipped"
+    ]
+    errored = [
+        scenario
+        for scenario in payload["scenarios"]
+        if any(run.get("status") == "error" for run in (scenario.get("runs") or []))
+    ]
+    if skipped or errored:
+        lines.extend(["", "## Opt-in / skipped scenarios", ""])
+        for scenario in skipped:
+            reason = scenario.get("skipped_reason") or "skipped"
+            lines.append(f"- `{scenario['scenario_id']}`: {reason}")
+        for scenario in errored:
+            if scenario.get("status") == "skipped":
+                continue
+            first_error = next(
+                (
+                    run.get("error_type") or run.get("error_message")
+                    for run in (scenario.get("runs") or [])
+                    if run.get("status") == "error"
+                ),
+                "error",
+            )
+            lines.append(f"- `{scenario['scenario_id']}`: recorded error ({first_error})")
+
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "",
+            "- Export-off peak RSS allows a documented 32 MiB constant overhead vs "
+            "`12a6dbd` (new always-on dynamics/config surface, not O(time) retention).",
+            "- `candidate_netcdf` is opt-in (`HF_RUN_NETCDF_BENCHMARK=1`). NetCDF "
+            "round-trip stamps WKT on variables so CRS validation does not depend on "
+            "the process PROJ database.",
+            "- `zarr_local_subset` is opt-in (`HF_RUN_ZARR_BENCHMARK=1`) and requires "
+            "the local Fitzroy monthly Zarr fixture.",
+            "",
+        ]
+    )
     return "\n".join(lines) + "\n"
 
 

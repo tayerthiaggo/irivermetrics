@@ -466,3 +466,27 @@ def test_align_pixels_snaps_window_bounds_to_grid():
     assert col0 % 16 == 0
     assert row1 % 16 == 0 or row1 == 64
     assert col1 % 16 == 0 or col1 == 64
+
+
+def test_large_dask_mask_does_not_materialize_full_labels(monkeypatch, tmp_path):
+    import dask.array as da
+
+    from hydrofragments.spatial import active_windows as windows_mod
+
+    class _TinyPolicy:
+        target_chunk_bytes = 1024
+
+    mask_np = np.zeros((64, 64), dtype=bool)
+    mask_np[4:12, 4:12] = True
+    mask_np[40:50, 40:50] = True
+    mask_da = xr.DataArray(da.from_array(mask_np, chunks=(16, 16)), dims=("y", "x"))
+
+    def _boom(*_args, **_kwargs):
+        raise AssertionError("must not call full-array label_components")
+
+    monkeypatch.setattr(windows_mod, "ComputePolicy", _TinyPolicy)
+    monkeypatch.setattr(windows_mod, "label_components", _boom)
+    windows = independent_active_windows(
+        mask_da, connectivity=8, halo_pixels=1, align_pixels=8
+    )
+    assert len(windows) == 2

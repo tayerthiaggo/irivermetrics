@@ -30,9 +30,10 @@ All notable changes to HydroFragments are documented here.
 
 ### Performance
 
-- Controlled benchmark evidence: export-off median regression ≤10% vs baseline;
-  all-products peak RSS ≤125% of core on synthetic fixtures. See
-  `benchmarks/results/dynamics_spatial_exports.md`.
+- Controlled benchmark evidence: export-off median regression ≤10% vs true
+  baseline `12a6dbd`; all-products peak RSS ≤125% of core on synthetic fixtures.
+  Export-off peak RSS documents a 32 MiB constant overhead (not O(time)
+  retention). See `benchmarks/results/dynamics_spatial_exports.md`.
 
 ## [0.1.0] - 2026-08-12
 

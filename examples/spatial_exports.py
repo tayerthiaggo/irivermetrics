@@ -74,6 +74,19 @@ def run(output_dir: Path) -> None:
     print("artifacts:", ", ".join(sorted(inventory)))
 
     occurrence_path = output_dir / "rasters" / "occurrence.tif"
+    import rasterio
+
+    with rasterio.open(occurrence_path) as dataset:
+        print(
+            "gdalinfo-equivalent:",
+            f"driver={dataset.driver}",
+            f"crs={dataset.crs}",
+            f"transform={dataset.transform}",
+            f"dtype={dataset.dtypes[0]}",
+            f"nodata={dataset.nodata}",
+            f"tiled={dataset.is_tiled}",
+            f"compress={dataset.compression}",
+        )
     occurrence = xr.open_dataarray(occurrence_path).squeeze("band", drop=True)
     finite = occurrence.where(np.isfinite(occurrence))
     if int(finite.count()) > 0:

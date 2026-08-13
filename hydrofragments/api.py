@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -41,12 +41,8 @@ from hydrofragments.models import (
     ValidationReport,
     WaterCube,
 )
-from hydrofragments.output.finalize import (
-    CoreAnalysisResult,
-    build_in_memory_manifest,
-    finalize_analysis_bundle,
-    preflight_spatial_outputs,
-)
+if TYPE_CHECKING:
+    from hydrofragments.output.core import CoreAnalysisResult
 from hydrofragments.output.tables import records_to_frame, resolve_git_sha
 from hydrofragments.schema import (
     EdgeFlag,
@@ -1123,6 +1119,11 @@ def _run_core_analysis(
 ) -> CoreAnalysisResult:
     """Compute metrics and optional spatial checkpoints without publishing."""
 
+    from hydrofragments.output.core import CoreAnalysisResult
+
+    if config.output.spatial_products or config.output.output_dir is not None:
+        from hydrofragments.output.finalize import preflight_spatial_outputs
+
     inputs = inputs or AnalysisInputs()
     drainage = inputs.drainage
     hydroyear_extent = inputs.hydroyear_extent
@@ -1167,13 +1168,14 @@ def _run_core_analysis(
             hydroyear_extent, hydrofragments_config=config
         )
 
-    preflight_spatial_outputs(
-        config,
-        cube=cube,
-        inputs=inputs,
-        hydroyear_result=hydroyear_result,
-        zone_result=zone_result or inputs.zones,
-    )
+    if config.output.spatial_products or config.output.output_dir is not None:
+        preflight_spatial_outputs(
+            config,
+            cube=cube,
+            inputs=inputs,
+            hydroyear_result=hydroyear_result,
+            zone_result=zone_result or inputs.zones,
+        )
 
     available_dependencies = _available_dependencies(
         config=config,
@@ -1389,6 +1391,8 @@ def analyze(
     both ``inputs.max_water_apsec`` and ``inputs.median_apsec``; absent
     either composite, the registry reports an explicit dependency skip.
     """
+    from hydrofragments.output.core import build_in_memory_manifest
+
     core = _run_core_analysis(
         cube,
         aoi_id,
@@ -1407,6 +1411,8 @@ def analyze(
             run_id=core.run_id,
             metric_coverage=core.metric_coverage,
         )
+
+    from hydrofragments.output.finalize import finalize_analysis_bundle
 
     return finalize_analysis_bundle(
         config,

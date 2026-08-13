@@ -13,19 +13,15 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from hydrofragments.compute.policy import ComputePolicy
+from hydrofragments.compute.policy import (
+    DEFAULT_WORKER_MEMORY_FRACTION,
+    resolve_worker_byte_budget,
+)
 from hydrofragments.config import HydroConfig
 from hydrofragments.metrics.extent import compute_apsec
 import hydrofragments.metrics.patches as patch_metrics
 from hydrofragments.metrics.patches import PatchProperties
 from hydrofragments.spatial.active_windows import AnalysisWindow
-
-DEFAULT_WORKER_MEMORY_FRACTION = 0.5
-# Values below this are treated as local-labeling-threshold overrides only
-# (see section_analysis._resolve_local_label_threshold_bytes), not as worker
-# memory budgets -- otherwise a 64-byte test override would shrink component
-# measurement budgets to unusable sizes.
-_MIN_WORKER_BUDGET_TARGET_BYTES = 1024
 
 # Names of export-only checkpoint consumers that must not be built when exports
 # are disabled (Task 7/8 will register real classes against these literals).
@@ -106,36 +102,17 @@ class WindowMonthConsumer(Protocol):
   def abort(self) -> None: ...
 
 
-def resolve_worker_byte_budget(
-    config: HydroConfig,
-    *,
-    in_flight_slots: int = 1,
-) -> int:
-    """Derive per-slot admitted live bytes from compute policy fields."""
-
-    target = (
-        config.compute.target_chunk_bytes
-        if config.compute.target_chunk_bytes is not None
-        else ComputePolicy().target_chunk_bytes
-    )
-    if target < _MIN_WORKER_BUDGET_TARGET_BYTES:
-        target = ComputePolicy().target_chunk_bytes
-    fraction = (
-        config.compute.worker_memory_fraction
-        if config.compute.worker_memory_fraction is not None
-        else DEFAULT_WORKER_MEMORY_FRACTION
-    )
-    workers = max(1, config.compute.workers)
-    slots = max(1, in_flight_slots)
-    total = int(target * fraction)
-    if workers > 1:
-        return max(1, total // slots)
-    return max(1, total // slots)
 
 
 def _estimate_live_bytes(*arrays: np.ndarray, multiplier: float = 4.0) -> int:
     nbytes = sum(int(arr.nbytes) for arr in arrays)
     return int(np.ceil(nbytes * multiplier))
+
+
+def _estimate_window_live_bytes(window: AnalysisWindow, *, multiplier: float = 4.0) -> int:
+    row0, col0, row1, col1 = window.bbox
+    cells = max(0, (row1 - row0) * (col1 - col0))
+    return int(np.ceil(cells * 2 * multiplier))
 
 
 def _materialize_window_month(
@@ -245,6 +222,26 @@ def stream_month_windows(
     try:
         for window in windows:
             row0, col0, row1, col1 = window.bbox
+            estimated = _estimate_window_live_bytes(window)
+            if estimated > budget_bytes:
+                raise MemoryBudgetExceeded(
+                    f"window={window.window_id} requires {estimated} live bytes "
+                    f"but worker budget is {budget_bytes}",
+                    window_id=window.window_id,
+                    estimated_live_bytes=estimated,
+                    budget_bytes=budget_bytes,
+                    mitigation="reduce target_chunk_bytes, worker count, or spatial window size",
+                )
+            if admitted_live + estimated > budget_bytes and active_blocks:
+                raise MemoryBudgetExceeded(
+                    f"admitted live bytes would exceed worker budget "
+                    f"({admitted_live + estimated} > {budget_bytes}) for "
+                    f"window={window.window_id}",
+                    window_id=window.window_id,
+                    estimated_live_bytes=admitted_live + estimated,
+                    budget_bytes=budget_bytes,
+                    mitigation="reduce target_chunk_bytes, worker count, or spatial window size",
+                )
             water_crop, valid_crop = _materialize_window_month(
                 da_feature,
                 valid_obs,
@@ -272,19 +269,8 @@ def stream_month_windows(
             metric_partials = _coverage_partials(
                 valid_crop, analysis_mask_crop=analysis_crop
             )
-            estimated = _estimate_live_bytes(water_crop, valid_crop)
             if patch_bundle is not None and patch_bundle.labels is not None:
                 estimated = _estimate_live_bytes(water_crop, valid_crop, patch_bundle.labels)
-            if admitted_live + estimated > budget_bytes and active_blocks:
-                raise MemoryBudgetExceeded(
-                    f"admitted live bytes would exceed worker budget "
-                    f"({admitted_live + estimated} > {budget_bytes}) for "
-                    f"window={window.window_id}",
-                    window_id=window.window_id,
-                    estimated_live_bytes=admitted_live + estimated,
-                    budget_bytes=budget_bytes,
-                    mitigation="reduce target_chunk_bytes, worker count, or spatial window size",
-                )
             block = WindowMonthResult(
                 time_index=time_index,
                 date=timestamp,
@@ -675,6 +661,21 @@ def stream_section_month_rows(
         _feed_sidecars(row)
         return {k: v for k, v in row.items() if k != "occurrence_payload"}
 
+    def _job_live_bytes(job: _MonthStreamJob) -> int:
+        total = sum(_estimate_window_live_bytes(window) for window in job.windows)
+        return max(1, total)
+
+    for job in jobs:
+        estimated = _job_live_bytes(job)
+        if estimated > budget_bytes:
+            raise MemoryBudgetExceeded(
+                f"month {job.time_index} requires {estimated} live bytes "
+                f"but worker budget is {budget_bytes}",
+                estimated_live_bytes=estimated,
+                budget_bytes=budget_bytes,
+                mitigation="reduce target_chunk_bytes, worker count, or spatial window size",
+            )
+
     if workers <= 1:
         results = [
             _public_row(
@@ -689,16 +690,27 @@ def stream_section_month_rows(
         executor_cls = (
             ThreadPoolExecutor if executor_kind == "thread" else ProcessPoolExecutor
         )
+        ordered: dict[int, dict[str, object]] = {}
         results: list[dict[str, object]] = []
+        next_index = 0
         with executor_cls(max_workers=workers) as executor:
             in_flight: dict = {}
             job_iter = iter(jobs)
+            in_flight_bytes = 0
+            reorder_bytes = 0
 
             def _fill() -> None:
+                nonlocal in_flight_bytes
                 while len(in_flight) < max_in_flight:
                     try:
                         job = next(job_iter)
                     except StopIteration:
+                        return
+                    estimated = _job_live_bytes(job)
+                    if (
+                        in_flight_bytes + reorder_bytes + estimated > budget_bytes
+                        and in_flight
+                    ):
                         return
                     future = executor.submit(
                         _process_month_stream_job,
@@ -707,16 +719,24 @@ def stream_section_month_rows(
                         job,
                         spill_dir=spill_dir,
                     )
-                    in_flight[future] = None
+                    in_flight[future] = estimated
+                    in_flight_bytes += estimated
 
             _fill()
             while in_flight:
                 done, _pending = wait(list(in_flight), return_when=FIRST_COMPLETED)
                 for future in done:
-                    del in_flight[future]
-                    results.append(_public_row(future.result()))
+                    estimated = in_flight.pop(future)
+                    in_flight_bytes -= estimated
+                    row = _public_row(future.result())
+                    time_index = int(row["time_index"])
+                    ordered[time_index] = row
+                    reorder_bytes += estimated
+                    while next_index in ordered:
+                        results.append(ordered.pop(next_index))
+                        reorder_bytes -= _job_live_bytes(jobs[next_index])
+                        next_index += 1
                 _fill()
-        results.sort(key=lambda row: row["time_index"])
 
     if spill_dir is not None and spill_dir.exists():
         for child in spill_dir.iterdir():

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import shutil
 import tempfile
 
 import dask.array as da
@@ -162,6 +163,161 @@ class LabelCheckpointRef:
     shape: tuple[int, int]
 
 
+def _iter_zarr_chunks(array):
+    height, width = array.shape
+    chunk_y, chunk_x = array.chunks
+    for row0 in range(0, height, chunk_y):
+        row1 = min(row0 + chunk_y, height)
+        for col0 in range(0, width, chunk_x):
+            col1 = min(col0 + chunk_x, width)
+            yield row0, row1, col0, col1, np.asarray(array[row0:row1, col0:col1])
+
+
+def _as_chunked_dask(mask: np.ndarray | da.Array, *, threshold_bytes: int) -> da.Array:
+    if isinstance(mask, da.Array):
+        return mask.astype(bool, copy=False)
+    concrete = np.asarray(mask, dtype=bool)
+    itemsize = max(1, int(concrete.dtype.itemsize))
+    side = max(1, int(np.sqrt(max(threshold_bytes, itemsize) / itemsize)))
+    side = max(1, min(side, concrete.shape[0], concrete.shape[1]))
+    return da.from_array(concrete, chunks=(side, side))
+
+
+def _write_normalized_label_checkpoint(
+    mask: np.ndarray | da.Array,
+    *,
+    connectivity: int,
+    min_patch_pixels: int,
+    threshold_bytes: int,
+    spill_dir: Path,
+) -> LabelCheckpointRef:
+    import zarr
+
+    labeled, _nlabels = ndmeasure.label(
+        _as_chunked_dask(mask, threshold_bytes=threshold_bytes),
+        structure=_structure(connectivity),
+    )
+    spill_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = spill_dir / "raw_labels.zarr"
+    dest_path = spill_dir / "labels.zarr"
+    labeled.astype(np.int32).to_zarr(str(raw_path), overwrite=True)
+    raw = zarr.open(str(raw_path), mode="r")
+    height, width = raw.shape
+    max_raw_id = 0
+    for _row0, _row1, _col0, _col1, block in _iter_zarr_chunks(raw):
+        if block.size:
+            max_raw_id = max(max_raw_id, int(block.max()))
+    counts = np.zeros(max_raw_id + 1, dtype=np.int64)
+    first = np.full(max_raw_id + 1, height * width, dtype=np.int64)
+    for row0, row1, col0, col1, block in _iter_zarr_chunks(raw):
+        if not block.size:
+            continue
+        rows = np.arange(row0, row1, dtype=np.int64)[:, None]
+        cols = np.arange(col0, col1, dtype=np.int64)[None, :]
+        positions = rows * width + cols
+        flat_labels = block.reshape(-1)
+        flat_pos = np.broadcast_to(positions, block.shape).reshape(-1)
+        counts += np.bincount(flat_labels, minlength=max_raw_id + 1)
+        nonzero = flat_labels != 0
+        if np.any(nonzero):
+            np.minimum.at(first, flat_labels[nonzero], flat_pos[nonzero])
+    raw_ids = np.arange(max_raw_id + 1)
+    retained_ids = np.flatnonzero((raw_ids != 0) & (counts >= min_patch_pixels))
+    retained_ids = retained_ids[np.argsort(first[retained_ids], kind="stable")]
+    count = int(retained_ids.size)
+    if count > np.iinfo(np.int32).max:
+        raise OverflowError("component count exceeds int32 label capacity")
+    lookup = np.zeros(max_raw_id + 1, dtype=np.int32)
+    lookup[retained_ids] = np.arange(1, count + 1, dtype=np.int32)
+    dest = zarr.open(
+        str(dest_path),
+        mode="w",
+        shape=raw.shape,
+        chunks=raw.chunks,
+        dtype=np.int32,
+    )
+    for row0, row1, col0, col1, block in _iter_zarr_chunks(raw):
+        dest[row0:row1, col0:col1] = lookup[block]
+    shutil.rmtree(raw_path, ignore_errors=True)
+    return LabelCheckpointRef(path=str(dest_path), count=count, shape=tuple(raw.shape))
+
+
+def label_bboxes_from_checkpoint(checkpoint: LabelCheckpointRef) -> list[tuple[int, int, int, int]]:
+    """Return unpadded bboxes ``(row0, col0, row1, col1)`` from a label Zarr store."""
+
+    import zarr
+
+    stored = zarr.open(checkpoint.path, mode="r")
+    count = checkpoint.count
+    if count <= 0:
+        return []
+    height, width = stored.shape
+    row0 = np.full(count + 1, height, dtype=np.int64)
+    row1 = np.zeros(count + 1, dtype=np.int64)
+    col0 = np.full(count + 1, width, dtype=np.int64)
+    col1 = np.zeros(count + 1, dtype=np.int64)
+    present = np.zeros(count + 1, dtype=bool)
+    for y0, y1, x0, x1, block in _iter_zarr_chunks(stored):
+        labels = np.unique(block)
+        labels = labels[labels > 0]
+        for label in labels:
+            rows, cols = np.nonzero(block == label)
+            present[int(label)] = True
+            row0[label] = min(row0[label], y0 + int(rows.min()))
+            row1[label] = max(row1[label], y0 + int(rows.max()) + 1)
+            col0[label] = min(col0[label], x0 + int(cols.min()))
+            col1[label] = max(col1[label], x0 + int(cols.max()) + 1)
+    return [
+        (int(row0[label]), int(col0[label]), int(row1[label]), int(col1[label]))
+        for label in range(1, count + 1)
+        if present[label]
+    ]
+
+
+def iter_checkpoint_component_crops(
+    checkpoint: LabelCheckpointRef, *, padding: int = 1
+):
+    """Yield padded component crops by reading only each component's bbox."""
+
+    from hydrofragments.patches.components import ComponentCrop
+    import zarr
+
+    if padding < 0:
+        raise ValueError("padding cannot be negative")
+    stored = zarr.open(checkpoint.path, mode="r")
+    height, width = stored.shape
+    bboxes = label_bboxes_from_checkpoint(checkpoint)
+    for label, (row0, col0, row1, col1) in enumerate(bboxes, start=1):
+        expanded_row0 = max(0, row0 - padding)
+        expanded_row1 = min(height, row1 + padding)
+        expanded_col0 = max(0, col0 - padding)
+        expanded_col1 = min(width, col1 + padding)
+        window = np.asarray(
+            stored[expanded_row0:expanded_row1, expanded_col0:expanded_col1]
+        )
+        component = window == label
+        component = np.pad(
+            component,
+            (
+                (
+                    padding - (row0 - expanded_row0),
+                    padding - (expanded_row1 - row1),
+                ),
+                (
+                    padding - (col0 - expanded_col0),
+                    padding - (expanded_col1 - col1),
+                ),
+            ),
+            mode="constant",
+            constant_values=False,
+        )
+        yield ComponentCrop(
+            label=label,
+            bbox=(row0, col0, row1, col1),
+            mask=component,
+        )
+
+
 def label_components_to_checkpoint(
     mask: np.ndarray | da.Array,
     *,
@@ -174,6 +330,8 @@ def label_components_to_checkpoint(
 
     if mask.ndim != 2:
         raise ValueError("patch labeling requires a 2-D mask")
+    if min_patch_pixels < 1:
+        raise ValueError("min_patch_pixels must be at least 1")
 
     nbytes = mask.nbytes if hasattr(mask, "nbytes") else np.asarray(mask).nbytes
     threshold = (
@@ -190,25 +348,13 @@ def label_components_to_checkpoint(
             local_label_threshold_bytes=local_label_threshold_bytes,
         ), None
 
-    result = label_components(
+    parent = spill_dir if spill_dir is not None else Path(tempfile.mkdtemp())
+    checkpoint = _write_normalized_label_checkpoint(
         mask,
         connectivity=connectivity,
         min_patch_pixels=min_patch_pixels,
-        local_label_threshold_bytes=local_label_threshold_bytes,
-    )
-    parent = spill_dir if spill_dir is not None else Path(tempfile.mkdtemp())
-    checkpoint_path = parent / f"labels_{id(result.labels):x}.zarr"
-    import zarr
-
-    zarr.array(
-        result.labels.astype(np.int32, copy=False),
-        store=str(checkpoint_path),
-        overwrite=True,
-    )
-    checkpoint = LabelCheckpointRef(
-        path=str(checkpoint_path),
-        count=result.count,
-        shape=tuple(result.labels.shape),
+        threshold_bytes=threshold,
+        spill_dir=parent,
     )
     return None, checkpoint
 
@@ -249,5 +395,12 @@ def label_components(
     )
 
 
-__all__ = ["LabelCheckpointRef", "LabelResult", "label_components", "label_components_to_checkpoint"]
+__all__ = [
+    "LabelCheckpointRef",
+    "LabelResult",
+    "iter_checkpoint_component_crops",
+    "label_bboxes_from_checkpoint",
+    "label_components",
+    "label_components_to_checkpoint",
+]
 
